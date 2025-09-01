@@ -1,0 +1,195 @@
+/* engine.css */
+:root {
+    /* Debug Panel Colors (always present) */
+    --debug-bg: #1E1E1E; /* Almost black */
+    --debug-text: #CCCCCC; /* Slightly dull white */
+}
+
+body {
+    /* font-family, line-height, background-color, color moved to theme.css */
+    margin: 0;
+}
+
+#game-container {
+    display: flex;
+    height: 100vh;
+}
+
+#main-nav {
+    /* background, border-right moved to theme.css */
+}
+
+#main-nav .nav-section {
+    padding: 10px 15px;
+    /* border-bottom moved to theme.css */
+}
+
+#main-nav .nav-section.title h1 {
+    margin: 0;
+    font-size: 22px;
+    /* font-family, color moved to theme.css */
+}
+
+/* Nav Link Styling */
+.nav-link {
+    padding: 8px 12px;
+    /* border, background, color moved to theme.css */
+    cursor: pointer;
+    border-radius: 3px;
+    font-size: 14px;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block; /* Default for horizontal */
+}
+
+.nav-link:hover {
+    /* background, color, border-color moved to theme.css */
+}
+
+/* Horizontal Layout */
+.layout-horizontal {
+    flex-direction: column;
+}
+.layout-horizontal #main-nav {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    border-right: none;
+    /* border-bottom moved to theme.css */
+}
+.layout-horizontal #main-nav .nav-section {
+    border-bottom: none;
+    padding: 5px 15px;
+}
+.layout-horizontal #main-nav .nav-section.user-links .nav-link {
+    margin-right: 15px; /* Spacing between horizontal links */
+}
+
+/* Vertical Layouts */
+.layout-vertical-left, .layout-vertical-right {
+    flex-direction: row;
+}
+
+.layout-vertical-left #main-nav, .layout-vertical-right #main-nav {
+    width: 200px;
+    display: flex;
+    flex-direction: column;
+}
+
+.layout-vertical-left #main-nav .nav-section.user-links .passage .content,
+.layout-vertical-right #main-nav .nav-section.user-links .passage .content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px; /* Adjust as needed */
+}
+
+.layout-vertical-left #main-nav .nav-section.user-links .nav-link,
+.layout-vertical-right #main-nav .nav-section.user-links .nav-link {
+    display: block; /* Force vertical stacking */
+}
+
+.layout-vertical-right {
+    /* Reverse the main container to move nav to the right */
+    flex-direction: row-reverse;
+}
+.layout-vertical-right #main-nav {
+    border-right: none;
+    /* border-left moved to theme.css */
+}
+
+#main-content-area {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    /* align-items: center; removed */
+    /* justify-content: center; removed */
+    overflow-y: auto; /* Allow scrolling if content overflows */
+}
+
+#game-content {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.passage {
+    margin-bottom: 20px;
+}
+
+.passage .content {
+    margin-bottom: 20px;
+}
+
+.choices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.choice-btn {
+    padding: 10px 15px;
+    /* border, background, color moved to theme.css */
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: 16px;
+    transition: all 0.2s;
+    text-decoration: none;
+    display: inline-block;
+}
+
+.choice-btn:hover {
+    /* background, color moved to theme.css */
+}
+
+.debug-error {
+    /* background, border, color moved to theme.css */
+    padding: 10px;
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.footer {
+    text-align: center;
+    font-size: 12px;
+    /* color moved to theme.css */
+    margin-top: 20px;
+}
+
+.hud {
+    padding: 10px;
+    /* background, border-bottom moved to theme.css */
+    text-align: center;
+}
+
+/* Debug Panel Styling (always present) */
+#debug-panel {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 400px; /* Increased width */
+    max-height: 500px; /* Increased max-height */
+    background-color: var(--debug-bg);
+    color: var(--debug-text);
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    padding: 15px;
+    font-family: 'Fira Code', 'Consolas', 'monospace';
+    font-size: 14px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+#debug-panel h3 {
+    color: var(--link-color);
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 16px;
+}
+
+#debug-panel pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}

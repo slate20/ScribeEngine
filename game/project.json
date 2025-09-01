@@ -1,0 +1,19 @@
+{
+  "title": "My PyVN Game",
+  "author": "Anonymous",
+  "main_story_file": "story.tgame",
+  "features": {
+    "use_default_player": true,
+    "use_default_inventory": true
+  },
+  "nav": {
+    "enabled": true,
+    "position": "vertical-left"
+  },
+  "theme": {
+    "enabled": true,
+    "use_engine_defaults": true,
+    "colors": {},
+    "fonts": {}
+  }
+}

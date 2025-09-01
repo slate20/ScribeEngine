@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ game_title or "Text Game Engine" }}</title>
+    {% if theme_css %}
+    <style type="text/css">
+        {{ theme_css | safe }}
+    </style>
+    {% endif %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/engine.css') }}">
+    {% if use_engine_defaults %}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    {% endif %}
+    <script src="https://unpkg.com/htmx.org@2.0.6"></script>
+</head>
+<body class="{% if use_engine_defaults %}engine-themed{% endif %}">
+    <div id="game-container" class="layout-{{ nav_config.position or 'horizontal' }}">
+        
+        {% if nav_config.enabled %}
+        <nav id="main-nav" hx-trigger="load">
+            <div class="nav-section title">
+                <h1>{{ game_title or "Adventure Game" }}</h1>
+            </div>
+            <div class="nav-section user-links">
+                {{ nav_content | safe }}
+            </div>
+            <div class="nav-section game-controls">
+                <button id="save-btn">Save</button>
+                <button id="load-btn">Load</button>
+                {% if debug_mode %}
+                <button id="debug-btn">Debug</button>
+                {% endif %}
+            </div>
+        </nav>
+        {% endif %}
+
+        <div id="main-content-area">
+            <div class="content-container">
+                <main id="game-content" hx-get="/passage/start" hx-trigger="load">
+                    <div class="loading">Loading game...</div>
+                </main>
+            </div>
+            
+            {% if debug_mode %}
+            <aside id="debug-panel" style="display: none;">
+                <h3>Debug Info</h3>
+                <div id="debug-content"></div>
+            </aside>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
+</body>
+</html>

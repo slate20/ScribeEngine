@@ -1,0 +1,186 @@
+:root {
+	/* Earthy & Fantasy Colors */
+	--primary-color: #4A6B4A;
+	/* Deep Forest Green */
+	--secondary-color: #A08000;
+	/* Darker Golden for hover */
+	--background-color: #3E332F;
+	/* Darker, less saturated Brown Earth Tone */
+	--content-bg: #FDF5E6;
+	/* Aged Paper / Creamy White */
+	--text-color: #000000;
+	/* Black for readability on light content background */
+	--link-color: #D4AF37;
+	/* Muted Gold for links */
+	--nav-bg: #F5DEB3;
+	/* Light, aged paper tone for navbar */
+	--button-bg: #FDF5E6;
+	/* Medium Forest Green for buttons */
+	--button-text: #E0E0E0;
+	/* Light text on buttons */
+	--border-color: #D4AF37;
+	/* Muted Gold for borders (changed from Olive Green) */
+	--error-bg: #8B0000;
+	/* Dark Red for errors */
+	--error-text: #FFDCDC;
+	/* Light Red error text */
+	--success-text: #3CB371;
+	/* Medium Sea Green for success */
+	--info-text: #6495ED;
+	/* Cornflower Blue for info */
+	--footer-text: #A0A0A0;
+	/* Medium grey for footer */
+
+	/* Polished Default Fonts */
+	--font-family-body: 'Lora', serif;
+	/* Elegant serif */
+	--font-family-heading: 'Montserrat', sans-serif;
+	/* Modern sans-serif */
+}
+
+body {
+	font-family: var(--font-family-body);
+	line-height: 1.6;
+	background-color: var(--background-color);
+	color: var(--text-color);
+}
+
+#main-nav {
+	background: var(--nav-bg);
+	border-right: 1px solid var(--border-color);
+	box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+	/* Subtle shadow */
+}
+
+#main-nav .nav-section {
+	border-bottom: 1px solid var(--border-color);
+}
+
+#main-nav .nav-section.title h1 {
+	font-family: var(--font-family-heading);
+	color: var(--text-color);
+	/* Changed to text-color (black) */
+}
+
+/* Nav Link Styling */
+.nav-link {
+	border: none;
+	/* Removed border */
+	background: transparent;
+	/* Transparent background */
+	color: var(--text-color);
+	/* Already text-color (black) */
+	box-shadow: none;
+	/* Removed shadow */
+}
+
+.nav-link:hover {
+	background: rgba(212, 175, 55, 0.15);
+	/* Slightly darker golden background on hover */
+	color: var(--text-color);
+	/* Text stays black on hover */
+	border-color: transparent;
+	/* Ensure no border on hover */
+	box-shadow: none;
+	/* Ensure no shadow on hover */
+}
+
+/* Horizontal Layout */
+.layout-horizontal #main-nav {
+	border-bottom: 1px solid var(--border-color);
+	box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+	/* Subtle shadow */
+}
+
+/* Vertical Layouts */
+.layout-vertical-right #main-nav {
+	border-left: 1px solid var(--border-color);
+}
+
+.content-container {
+	padding: 30px;
+	/* More padding */
+	background-color: var(--content-bg);
+	border-radius: 8px;
+	/* Rounded corners */
+	box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+	/* More prominent shadow */
+	margin: 20px auto;
+	/* Top/bottom margin and horizontal centering */
+	max-width: 800px;
+	/* Max width for content */
+	width: calc(100% - 40px);
+	/* Account for 20px margin on each side */
+	box-sizing: border-box;
+	/* Include padding in width */
+}
+
+#game-content {
+	padding: 0;
+	/* Remove padding from game-content itself */
+	max-width: none;
+	/* Let container control max-width */
+	margin: 0;
+	/* Let container control margin */
+}
+
+.choice-btn {
+	border: none;
+	/* Remove border */
+	background: transparent;
+	/* Transparent background */
+	color: var(--text-color);
+	/* Darker text color */
+	box-shadow: none;
+	/* Remove shadow */
+	text-align: left;
+	/* Align text left */
+	padding: 5px 0;
+	/* Reduce padding */
+}
+
+.choice-btn:hover {
+	background: transparent;
+	/* Keep background transparent */
+	color: var(--secondary-color);
+	/* Lighter color on hover */
+	text-decoration: none;
+	/* Remove underline */
+	box-shadow: none;
+	/* Remove shadow */
+}
+
+.debug-error {
+	background: var(--error-bg);
+	border: 1px solid var(--error-text);
+	color: var(--error-text);
+}
+
+.footer {
+	/* Removed styling */
+}
+
+.hud {
+	/* Removed styling */
+}
+
+#main-nav .nav-section.game-controls button {
+	padding: 8px 12px;
+	border: 1px solid var(--border-color);
+	background: var(--button-bg);
+	color: var(--text-color);
+	border-radius: 6px;
+	cursor: pointer;
+	transition: all 0.2s;
+	box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.05);
+	margin-left: 10px;
+	margin-bottom: 6px;
+	/* Space between buttons */
+}
+
+#main-nav .nav-section.game-controls button:hover {
+	background: var(--primary-color);
+	color: white;
+	border-color: var(--primary-color);
+	box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+}

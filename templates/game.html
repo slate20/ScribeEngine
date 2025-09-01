@@ -1,0 +1,7 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div id="game-content" hx-get="/passage/start" hx-trigger="load">
+    <div class="loading">Loading game...</div>
+</div>
+{% endblock %}

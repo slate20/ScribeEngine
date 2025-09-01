@@ -1,0 +1,217 @@
+import os
+import json
+import re
+from datetime import datetime
+from jinja2 import Template
+from .parser import GameParser
+from .executor import SafeExecutor
+from .state import StateManager
+from .storage import JSONStorage
+
+class GameEngine:
+    def __init__(self, project_path, debug_mode=False):
+        self.project_path = project_path
+        self.debug_mode = debug_mode
+        self.config = {}
+        self.passages = {}
+        self.systems = {}
+
+        self.parser = GameParser()
+        self.storage = JSONStorage(save_dir=os.path.join(self.project_path, 'saves'))
+        
+        self.load_project()
+
+    def load_project(self):
+        """Load and parse a game project."""
+        config_path = os.path.join(self.project_path, 'project.json')
+        if not os.path.exists(config_path):
+            raise FileNotFoundError(f"Project config not found: {config_path}")
+        with open(config_path, 'r') as f:
+            self.config = json.load(f)
+
+        # Store theme config for later use
+        self.theme_config = self.config.get('theme', {})
+
+        features = self.config.get('features', {})
+        self.state_manager = StateManager(features)
+        self.game_state = self.state_manager.get_initial_state()
+        
+        python_files = []
+        passage_files = []
+        for root, _, files in os.walk(self.project_path):
+            for file in files:
+                if file.endswith('.py'):
+                    python_files.append(os.path.join(root, file))
+                elif file.endswith('.tgame'):
+                    passage_files.append(os.path.join(root, file))
+        
+        self.executor = SafeExecutor(self.game_state, features, self.debug_mode)
+        self.executor.load_systems(python_files)
+
+        for passage_file in sorted(passage_files):
+            passages_from_file = self.parser.parse_file(passage_file)
+            self.passages.update(passages_from_file)
+
+        if self.debug_mode:
+            print(f"Loaded project '{self.config.get('title', 'Untitled')}'")
+            print(f"  - {len(self.passages)} passages from {len(passage_files)} file(s)")
+            print(f"  - Systems from {len(python_files)} file(s)")
+
+    def _process_passage_content(self, passage_name, use_raw_content=False):
+        """Helper to execute Python blocks and render Jinja for a passage."""
+        if passage_name not in self.passages:
+            return f"<div class='debug-error'>Passage '{passage_name}' not found.</div>" if self.debug_mode else ""
+
+        passage = self.passages[passage_name]
+        
+        executor = SafeExecutor(self.game_state, self.config.get('features', {}), self.debug_mode)
+        executor.load_systems_from_cache(self.executor.get_systems())
+
+        content_to_process = passage['raw_content'] if use_raw_content else passage['content']
+        processed_content = self.execute_python_blocks(passage, executor, content_to_process=content_to_process)
+        
+        template = Template(processed_content)
+        rendered_content = template.render(**self.get_template_context())
+        
+        return rendered_content
+
+    def render_passage_content(self, passage_name):
+        """Renders a single passage, executing its Python and Jinja logic, and generating HTML with choices."""
+        rendered_content = self._process_passage_content(passage_name)
+        passage = self.passages[passage_name]
+        links = passage['links'] if passage_name not in ['PrePassage', 'PostPassage'] else []
+        return self.generate_passage_html(passage_name, rendered_content, links)
+
+    def render_special_passage(self, passage_name):
+        """Renders a single special-purpose passage (e.g., NavMenu, PrePassage, PostPassage)."""
+        if passage_name == 'NavMenu':
+            rendered_content = self._process_passage_content(passage_name, use_raw_content=True)
+            
+            # Replace links in-place for NavMenu
+            def replace_link(match):
+                text = match.group(1).strip()
+                target = match.group(2).strip()
+                # Always use <a> tag for uniformity
+                if target.startswith('http://') or target.startswith('https://'):
+                    return f'<a href="{target}" class="nav-link">{text}</a>'
+                else:
+                    return f'<a hx-get="/passage/{target}" hx-target="#game-content" class="nav-link">{text}</a>'
+
+            final_content = self.parser.link_pattern.sub(replace_link, rendered_content)
+            return f'<div class="passage" data-passage="{passage_name}"><div class="content">{final_content}</div></div>'
+        else:
+            return self.render_passage_content(passage_name)
+
+    def render_main_passage(self, passage_name):
+        """Render a main passage, including PrePassage and PostPassage if they exist."""
+        if passage_name not in self.passages:
+            raise ValueError(f"Passage '{passage_name}' not found")
+
+        self.game_state['current_passage'] = passage_name
+
+        html_parts = []
+
+        if 'PrePassage' in self.passages:
+            html_parts.append(self.render_special_passage('PrePassage'))
+
+        html_parts.append(self.render_passage_content(passage_name))
+
+        if 'PostPassage' in self.passages:
+            html_parts.append(self.render_special_passage('PostPassage'))
+
+        return "".join(html_parts)
+
+    def execute_python_blocks(self, passage, executor, content_to_process=None):
+        content = content_to_process if content_to_process is not None else passage['content']
+        
+        def get_placeholder(i):
+            return f"__PYTHON_BLOCK_{i}__"
+
+        for i, python_code in enumerate(passage['python_blocks']):
+            content = content.replace(f"{{{{ PYTHON_BLOCK_{i} }}}}", get_placeholder(i), 1)
+
+        for i, python_code in enumerate(passage['python_blocks']):
+            placeholder = get_placeholder(i)
+            try:
+                error = executor.execute_code(python_code)
+                replacement = f'<div class="debug-error">{error}</div>' if error and self.debug_mode else ''
+                content = content.replace(placeholder, replacement, 1)
+            except Exception as e:
+                replacement = f'<div class="debug-error">Python Error: {str(e)}</div>' if self.debug_mode else ''
+                content = content.replace(placeholder, replacement, 1)
+        
+        return content
+    
+    def get_template_context(self):
+        context = self.game_state.copy()
+        context.update(self.executor.get_systems())
+        
+        context.update({
+            'get_flag': lambda name, default=False: self.state_manager.get_flag(self.game_state, name, default),
+            'has_item': lambda item: self.state_manager.has_item(self.game_state, item),
+            'get_item_count': lambda item: self.state_manager.get_item_count(self.game_state, item),
+            'get_variable': lambda key, default=None: self.state_manager.get_variable(self.game_state, key, default),
+            'now': datetime.now, # Add datetime.now to context
+        })
+        return context
+    
+    def generate_passage_html(self, passage_name, content, links):
+        html_parts = []
+        
+        html_parts.append(f'<div class="passage" data-passage="{passage_name}">')
+        html_parts.append('<div class="content">')
+        html_parts.append(content)
+        html_parts.append('</div>')
+        
+        if links:
+            html_parts.append('<div class="choices">')
+            for text, target in links:
+                html_parts.append(f'''
+                    <button hx-get="/passage/{target}" 
+                            hx-target="#game-content" 
+                            class="choice-btn"
+                            data-target="{target}">
+                        {text}
+                    </button>
+                ''')
+            html_parts.append('</div>')
+        
+        html_parts.append('</div>')
+        
+        return ''.join(html_parts)
+    
+    def save_game(self, slot):
+        self.storage.save_game(slot, self.game_state)
+    
+    def load_game(self, slot):
+        saved_state = self.storage.load_game(slot)
+        if saved_state:
+            self.game_state = saved_state['game_state']
+            return True
+        return False
+    
+    def list_saves(self):
+        return self.storage.list_saves()
+    
+    def get_title(self):
+        return self.config.get('title', 'Text Adventure')
+
+    def _generate_theme_css(self) -> str:
+        """Generates a CSS string with :root variables based on the project's theme config."""
+        theme_config = self.config.get('theme', {})
+        if not theme_config.get('enabled', False):
+            return "" # Return empty string if theming is disabled
+
+        css_vars = []
+        colors = theme_config.get('colors', {})
+        for key, value in colors.items():
+            css_vars.append(f"  --{key}-color: {value};")
+
+        fonts = theme_config.get('fonts', {})
+        for key, value in fonts.items():
+            css_vars.append(f"  --font-family-{key}: {value};")
+
+        if not css_vars:
+            return "" # No variables to generate
+
+        return ":root {\n" + "\n".join(css_vars) + "\n}"
