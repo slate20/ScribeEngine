@@ -150,7 +150,8 @@ class GameEngine:
             'get_flag': lambda name, default=False: self.state_manager.get_flag(self.game_state, name, default),
             'has_item': lambda item: self.state_manager.has_item(self.game_state, item),
             'get_item_count': lambda item: self.state_manager.get_item_count(self.game_state, item),
-            'get_variable': lambda key, default=None: self.state_manager.get_variable(self.game_state, key, default),
+            'get_variable': self.get_variable, # Expose new get_variable
+            'set_variable': self.set_variable, # Expose new set_variable
             'now': datetime.now, # Add datetime.now to context
         })
         return context
@@ -195,6 +196,51 @@ class GameEngine:
     
     def get_title(self):
         return self.config.get('title', 'Text Adventure')
+
+    def get_variable(self, key: str, default=None):
+        """
+        Retrieves a variable from game_state using dot notation (e.g., 'player.name').
+        """
+        parts = key.split('.')
+        current = self.game_state
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return default
+        return current
+
+    def set_variable(self, key: str, value):
+        """
+        Sets a variable in game_state using dot notation (e.g., 'player.name').
+        Creates nested dictionaries if they don't exist.
+        """
+        parts = key.split('.')
+        current = self.game_state
+        for i, part in enumerate(parts):
+            if i == len(parts) - 1:
+                # Last part, set the value
+                if isinstance(current, dict):
+                    current[part] = value
+                else:
+                    # Handle cases where an intermediate part is not a dict
+                    raise TypeError(f"Cannot set value for '{key}': '{'.'.join(parts[:i])}' is not a dictionary.")
+            else:
+                # Not the last part, ensure it's a dictionary
+                if isinstance(current, dict):
+                    if part not in current or not isinstance(current[part], dict):
+                        current[part] = {} # Create if not exists or not a dict
+                    current = current[part]
+                else:
+                    raise TypeError(f"Cannot traverse path for '{key}': '{'.'.join(parts[:i])}' is not a dictionary.")
+
+    def update_state_from_json(self, data: dict):
+        """
+        Updates game_state with key-value pairs from a dictionary.
+        Handles dot notation for nested keys.
+        """
+        for key, value in data.items():
+            self.set_variable(key, value)
 
     def _generate_theme_css(self) -> str:
         """Generates a CSS string with :root variables based on the project's theme config."""

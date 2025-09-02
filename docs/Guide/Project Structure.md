@@ -1,0 +1,102 @@
+When you create a new project (e.g., `MyGame`), PyVN sets up a directory with a few key files. The engine is flexible and automatically discovers story and script files within your project's directory, allowing for organized and complex structures.
+
+### Standard Directory Layout
+
+```
+MyGame/
+├── project.json              # Main game configuration
+├── story.tgame               # Main story file (can be renamed)
+├── custom.css                # Optional custom CSS for styling
+├── systems.py                # Optional custom Python logic
+|
+├── assets/                   # For images, audio, and video
+│   ├── image.png
+│   └── music.mp3
+|
+├── saves/                    # Automatically created for save files
+|
+└── # You can add subdirectories for better organization:
+    ├── story/                # More .tgame files (e.g., chapter1.tgame)
+    ├── scripts/              # More Python logic files (e.g., quests.py)
+    └── data/                 # Data files (e.g., items.json, npcs.py)
+```
+
+- **`project.json`**: The central configuration file. Defines the game's title, features, and theme. (See detailed reference below).
+    
+- **`.tgame` files**: Your story files. The engine parses all `.tgame` files in the project directory and its subdirectories, so you can split your story into multiple files (e.g., `story/chapter1.tgame`).
+    
+- **Python (`.py`) files**: Your custom game logic. The engine loads all `.py` files, so you can organize your code into modules like `quests.py`, `combat.py`, etc.
+    
+- **`custom.css`**: An optional file for custom CSS styling to override the engine's default look and feel.
+    
+- **`assets/`**: The directory for all media assets (images, audio, video).
+    
+- **`saves/`**: Automatically managed by the engine to store game save files.
+    
+
+## Configuration: `project.json` Reference
+
+This file controls game-wide settings. Here are the available fields:
+
+- **`title`** (string, required): The title of your game.
+    
+    - `"title": "My Epic Adventure"`
+        
+- **`author`** (string, optional): The author of the game.
+    
+    - `"author": "Jane Doe"`
+        
+- **`main_story_file`** (string, optional): The primary `.tgame` file containing the `:: start` passage. Defaults to `story.tgame`.
+    
+    - `"main_story_file": "main.tgame"`
+        
+- **`features`** (object, optional): Toggle core engine features.
+    
+    - `"use_default_player"` (boolean, default: `true`): If `true`, initializes a default `player` object with `name`, `health`, `score`, etc.
+        
+    - `"use_default_inventory"` (boolean, default: `true`): If `true`, enables a default inventory system on the `player` object with helper functions. Requires `use_default_player`.
+        
+- **`nav`** (object, optional): Configure the navigation menu.
+    
+    - `"enabled"` (boolean, default: `true`): If `true`, renders the `:: NavMenu` passage as a navigation bar.
+        
+    - `"position"` (string, default: `"horizontal"`): Can be `"horizontal"`, `"vertical-left"`, or `"vertical-right"`.
+        
+- **`theme`** (object, optional): Configure the game's visual theme.
+    
+    - `"enabled"` (boolean, default: `true`): If `true`, applies custom colors and fonts.
+        
+    - `"use_engine_defaults"` (boolean, default: `true`): If `false`, disables all default engine CSS, giving you a blank slate.
+        
+    - `"colors"` (object, optional): A dictionary of colors that become CSS variables. For example, `"primary_color": "#4CAF50"` becomes `--primary_color` in CSS.
+        
+    - `"fonts"` (object, optional): A dictionary of font families. For example, `"body_font": "'Roboto', sans-serif"` becomes `--font-family-body_font`.
+        
+
+### Available CSS Variables for Theming
+
+When `theme.enabled` is `true`, your `colors` and `fonts` from `project.json` are converted into CSS variables you can use in `custom.css`.
+
+**Example:** If `project.json` has `"primary_color": "#FF0000"`, you can use it in CSS:
+
+```
+.my-button {
+  background-color: var(--primary-color);
+}
+```
+
+Common default variables you can override in `project.json` include:
+
+- `--primary-color`
+    
+- `--background-color`
+    
+- `--text-color`
+    
+- `--link-color`
+    
+- `--border-color`
+    
+- `--font-family-body`
+    
+- `--font-family-heading`

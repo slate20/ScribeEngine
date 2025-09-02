@@ -15,6 +15,7 @@ def start_flask_app():
 def run_webview_app(project_path_for_app: str):
     # Set the game project path in the app module
     set_game_project_path(project_path_for_app)
+    set_debug_mode(False) # Disable debug mode for standalone builds
 
     # Start Flask in a separate thread
     flask_thread = threading.Thread(target=start_flask_app)

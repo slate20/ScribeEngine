@@ -47,7 +47,7 @@ def build_engine_executable():
         f'--add-data={static_dir}{os.pathsep}static',
         
         # Add config.py (if it's a separate file and not just part of app.py)
-        f'--add-data={config_py_path}{os.pathsep}.',
+        
 
         # Hidden imports for modules that PyInstaller might miss
         '--hidden-import=flask',

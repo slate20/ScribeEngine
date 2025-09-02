@@ -20,6 +20,11 @@ app.secret_key = 'your-secret-key-here'  # Change in production
 
 # Initialize game engine (will be done after GAME_PROJECT_PATH is set)
 game_engine = None
+_app_debug_mode = True # Default to True for development
+
+def set_debug_mode(mode: bool):
+    global _app_debug_mode
+    _app_debug_mode = mode
 
 @app.before_request
 def initialize_game_engine():
@@ -30,7 +35,7 @@ def initialize_game_engine():
             default_path = os.path.join(os.path.dirname(__file__), 'game')
             print(f"WARNING: GAME_PROJECT_PATH not set. Using default: {default_path}")
             set_game_project_path(default_path)
-        game_engine = GameEngine(GAME_PROJECT_PATH, debug_mode=True)
+        game_engine = GameEngine(GAME_PROJECT_PATH, debug_mode=_app_debug_mode)
 
 # --- Routes ---
 
@@ -84,6 +89,28 @@ def load_game():
             return jsonify({'status': 'error', 'message': 'Save not found'}), 404
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/update_game_state', methods=['POST'])
+def update_game_state():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'status': 'error', 'message': 'No JSON data provided'}), 400
+
+        next_passage = data.pop('next_passage', None) # Extract next_passage if present
+
+        game_engine.update_state_from_json(data)
+
+        if next_passage:
+            passage_html = game_engine.render_main_passage(next_passage)
+            return jsonify({'status': 'success', 'message': 'Game state updated', 'passage_html': passage_html}), 200
+        else:
+            return jsonify({'status': 'success', 'message': 'Game state updated'}), 200
+
+    except Exception as e:
+        if game_engine.debug_mode:
+            return jsonify({'status': 'error', 'message': f'Error updating game state: {str(e)}'}), 500
+        return jsonify({'status': 'error', 'message': 'Error updating game state'}), 500
 
 @app.route('/saves')
 def list_saves():

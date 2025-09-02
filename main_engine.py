@@ -88,7 +88,7 @@ You have taken your first step into a larger world.
 
     # Optional: Create placeholder systems.py and custom.css
     with open(os.path.join(project_path, 'systems.py'), 'w') as f:
-        f.write("# Your custom Python systems go here\n")
+        f.write("# Your custom Python logic goes here.\n# You can create multiple .py files in your project to organize your code.\n")
     with open(os.path.join(project_path, 'custom.css'), 'w') as f:
         f.write("/* Your custom CSS goes here */\n")
 

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "README.md",
+                "file": "docs/Guide/Advanced Topics.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "README"
+              "title": "Advanced Topics"
             }
           }
         ]
@@ -168,15 +168,37 @@
   },
   "active": "3da7062de3f80686",
   "lastOpenFiles": [
-    "PyVN",
-    "game/custom.css",
-    "game/systems.py",
-    "game/assets",
-    "game/saves",
-    "game/story.tgame",
-    "game/project.json",
-    "game",
-    "games/example.tgame",
+    "docs/Guide/Introduction.md",
+    "docs/Guide/Game Logic and State.md",
+    "docs/Guide/Writing Your Story.md",
+    "docs/Guide/Project Structure.md",
+    "docs/Guide/Getting Started.md",
+    "docs/Guide/Advanced Topics.md",
+    "docs/GAME_CREATION_GUIDE.md",
+    "docs/Guide",
+    "build_engine/pyvn-engine/EXE-00.toc",
+    "dist_engine/st7mao5A",
+    "dist_engine/pyvn-engine",
+    "build_engine/pyvn-engine/PKG-00.toc",
+    "build_engine/pyvn-engine/pyvn-engine.pkg",
+    "build_engine/pyvn-engine/PYZ-00.toc",
+    "build_engine/pyvn-engine/PYZ-00.pyz",
+    "build_engine/pyvn-engine/localpycs/pyimod03_ctypes.pyc",
+    "build_engine/pyvn-engine/localpycs/pyimod02_importers.pyc",
+    "GEMINI.md",
+    "Engine Design Document.md",
+    "ENGINE_STANDALONE_PLAN.md",
+    "venv/lib/python3.12/site-packages/QtPy-2.4.3.dist-info/AUTHORS.md",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/triggerbody@2x.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/triggerbody16.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/triggerbody.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/trianglemeshshape@2x.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/trianglemeshshape16.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/trianglemeshshape.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/staticrigidbody@2x.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/staticrigidbody16.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/staticrigidbody.png",
+    "venv/lib/python3.12/site-packages/PyQt6/Qt6/qml/QtQuick3D/Physics/designer/images/sphereshape@2x.png",
     "README.md",
     "PLAN.md"
   ]
