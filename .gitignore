@@ -1,1 +1,14 @@
 venv
+GEMINI.md
+
+# PyInstaller build artifacts
+__pycache__/
+build_engine/
+dist_engine/
+spec_engine/
+build/
+dist/
+spec/
+
+# User-created game projects (keep the 'game/' directory, ignore its contents)
+game/*/

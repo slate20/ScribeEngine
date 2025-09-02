@@ -2,20 +2,27 @@ import PyInstaller.__main__
 import os
 import sys
 
-def build_standalone_game(project_name: str):
+# --- Helper function for building standalone game executables ---
+def build_standalone_game(project_name: str, project_root_dir: str):
     print(f"Building standalone executable for project: {project_name}")
 
-    # Determine the absolute path to the project directory
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    project_absolute_path = os.path.join(script_dir, 'game', project_name)
+    # Determine the absolute path to the specific game project directory
+    project_absolute_path = os.path.join(project_root_dir, project_name)
 
-    # Define paths to include
-    engine_path = os.path.join(script_dir, 'engine')
-    templates_path = os.path.join(script_dir, 'templates')
-    static_path = os.path.join(script_dir, 'static')
-    config_path = os.path.join(script_dir, 'config.py')
-    app_path = os.path.join(script_dir, 'app.py')
-    webview_wrapper_path = os.path.join(script_dir, 'webview_wrapper.py')
+    # Determine the base directory for the engine's bundled files
+    # This will be sys._MEIPASS when running from the main engine executable
+    if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
+        bundle_base_dir = sys._MEIPASS
+    else:
+        bundle_base_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Define paths to include relative to the bundle_base_dir
+    engine_path = os.path.join(bundle_base_dir, 'engine')
+    templates_path = os.path.join(bundle_base_dir, 'templates')
+    static_path = os.path.join(bundle_base_dir, 'static')
+    config_path = os.path.join(bundle_base_dir, 'config.py')
+    app_path = os.path.join(bundle_base_dir, 'app.py')
+    webview_wrapper_path = os.path.join(bundle_base_dir, 'webview_wrapper.py')
 
     # PyInstaller options
     # --noconsole: Do not open a console window (for GUI apps)
@@ -56,12 +63,3 @@ def build_standalone_game(project_name: str):
     PyInstaller.__main__.run(pyinstaller_args)
 
     print(f"Build process for {project_name} completed. Executable can be found in the 'dist' directory.")
-
-
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python build.py <project_name>")
-        sys.exit(1)
-    
-    game_project_name = sys.argv[1]
-    build_standalone_game(game_project_name)
