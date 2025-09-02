@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, jsonify, send_file
 import os
 import json
+import sys
+import argparse
 from datetime import datetime
 from engine.core import GameEngine
 
@@ -28,7 +30,15 @@ def set_debug_mode(mode: bool):
 
 @app.before_request
 def initialize_game_engine():
-    global game_engine
+    global game_engine, GAME_PROJECT_PATH
+    # Skip initialization if the request is for shutdown
+    if request.path == '/shutdown':
+        return
+
+    # Prioritize environment variable for GAME_PROJECT_PATH
+    if os.environ.get('PYVN_GAME_PROJECT_PATH') and GAME_PROJECT_PATH is None:
+        GAME_PROJECT_PATH = os.environ.get('PYVN_GAME_PROJECT_PATH')
+
     if game_engine is None:
         if GAME_PROJECT_PATH is None:
             # Fallback for direct app.py run without launcher/wrapper
@@ -112,6 +122,28 @@ def update_game_state():
             return jsonify({'status': 'error', 'message': f'Error updating game state: {str(e)}'}), 500
         return jsonify({'status': 'error', 'message': 'Error updating game state'}), 500
 
+@app.route('/submit_input', methods=['POST'])
+def submit_input():
+    try:
+        variable_name = request.form.get('variable_name')
+        input_value = request.form.get('input_value')
+        next_passage = request.form.get('next_passage') # Get next_passage
+        
+        if not variable_name:
+            return "Error: variable_name is required.", 400
+        
+        game_engine.set_variable(variable_name, input_value)
+        
+        # Render the specified next_passage or the current one
+        passage_to_render = next_passage if next_passage else game_engine.game_state.get('current_passage', 'start')
+        html = game_engine.render_main_passage(passage_to_render)
+        return html # HTMX expects HTML fragment
+        
+    except Exception as e:
+        if game_engine.debug_mode:
+            return f'<div class="debug-error">Error submitting input: {str(e)}</div>', 500
+        return '<div class="error">Error submitting input</div>', 500
+
 @app.route('/saves')
 def list_saves():
     saves = game_engine.list_saves()
@@ -153,13 +185,14 @@ def serve_project_asset(filename):
         from flask import abort
         return abort(404)
 
-@app.route('/shutdown', methods=['POST'])
-def shutdown():
-    func = request.environ.get('werkzeug.server.shutdown')
-    if func is None:
-        raise RuntimeError('Not running with the Werkzeug Server')
-    func()
-    return 'Server shutting down...'
 
-def run_app_server(debug_mode=False, use_reloader=False):
-    app.run(debug=debug_mode, host='0.0.0.0', port=5000, use_reloader=use_reloader)
+def run_app_server(debug_mode=False, use_reloader=False, host='0.0.0.0', port=5000):
+    app.run(debug=debug_mode, host=host, port=port, use_reloader=use_reloader)
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='PyVN Flask App')
+    parser.add_argument('--host', type=str, default='0.0.0.0', help='Host address to bind to')
+    parser.add_argument('--port', type=int, default=5000, help='Port to listen on')
+    args = parser.parse_args()
+
+    run_app_server(debug_mode=True, use_reloader=True, host=args.host, port=args.port)

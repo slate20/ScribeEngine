@@ -94,6 +94,45 @@ PyVN uses Jinja2 to render passages, allowing you to display variables and use l
     ```
     
 
+- **Accessing Game State:** Common variables like `player` (for player attributes like `name`, `health`, `inventory`), `flags`, `variables`, and `game_title` are directly available.
+    *   **Note on Nested Data:** While direct access like `{{ variables.some_key }}` works for top-level keys, for deeply nested data (e.g., `variables = {'quest': {'main_quest': {'status': 'started'}}}`), you cannot use `{{ variables.quest.main_quest.status }}` directly. Instead, use dictionary-style access (`{{ variables['quest']['main_quest']['status'] }}`) or, more robustly, the `get_variable` helper function (`{{ get_variable('quest.main_quest.status', 'not_started') }}`). The `get_variable` function also allows you to specify a default value if the variable path does not exist, preventing errors.
+    *   **Global vs. Local Variables:**
+        *   To set or modify variables that persist throughout the game and are saved/loaded (part of the global game state), use Python helper functions like `set_variable('my_variable', value)` or `set_flag('my_flag', True)` within `{% do %}` or `{%- python %}` blocks.
+        *   For temporary variables that are only needed for the current passage's rendering and do not persist, use Jinja2's `{% set my_local_variable = value %}`.
+
+### User Input (`input_field`)
+
+PyVN provides a convenient `input_field` macro to easily gather text or numerical input from the player and store it directly into your game state. This macro generates the necessary HTML form elements and uses HTMX for seamless, dynamic updates without full page reloads.
+
+**Usage:**
+
+```jinja
+{{ input_field(variable_name, input_type='text', placeholder='', button_text='Submit', next_passage=None, **kwargs) | safe }}
+```
+
+*   **`variable_name`** (string, required): The name of the game state variable where the input value will be stored. Supports dot notation (e.g., `'player.name'`, `'variables.quest_log.entry_1'`).
+*   **`input_type`** (string, optional): The HTML `type` attribute for the input field (e.g., `'text'`, `'number'`, `'password'`). Defaults to `'text'`.
+*   **`placeholder`** (string, optional): Text displayed inside the input field when it's empty. Defaults to an empty string.
+*   **`button_text`** (string, optional): The text displayed on the submit button. Defaults to `'Submit'`.
+*   **`next_passage`** (string, optional): The name of the passage to advance to after the input is submitted. If omitted, the current passage will re-render.
+*   **`**kwargs`**: Any additional HTML attributes you want to apply to the `<input>` tag (e.g., `class='my-input-style'`, `id='unique-id'`, `min='0'`, `max='100'`).
+
+**Example:**
+
+```jinja
+:: CharacterCreation
+What is your name, adventurer?
+{{ input_field('player.name', placeholder='Your Name', button_text='Confirm Name') | safe }}
+
+How old are you?
+{{ input_field('player.age', input_type='number', placeholder='Age', class='age-input') | safe }}
+
+Your name is: {{ player.name }}
+Your age is: {{ player.age }}
+```
+
+When the player enters text and clicks the button, the value will be stored in the specified `variable_name` in the game state, and the current passage will automatically re-render to reflect the change (if you display the variable in the same passage).
+
 > **Note:** Variables like `player` and functions like `has_item()` are part of the game state and logic system. See the [**Game Logic and State**](https://www.google.com/search?q=./04_Game_Logic_and_State.md "null") guide for a full reference.
 
 ### Python Code Blocks

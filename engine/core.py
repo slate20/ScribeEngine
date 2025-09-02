@@ -2,7 +2,8 @@ import os
 import json
 import re
 from datetime import datetime
-from jinja2 import Template
+from jinja2 import Template, Environment
+from markupsafe import Markup
 from .parser import GameParser
 from .executor import SafeExecutor
 from .state import StateManager
@@ -70,7 +71,8 @@ class GameEngine:
         content_to_process = passage['raw_content'] if use_raw_content else passage['content']
         processed_content = self.execute_python_blocks(passage, executor, content_to_process=content_to_process)
         
-        template = Template(processed_content)
+        env = Environment(extensions=['jinja2.ext.do'])
+        template = env.from_string(processed_content)
         rendered_content = template.render(**self.get_template_context())
         
         return rendered_content
@@ -152,6 +154,7 @@ class GameEngine:
             'get_item_count': lambda item: self.state_manager.get_item_count(self.game_state, item),
             'get_variable': self.get_variable, # Expose new get_variable
             'set_variable': self.set_variable, # Expose new set_variable
+            'input_field': self.generate_input_html, # Expose input_field macro
             'now': datetime.now, # Add datetime.now to context
         })
         return context
@@ -180,6 +183,34 @@ class GameEngine:
         html_parts.append('</div>')
         
         return ''.join(html_parts)
+    
+    def generate_input_html(self, variable_name: str, input_type: str = 'text', placeholder: str = '', button_text: str = 'Submit', next_passage: str = None, **kwargs) -> str:
+        """
+        Generates HTML for an input field and a submit button, using HTMX to update game state.
+        Args:
+            variable_name: The name of the game state variable to update (supports dot notation).
+            input_type: The type of input field (e.g., 'text', 'number', 'password').
+            placeholder: Placeholder text for the input field.
+            button_text: Text for the submit button.
+            next_passage: Optional. The name of the passage to advance to after input is submitted.
+            **kwargs: Additional HTML attributes for the input field (e.g., 'class', 'id').
+        Returns:
+            HTML string for the input form.
+        """
+        input_attrs = ' '.join([f'{k}="{v}"' for k, v in kwargs.items()])
+        
+        hidden_inputs = f'<input type="hidden" name="variable_name" value="{variable_name}">'
+        if next_passage:
+            hidden_inputs += f'<input type="hidden" name="next_passage" value="{next_passage}">'
+
+        html = f"""
+        <form hx-post="/submit_input" hx-target="#game-content" hx-swap="innerHTML">
+            <input type="{input_type}" name="input_value" placeholder="{placeholder}" {input_attrs}>
+            {hidden_inputs}
+            <button type="submit">{button_text}</button>
+        </form>
+        """
+        return Markup(html)
     
     def save_game(self, slot):
         self.storage.save_game(slot, self.game_state)

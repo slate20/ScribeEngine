@@ -115,10 +115,25 @@ class SafeExecutor:
         return self.game_state.get('flags', {}).get(name, default)
 
     def set_variable(self, key: str, value: Any):
-        self.game_state.setdefault('variables', {})[key] = value
+        parts = key.split('.')
+        current = self.game_state.setdefault('variables', {})
+        for i, part in enumerate(parts):
+            if i == len(parts) - 1:
+                current[part] = value
+            else:
+                if not isinstance(current, dict):
+                    raise TypeError(f"Cannot set variable: '{'.'.join(parts[:i])}' is not a dictionary.")
+                current = current.setdefault(part, {})
 
     def get_variable(self, key: str, default: Any = None) -> Any:
-        return self.game_state.get('variables', {}).get(key, default)
+        parts = key.split('.')
+        current = self.game_state.get('variables', {})
+        for part in parts:
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return default
+        return current
 
     def add_to_inventory(self, item: str, quantity: int = 1):
         inventory = self.game_state.get('player', {}).setdefault('inventory', [])

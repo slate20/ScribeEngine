@@ -13,15 +13,26 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "docs/Guide/Advanced Topics.md",
+                "file": "docs/Guide/Writing Your Story.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "Advanced Topics"
+              "title": "Writing Your Story"
+            }
+          },
+          {
+            "id": "d5e66d8d5bc08c7f",
+            "type": "leaf",
+            "state": {
+              "type": "empty",
+              "state": {},
+              "icon": "lucide-file",
+              "title": "New tab"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -166,25 +177,25 @@
       "bases:Create new base": false
     }
   },
-  "active": "3da7062de3f80686",
+  "active": "d5e66d8d5bc08c7f",
   "lastOpenFiles": [
-    "docs/Guide/Introduction.md",
-    "docs/Guide/Game Logic and State.md",
     "docs/Guide/Writing Your Story.md",
-    "docs/Guide/Project Structure.md",
-    "docs/Guide/Getting Started.md",
-    "docs/Guide/Advanced Topics.md",
-    "docs/GAME_CREATION_GUIDE.md",
-    "docs/Guide",
     "build_engine/pyvn-engine/EXE-00.toc",
-    "dist_engine/st7mao5A",
+    "dist_engine/stACvS00",
     "dist_engine/pyvn-engine",
     "build_engine/pyvn-engine/PKG-00.toc",
+    "docs/Guide/Project Structure.md",
+    "docs/Guide/Getting Started.md",
+    "docs/Guide/Game Logic and State.md",
+    "docs/Guide/Advanced Topics.md",
     "build_engine/pyvn-engine/pyvn-engine.pkg",
     "build_engine/pyvn-engine/PYZ-00.toc",
     "build_engine/pyvn-engine/PYZ-00.pyz",
     "build_engine/pyvn-engine/localpycs/pyimod03_ctypes.pyc",
     "build_engine/pyvn-engine/localpycs/pyimod02_importers.pyc",
+    "build_engine/pyvn-engine/localpycs/pyimod01_archive.pyc",
+    "docs/Guide/Introduction.md",
+    "docs/GAME_CREATION_GUIDE.md",
     "GEMINI.md",
     "Engine Design Document.md",
     "ENGINE_STANDALONE_PLAN.md",

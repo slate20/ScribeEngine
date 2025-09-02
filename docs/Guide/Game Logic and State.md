@@ -44,7 +44,10 @@ These global functions simplify common game state manipulations.
     
 - **`get_flag(name: str, default: bool = False)`**: Retrieves a flag's value, returning a default if it doesn't exist. `if get_flag('puzzle_solved'): ...`
     
-- **`set_variable(key: str, value: any)`**: Sets a variable, supporting dot notation for nested data. It creates intermediate dictionaries as needed. `set_variable('quest.main.status', 'started')`
+- **`set_variable(key: str, value: any)`**: Sets a variable in the **global game state**. This variable will persist across passages and be saved/loaded with the game. Supports dot notation for nested data. It creates intermediate dictionaries as needed. `set_variable('quest.main.status', 'started')`
+    *   **Important Note on Variable Scope:**
+        *   Use `set_variable()` (or `set_flag()`) for data that needs to persist throughout the game (e.g., player health, quest status, inventory). These are part of the `game_state`.
+        *   For temporary variables used only within the current passage's rendering, use Jinja2's `{% set variable_name = value %}`. These variables are local to the passage and do not persist in the game state.
     
 - **`get_variable(key: str, default: any = None)`**: Retrieves a variable using dot notation, returning a default if the path doesn't exist. `quest_status = get_variable('quest.main.status', 'not_started')`
     

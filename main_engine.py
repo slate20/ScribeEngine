@@ -6,6 +6,7 @@ from datetime import datetime
 import argparse
 import threading
 import time
+import requests
 
 import config_manager
 import app
@@ -123,12 +124,54 @@ def select_project(projects):
         except ValueError:
             print("Invalid input. Please enter a number.")
 
+flask_process = None # Global variable to hold the Flask server subprocess
+
 def run_flask_server(project_absolute_path: str):
+    global flask_process
     app.set_game_project_path(project_absolute_path)
-    # Run Flask app in a separate thread
-    # We need to ensure app.run() is called with debug=False and use_reloader=False
-    # as it's being run by the engine executable
-    app.run_app_server(debug_mode=False, use_reloader=False)
+    
+    if getattr(sys, 'frozen', False): # Running as a PyInstaller bundled executable
+        # Directly run the Flask app in a separate thread
+        print("Starting Flask server in a separate thread (bundled executable mode)...")
+        flask_thread = threading.Thread(target=app.run_app_server, kwargs={
+            'debug_mode': False, # Debug mode should be off for bundled apps
+            'host': '0.0.0.0',
+            'port': 5000,
+            'use_reloader': False # Reloader should be off for bundled apps
+        })
+        flask_thread.daemon = True # Allow main thread to exit even if Flask thread is running
+        flask_thread.start()
+        # We don't have a subprocess to store in flask_process, so we'll manage the thread directly if needed.
+        # For now, we'll just let it run.
+        flask_process = None # Clear the subprocess handle as we are using a thread
+    else:
+        # When running as a script, use the flask command via subprocess
+        cmd = [sys.executable, '-m', 'flask', 'run', '--host=0.0.0.0', '--port=5000']
+
+        # Set FLASK_APP environment variable
+        env = os.environ.copy()
+        env['FLASK_APP'] = 'app.py'
+        env['FLASK_DEBUG'] = '1' # Enable debug mode for reloader
+        env['PYVN_GAME_PROJECT_PATH'] = project_absolute_path # Pass project path via environment variable
+
+        print(f"Running Flask server with command: {' '.join(cmd)}")
+        flask_process = subprocess.Popen(cmd, env=env, cwd=os.path.dirname(os.path.abspath(__file__)))
+
+def stop_flask_server():
+    global flask_process
+    if flask_process:
+        print("Terminating Flask server process...")
+        if flask_process.poll() is None: # Check if process is still running
+            flask_process.terminate() # Send SIGTERM
+            try:
+                flask_process.wait(timeout=5) # Wait for process to terminate
+                print("Flask server process terminated.")
+            except subprocess.TimeoutExpired:
+                print("Flask server process did not terminate gracefully. Killing...")
+                flask_process.kill() # Send SIGKILL if it doesn't terminate
+        flask_process = None
+    else:
+        print("Flask server is running in a thread; no process to terminate.")
 
 def main():
     parser = argparse.ArgumentParser(description='PyVN Engine Launcher')
@@ -162,15 +205,18 @@ def main():
 
     print(f"\n--- PyVN Engine Launcher (Project Root: {project_root}) ---")
     
+    selected_project_path = None # Store the path of the currently loaded project
+
     while True:
         print("\nOptions:")
         print("1. Create New Project")
         print("2. Load Existing Project")
-        print("3. Build Standalone Game")
-        print("4. Change Project Root Path")
-        print("5. Exit")
+        print("3. Restart Server (if project loaded)")
+        print("4. Build Standalone Game")
+        print("5. Change Project Root Path")
+        print("6. Exit")
         
-        choice = input("Enter your choice (1-5): ")
+        choice = input("Enter your choice (1-6): ")
         
         if choice == '1':
             project_name = input("Enter new project name: ").strip()
@@ -182,32 +228,12 @@ def main():
                 selected_project = project_name
                 # After creating, automatically load it for development
                 project_absolute_path = os.path.abspath(os.path.join(project_root, selected_project))
+                selected_project_path = project_absolute_path # Store for restart
                 print(f"\nLaunching engine for project: {selected_project} (Path: {project_absolute_path})")
                 print("\nStarting Flask development server... Press CTRL+C in this terminal to stop it.")
-                run_flask_server_thread = threading.Thread(target=run_flask_server, args=(project_absolute_path,))
-                run_flask_server_thread.daemon = True
-                run_flask_server_thread.start()
+                run_flask_server(project_absolute_path)
                 print(f"Flask server started. Access your game at http://127.0.0.1:5000")
-                try:
-                    input("Press Enter to stop Flask server and return to main menu...") # Keep launcher alive
-                    # Send shutdown request to Flask app
-                    import requests
-                    try:
-                        requests.post('http://127.0.0.1:5000/shutdown')
-                        print("Flask server shutdown request sent.")
-                        time.sleep(1) # Give server a moment to shut down
-                    except requests.exceptions.ConnectionError:
-                        print("Flask server already stopped or not reachable.")
-                except KeyboardInterrupt:
-                    print("\nKeyboardInterrupt detected. Attempting to stop Flask server...")
-                    # If Ctrl+C is pressed, try to send shutdown request
-                    try:
-                        requests.post('http://127.0.0.1:5000/shutdown')
-                        print("Flask server shutdown request sent.")
-                        time.sleep(1) # Give server a moment to shut down
-                    except requests.exceptions.ConnectionError:
-                        print("Flask server already stopped or not reachable.")
-                print("Returning to main menu.")
+                print("Returning to main menu. Press CTRL+C in this terminal to stop the Flask server.")
             except FileExistsError as e:
                 print(f"Error: {e}")
             except Exception as e:
@@ -220,33 +246,26 @@ def main():
             selected_project = select_project(projects)
             if selected_project:
                 project_absolute_path = os.path.abspath(os.path.join(project_root, selected_project))
+                selected_project_path = project_absolute_path # Store for restart
                 print(f"\nLaunching engine for project: {selected_project} (Path: {project_absolute_path})")
                 print("\nStarting Flask development server... Press CTRL+C in this terminal to stop it.")
-                run_flask_server_thread = threading.Thread(target=run_flask_server, args=(project_absolute_path,))
-                run_flask_server_thread.daemon = True
-                run_flask_server_thread.start()
+                run_flask_server(project_absolute_path)
                 print(f"Flask server started. Access your game at http://127.0.0.1:5000")
-                try:
-                    input("Press Enter to stop Flask server and return to main menu...") # Keep launcher alive
-                    # Send shutdown request to Flask app
-                    import requests
-                    try:
-                        requests.post('http://127.0.0.1:5000/shutdown')
-                        print("Flask server shutdown request sent.")
-                        time.sleep(1) # Give server a moment to shut down
-                    except requests.exceptions.ConnectionError:
-                        print("Flask server already stopped or not reachable.")
-                except KeyboardInterrupt:
-                    print("\nKeyboardInterrupt detected. Attempting to stop Flask server...")
-                    # If Ctrl+C is pressed, try to send shutdown request
-                    try:
-                        requests.post('http://127.0.0.1:5000/shutdown')
-                        print("Flask server shutdown request sent.")
-                        time.sleep(1) # Give server a moment to shut down
-                    except requests.exceptions.ConnectionError:
-                        print("Flask server already stopped or not reachable.")
-                print("Returning to main menu.")
+                print("Returning to main menu. Press CTRL+C in this terminal to stop the Flask server.")
         elif choice == '3':
+            if selected_project_path:
+                print("\nAttempting to restart Flask server...")
+                stop_flask_server()
+                
+                print(f"\nLaunching engine for project: {os.path.basename(selected_project_path)} (Path: {selected_project_path})")
+                print("\nStarting Flask development server... Press CTRL+C in this terminal to stop it.")
+                run_flask_server(selected_project_path)
+                print(f"Flask server started. Access your game at http://127.0.0.1:5000")
+                print("Server restarted. Returning to main menu.")
+            else:
+                print("No project loaded. Please load a project first to restart the server.")
+            input("Press Enter to return to main menu...")
+        elif choice == '4':
             projects = get_game_projects(project_root)
             if not projects:
                 print("No projects to build. Please create or load one first.")
@@ -260,7 +279,7 @@ def main():
                 build.build_standalone_game(selected_project, project_root)
                 print(f"Build process for {selected_project} completed. Executable can be found in the 'dist' directory.")
                 input("Press Enter to return to main menu...")
-        elif choice == '4':
+        elif choice == '5':
             # Change Project Root Path
             while True:
                 new_root_input = input("Enter the NEW path for your PyVN game projects (e.g., ~/MyPyVN_Games): ").strip()
@@ -277,11 +296,12 @@ def main():
                 else:
                     print("New project root cannot be empty.")
             input("Press Enter to return to main menu...")
-        elif choice == '5':
+        elif choice == '6':
             print("Exiting launcher.")
+            stop_flask_server() # Ensure Flask server is stopped on exit
             sys.exit(0)
         else:
-            print("Invalid choice. Please enter 1, 2, 3, 4, or 5.")
+            print("Invalid choice. Please enter 1, 2, 3, 4, 5 or 6.")
 
 if __name__ == "__main__":
     main()
