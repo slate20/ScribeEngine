@@ -7,7 +7,7 @@ def create_new_project(project_name: str):
     """Creates a new game project with a default skeleton structure."""
     # Determine the base directory for games (relative to this script)
     script_dir = os.path.dirname(__file__)
-    games_base_dir = os.path.abspath(os.path.join(script_dir, 'games'))
+    games_base_dir = os.path.abspath(os.path.join(script_dir, 'game'))
     
     project_path = os.path.join(games_base_dir, project_name)
 
