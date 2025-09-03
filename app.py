@@ -6,6 +6,11 @@ import argparse
 from datetime import datetime
 from engine.core import GameEngine
 
+# Add these imports for graceful shutdown
+from werkzeug.serving import make_server
+import threading
+import time # Needed for time.sleep
+
 # --- Flask App Setup ---
 
 # Global variable for game project path, to be set externally
@@ -15,7 +20,7 @@ def set_game_project_path(path):
     global GAME_PROJECT_PATH
     GAME_PROJECT_PATH = path
 
-app = Flask(__name__, 
+app = Flask(__name__,
             template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
             static_folder=os.path.join(os.path.dirname(__file__), 'static'))
 app.secret_key = 'your-secret-key-here'  # Change in production
@@ -23,6 +28,9 @@ app.secret_key = 'your-secret-key-here'  # Change in production
 # Initialize game engine (will be done after GAME_PROJECT_PATH is set)
 game_engine = None
 _app_debug_mode = True # Default to True for development
+
+# Add a server object to manage the Flask server instance
+server = None
 
 def set_debug_mode(mode: bool):
     global _app_debug_mode
@@ -185,9 +193,23 @@ def serve_project_asset(filename):
         from flask import abort
         return abort(404)
 
+def shutdown_server_thread():
+    global server
+    time.sleep(0.1) # Give the request a moment to complete
+    if server:
+        server.shutdown()
+
+@app.route('/shutdown', methods=['GET', 'POST'])
+def shutdown():
+    threading.Thread(target=shutdown_server_thread).start()
+    return 'Server shutting down...'
 
 def run_app_server(debug_mode=False, use_reloader=False, host='0.0.0.0', port=5000):
-    app.run(debug=debug_mode, host=host, port=port, use_reloader=use_reloader)
+    global server
+    # Reset server before starting a new one
+    server = make_server(host, port, app)
+    print(f"Serving Flask app on http://{host}:{port}")
+    server.serve_forever()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='PyVN Flask App')
@@ -195,4 +217,6 @@ if __name__ == "__main__":
     parser.add_argument('--port', type=int, default=5000, help='Port to listen on')
     args = parser.parse_args()
 
-    run_app_server(debug_mode=True, use_reloader=True, host=args.host, port=args.port)
+    # When running directly, use the standard Flask app.run for development convenience
+    # This will use Werkzeug's reloader, which is fine for development.
+    app.run(debug=True, use_reloader=True, host=args.host, port=args.port)

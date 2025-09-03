@@ -125,25 +125,26 @@ def select_project(projects):
             print("Invalid input. Please enter a number.")
 
 flask_process = None # Global variable to hold the Flask server subprocess
+flask_thread_instance = None # Global variable to hold the Flask server thread instance
 
 def run_flask_server(project_absolute_path: str):
-    global flask_process
+    global flask_process, flask_thread_instance
     app.set_game_project_path(project_absolute_path)
-    
+
     if getattr(sys, 'frozen', False): # Running as a PyInstaller bundled executable
         # Directly run the Flask app in a separate thread
         print("Starting Flask server in a separate thread (bundled executable mode)...")
-        flask_thread = threading.Thread(target=app.run_app_server, kwargs={
+        flask_thread_instance = threading.Thread(target=app.run_app_server, kwargs={
             'debug_mode': False, # Debug mode should be off for bundled apps
             'host': '0.0.0.0',
             'port': 5000,
             'use_reloader': False # Reloader should be off for bundled apps
         })
-        flask_thread.daemon = True # Allow main thread to exit even if Flask thread is running
-        flask_thread.start()
-        # We don't have a subprocess to store in flask_process, so we'll manage the thread directly if needed.
-        # For now, we'll just let it run.
+        flask_thread_instance.daemon = True # Allow main thread to exit even if Flask thread is running
+        flask_thread_instance.start()
         flask_process = None # Clear the subprocess handle as we are using a thread
+        # Give the server a moment to start up
+        time.sleep(1) # Give the server a moment to start up
     else:
         # When running as a script, use the flask command via subprocess
         cmd = [sys.executable, '-m', 'flask', 'run', '--host=0.0.0.0', '--port=5000']
@@ -156,9 +157,10 @@ def run_flask_server(project_absolute_path: str):
 
         print(f"Running Flask server with command: {' '.join(cmd)}")
         flask_process = subprocess.Popen(cmd, env=env, cwd=os.path.dirname(os.path.abspath(__file__)))
+        flask_thread_instance = None # Clear the thread handle as we are using a subprocess
 
 def stop_flask_server():
-    global flask_process
+    global flask_process, flask_thread_instance
     if flask_process:
         print("Terminating Flask server process...")
         if flask_process.poll() is None: # Check if process is still running
@@ -170,8 +172,20 @@ def stop_flask_server():
                 print("Flask server process did not terminate gracefully. Killing...")
                 flask_process.kill() # Send SIGKILL if it doesn't terminate
         flask_process = None
+    elif flask_thread_instance and flask_thread_instance.is_alive():
+        print("Attempting to shut down Flask server thread...")
+        try:
+            # Make a request to the shutdown endpoint
+            requests.get('http://127.0.0.1:5000/shutdown')
+            # Give the server a moment to shut down
+            time.sleep(1) # Give the server a moment to shut down
+            print("Flask server thread shutdown initiated.")
+        except requests.exceptions.ConnectionError:
+            print("Flask server thread was not running or already shut down.")
+        finally:
+            flask_thread_instance = None
     else:
-        print("Flask server is running in a thread; no process to terminate.")
+        print("No Flask server process or thread to terminate.")
 
 def main():
     parser = argparse.ArgumentParser(description='PyVN Engine Launcher')
