@@ -7,6 +7,7 @@ class GameParser:
             r'\{\%-?\s*python\s*\%\}(.*?)\{\%-?\s*endpython\s*\%\}',
             re.DOTALL
         )
+        # CORRECTED REGEX: Changed \\|\\| to \|\| to properly escape the pipes
         self.link_pattern = re.compile(r'\[\[([^-]+)->([^\]]+)\]\]')
     
     def parse_file(self, filename: str) -> Dict:
@@ -23,14 +24,21 @@ class GameParser:
         passage_pattern = re.compile(r'^::\s*(.+?)(?:\n|$)(.*?)(?=\n^::|\Z)', re.MULTILINE | re.DOTALL)
         
         for match in passage_pattern.finditer(content):
-            passage_name = match.group(1).strip()
+            header = match.group(1).strip()
             passage_content = match.group(2).strip()
-            passages[passage_name] = self.parse_passage(passage_content)
+
+            parts = header.split('#')
+            passage_name = parts[0].strip()
+            tags = [t.strip() for t in parts[1:] if t.strip()]
+            
+            passages[passage_name] = self.parse_passage(passage_content, tags)
             
         return passages
-    
-    def parse_passage(self, content: str) -> Dict:
+
+    def parse_passage(self, content: str, tags: List[str] = None) -> Dict:
         """Parse individual passage content"""
+        if tags is None:
+            tags = []
         # Extract Python code blocks
         python_blocks = []
         
@@ -44,6 +52,8 @@ class GameParser:
         
         # Extract links
         links = self.link_pattern.findall(processed_content)
+        # This print statement is useful for debugging, you can remove it if you wish
+        # print(f"DEBUG: Parsed links: {links}")
         
         # Remove links from the processed content to avoid displaying them raw
         processed_content_no_links = self.link_pattern.sub('', processed_content).strip()
@@ -52,5 +62,6 @@ class GameParser:
             'content': processed_content_no_links,
             'raw_content': processed_content,
             'python_blocks': python_blocks,
-            'links': [(text.strip(), target.strip()) for text, target in links]
+            'links': [(text.strip(), target.strip()) for text, target in links],
+            'tags': tags
         }

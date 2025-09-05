@@ -193,3 +193,26 @@ body {
     white-space: pre-wrap;
     word-wrap: break-word;
 }
+
+/* --- Passage Tag Styling --- */
+
+#main-content-area {
+    position: relative; /* Ensure it's a positioning context */
+}
+
+#passage-tags-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0; /* Behind content but clickable */
+    transition: all 0.5s ease-in-out; /* Optional: smooth transition */
+    pointer-events: none; /* Make sure it doesn't block clicks on content */
+}
+
+/* Make sure content is on top */
+.content-container {
+    position: relative;
+    z-index: 1;
+}

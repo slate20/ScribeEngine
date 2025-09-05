@@ -15,7 +15,7 @@
     {% endif %}
     <script src="https://unpkg.com/htmx.org@2.0.6"></script>
 </head>
-<body class="{% if use_engine_defaults %}engine-themed{% endif %}">
+<body id="main-body" class="{% if use_engine_defaults %}engine-themed{% endif %}">
     <div id="game-container" class="layout-{{ nav_config.position or 'horizontal' }}">
         
         {% if nav_config.enabled %}
@@ -37,6 +37,7 @@
         {% endif %}
 
         <div id="main-content-area">
+            <div id="passage-tags-container"></div>
             <div class="content-container">
                 <main id="game-content" hx-get="/passage/start" hx-trigger="load">
                     <div class="loading">Loading game...</div>

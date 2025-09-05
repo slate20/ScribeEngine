@@ -2,14 +2,15 @@ from typing import Dict, Any, List
 from datetime import datetime
 
 class StateManager:
-    def __init__(self, features: Dict = None):
+    def __init__(self, features: Dict = None, starting_passage: str = 'start'):
         self.features = features if features is not None else {}
+        self.starting_passage = starting_passage
         self.initial_state = self.create_initial_state()
     
     def create_initial_state(self) -> Dict[str, Any]:
         """Create initial game state based on features."""
         state = {
-            'current_passage': 'start',
+            'current_passage': self.starting_passage,
             'flags': {},
             'variables': {},
             'metadata': {

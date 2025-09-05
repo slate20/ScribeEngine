@@ -35,6 +35,19 @@ These objects are always available for you to read from and write to.
     data_file = os.path.join(project_path, 'data', 'items.json')
     ```
     
+- **`passage_tags`**: A list of strings representing the tags assigned to the currently rendered passage. This allows you to implement logic based on the passage's tags.
+    
+    ```
+    if 'dark' in passage_tags:
+        debug("It's dark in here!")
+    ```
+
+- **`last_passage`**: A string containing the name of the last *non-menu* passage visited. This is automatically updated by the engine and is useful for creating "back" buttons or returning to the main game flow from a UI screen. See the `#menu` tag in the [Writing Your Story](link-to-writing-your-story-guide) guide for more details.
+
+    ```
+    [[Back to Game->{{ last_passage }}]]
+    ```
+    
 
 ### Helper Functions
 

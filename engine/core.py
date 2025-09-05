@@ -4,6 +4,7 @@ import re
 from datetime import datetime
 from jinja2 import Template, Environment
 from markupsafe import Markup
+
 from .parser import GameParser
 from .executor import SafeExecutor
 from .state import StateManager
@@ -34,7 +35,7 @@ class GameEngine:
         self.theme_config = self.config.get('theme', {})
 
         features = self.config.get('features', {})
-        self.state_manager = StateManager(features)
+        self.state_manager = StateManager(features, starting_passage=self.config.get('starting_passage', 'start'))
         self.game_state = self.state_manager.get_initial_state()
         
         python_files = []
@@ -53,20 +54,29 @@ class GameEngine:
             passages_from_file = self.parser.parse_file(passage_file)
             self.passages.update(passages_from_file)
 
+        # After loading systems, check for custom player class
+        systems = self.executor.get_systems()
+        if not features.get('use_default_player', True) and 'Player' in systems:
+            PlayerClass = systems['Player']
+            if isinstance(PlayerClass, type):
+                player_instance = PlayerClass()
+                # Convert instance to a dictionary, excluding methods
+                player_dict = {k: v for k, v in vars(player_instance).items() if not k.startswith('__') and not callable(v)}
+                if 'player' not in self.game_state:
+                    self.game_state['player'] = {}
+                self.game_state['player'].update(player_dict)
+
         if self.debug_mode:
             print(f"Loaded project '{self.config.get('title', 'Untitled')}'")
             print(f"  - {len(self.passages)} passages from {len(passage_files)} file(s)")
             print(f"  - Systems from {len(python_files)} file(s)")
 
-    def _process_passage_content(self, passage_name, use_raw_content=False):
+    def _process_passage_content(self, passage_name, executor, use_raw_content=False):
         """Helper to execute Python blocks and render Jinja for a passage."""
         if passage_name not in self.passages:
             return f"<div class='debug-error'>Passage '{passage_name}' not found.</div>" if self.debug_mode else ""
 
         passage = self.passages[passage_name]
-        
-        executor = SafeExecutor(self.game_state, self.config.get('features', {}), self.debug_mode)
-        executor.load_systems_from_cache(self.executor.get_systems())
 
         content_to_process = passage['raw_content'] if use_raw_content else passage['content']
         processed_content = self.execute_python_blocks(passage, executor, content_to_process=content_to_process)
@@ -77,17 +87,23 @@ class GameEngine:
         
         return rendered_content
 
-    def render_passage_content(self, passage_name):
+    def render_passage_content(self, passage_name, executor):
         """Renders a single passage, executing its Python and Jinja logic, and generating HTML with choices."""
-        rendered_content = self._process_passage_content(passage_name)
+        rendered_content = self._process_passage_content(passage_name, executor)
         passage = self.passages[passage_name]
         links = passage['links'] if passage_name not in ['PrePassage', 'PostPassage'] else []
         return self.generate_passage_html(passage_name, rendered_content, links)
 
-    def render_special_passage(self, passage_name):
+    def render_special_passage(self, passage_name, executor=None):
         """Renders a single special-purpose passage (e.g., NavMenu, PrePassage, PostPassage)."""
+        # If no executor is passed, create a temporary one.
+        # This maintains compatibility for calls outside the main render loop (e.g., NavMenu).
+        if executor is None:
+            executor = SafeExecutor(self.game_state, self.config.get('features', {}), self.debug_mode)
+            executor.load_systems_from_cache(self.executor.get_systems())
+
         if passage_name == 'NavMenu':
-            rendered_content = self._process_passage_content(passage_name, use_raw_content=True)
+            rendered_content = self._process_passage_content(passage_name, executor, use_raw_content=True)
             
             # Replace links in-place for NavMenu
             def replace_link(match):
@@ -102,24 +118,67 @@ class GameEngine:
             final_content = self.parser.link_pattern.sub(replace_link, rendered_content)
             return f'<div class="passage" data-passage="{passage_name}"><div class="content">{final_content}</div></div>'
         else:
-            return self.render_passage_content(passage_name)
+            return self.render_passage_content(passage_name, executor)
 
-    def render_main_passage(self, passage_name):
-        """Render a main passage, including PrePassage and PostPassage if they exist."""
+    def render_main_passage(self, passage_name, _recursion_depth=0):
+        """Render a main passage, handling silent passages and including Pre/Post passages."""
+
+        # --- Last Passage Tracking ---
+        previous_passage_name = self.game_state.get('current_passage')
+        if previous_passage_name:
+            previous_passage_tags = self.passages.get(previous_passage_name, {}).get('tags', [])
+            if 'menu' not in previous_passage_tags:
+                self.game_state['last_passage'] = previous_passage_name
+
+        if _recursion_depth > 10: # Max recursion depth for silent passages
+            raise RecursionError("Exceeded max silent passage recursion depth. Check for loops.")
+
         if passage_name not in self.passages:
             raise ValueError(f"Passage '{passage_name}' not found")
 
+        passage = self.passages[passage_name]
+        tags = passage.get('tags', [])
+
+        # Create a single executor for this entire rendering sequence
+        executor = SafeExecutor(self.game_state, self.config.get('features', {}), self.debug_mode)
+        executor.load_systems_from_cache(self.executor.get_systems())
+
+        # Handle silent passages
+        if 'silent' in tags:
+            self._process_passage_content(passage_name, executor, use_raw_content=True)
+
+            # After executing, find the next passage to redirect to
+            links = self.passages[passage_name].get('links', [])
+            if not links:
+                raise ValueError(f"Silent passage '{passage_name}' has no links to redirect to.")
+
+            # Render the target of the first link to handle dynamic targets like {{...}}
+            template_context = self.get_template_context()
+            env = Environment()
+            first_link_target = links[0][1] # Target is the second item in the tuple
+            target_template = env.from_string(first_link_target)
+            next_passage_name = target_template.render(**template_context)
+
+            # Recursively call render_main_passage for the next passage
+            return self.render_main_passage(next_passage_name, _recursion_depth + 1)
+
+        # --- Regular Passage Rendering ---
         self.game_state['current_passage'] = passage_name
+        self.game_state['passage_tags'] = tags
 
         html_parts = []
 
-        if 'PrePassage' in self.passages:
-            html_parts.append(self.render_special_passage('PrePassage'))
+        # Generate the OOB swap div ONCE, based on the MAIN passage's tags
+        tag_classes = ' '.join(tags)
+        html_parts.append(f'<div id="passage-tags-container" class="{tag_classes}" hx-swap-oob="outerHTML"></div>')
 
-        html_parts.append(self.render_passage_content(passage_name))
+        if 'PrePassage' in self.passages:
+            html_parts.append(self.render_special_passage('PrePassage', executor))
+
+        html_parts.append(self.render_passage_content(passage_name, executor))
 
         if 'PostPassage' in self.passages:
-            html_parts.append(self.render_special_passage('PostPassage'))
+            html_parts.append(self.render_special_passage('PostPassage', executor))
 
         return "".join(html_parts)
 
@@ -147,9 +206,24 @@ class GameEngine:
     def get_template_context(self):
         context = self.game_state.copy()
         context.update(self.executor.get_systems())
-        
+
+        # Create a player object for the template context
+        if 'player' in self.game_state:
+            player_data = self.game_state['player'].copy() # Create a copy to avoid modifying the original
+            features = self.config.get('features', {})
+            systems = self.executor.get_systems()
+
+            if not features.get('use_default_player', True) and 'Player' in systems and isinstance(systems['Player'], type):
+                # Remove any keys that are not valid arguments for the Player constructor
+                player_data.pop('class_name', None)
+                context['player'] = systems['Player'](**player_data)
+            else:
+                from types import SimpleNamespace
+                context['player'] = SimpleNamespace(**player_data)
+
         context.update({
             'get_flag': lambda name, default=False: self.state_manager.get_flag(self.game_state, name, default),
+            'set_flag': lambda name, value=True: self.state_manager.set_flag(self.game_state, name, value),
             'has_item': lambda item: self.state_manager.has_item(self.game_state, item),
             'get_item_count': lambda item: self.state_manager.get_item_count(self.game_state, item),
             'get_variable': self.get_variable, # Expose new get_variable
@@ -272,6 +346,9 @@ class GameEngine:
         """
         for key, value in data.items():
             self.set_variable(key, value)
+
+    
+        
 
     def _generate_theme_css(self) -> str:
         """Generates a CSS string with :root variables based on the project's theme config."""

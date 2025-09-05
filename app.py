@@ -152,6 +152,10 @@ def submit_input():
             return f'<div class="debug-error">Error submitting input: {str(e)}</div>', 500
         return '<div class="error">Error submitting input</div>', 500
 
+
+
+
+
 @app.route('/saves')
 def list_saves():
     saves = game_engine.list_saves()

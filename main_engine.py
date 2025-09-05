@@ -31,7 +31,7 @@ def create_new_project(project_name: str, project_root_dir: str):
     default_project_json = {
         "title": project_name.replace('_', ' ').title(),
         "author": "Anonymous",
-        "main_story_file": "story.tgame",
+        "starting_passage": "start",
         "features": {
             "use_default_player": True,
             "use_default_inventory": True

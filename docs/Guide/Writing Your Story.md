@@ -14,7 +14,18 @@ You are on a path in a dark forest. It's spooky here.
 
 ### Links
 
-Create links between passages using double square brackets `[[Link Text->PassageName]]`.
+Links are how players navigate between passages in your story. PyVN offers several types of links, from simple navigation to complex actions with delays.
+
+#### Basic Links
+
+The most common type of link simply takes the player from one passage to another when clicked.
+
+**Syntax:** `[[Link Text->PassageName]]`
+
+*   **`Link Text`**: The visible text that the player clicks.
+*   **`PassageName`**: The name of the passage to navigate to.
+
+**Example:**
 
 ```
 :: Start
@@ -24,6 +35,127 @@ Welcome! Where would you like to go?
 :: ForestPath
 You are on the forest path.
 [[Go back->Start]]
+```
+
+#### Redirect Links
+
+Redirect links automatically send the player to another passage without requiring a click. This is useful for server-side logic that determines the next step, or for quick, seamless transitions where you don't want the player to interact.
+
+**Syntax:** `[[->PassageName]]`
+
+*   **`PassageName`**: The target passage to redirect to.
+
+**Example:**
+
+```
+:: CheckCondition
+{% if player.health <= 0 %}
+    [[->GameOver]]
+{% else %}
+    [[->ContinueAdventure]]
+{% endif %}
+```
+
+When the `CheckCondition` passage is rendered, the engine will immediately redirect to either `GameOver` or `ContinueAdventure` based on the player's health.
+
+#### Links with Actions
+
+For dynamic interactions, you can embed a Jinja/Python script directly within a link. This script executes on the server when the link is clicked, *before* navigating to the target passage. This is powerful for updating game state directly from a player's choice.
+
+**Syntax:** `[[Link Text->PassageName|| {% Jinja Action %}]]`
+
+*   **`Link Text`**: The text displayed for the link.
+*   **`PassageName`**: The target passage to navigate to after the action.
+*   **`{% Jinja Action %}`**: The Jinja/Python code to execute. This can be any valid Jinja statement that modifies the game state (e.g., `{% do set_flag('my_flag', True) %}`, `{% do player.gold = player.gold - 10 %}`).
+
+**Example:**
+
+```
+:: Shop
+You have {{ player.gold }} gold.
+[[Buy Potion (10 gold)->Shop|| {% do player.gold = player.gold - 10 %}]]
+[[Leave Shop->TownSquare|| {% do set_flag('in_shop', False) %}]]
+```
+
+When the player clicks "Buy Potion", their gold will be reduced by 10, and then they will be taken back to the `Shop` passage. When they click "Leave Shop", the `in_shop` flag will be set to `False`, and then they will navigate to `TownSquare`.
+
+**Important:** The action script is executed on the server. It has full access to the global game state and helper functions (like `set_flag`, `set_variable`, `player`, `variables`, etc.).
+
+#### Adding Delays to Links (Wait Timers)
+
+You can add an optional delay to any type of link (basic, redirect, or action) using the `~WaitTime` modifier. This will cause the link's action (redirection or navigation after click) to be delayed by the specified number of seconds.
+
+**Syntax:** Append `~WaitTime` after the `PassageName`.
+
+*   **`WaitTime`**: A number (e.g., `2`, `0.5`) representing seconds to wait.
+
+**Examples:**
+
+1.  **Basic Link with Delay:**
+    `[[Click to wait 3 seconds->NextPassage~3]]`
+    (Player clicks, waits 3 seconds, then navigates to `NextPassage`)
+
+2.  **Redirect Link with Delay:**
+    `[[->AutoAdvancePassage~5]]`
+    (Passage loads, waits 5 seconds, then automatically redirects to `AutoAdvancePassage`)
+
+3.  **Link with Action and Delay:**
+    `[[Perform Action and Wait->ResultPassage~2|| {% do player.score = player.score + 10 %}]]`
+    (Player clicks, waits 2 seconds, action runs, then navigates to `ResultPassage`)
+
+This allows for cinematic pauses, timed reveals, or ensuring an action has visual feedback before the scene changes.
+
+### Passage Tags
+
+You can assign one or more tags to a passage, which can be useful for styling, categorizing, or implementing game logic. To add tags, simply include them in the passage header, prefixed with a `#` symbol.
+
+**Syntax:**
+
+```
+:: PassageName #tag1 #tag2 #another_tag
+```
+
+**Example:**
+
+```
+:: DarkCave #dark #danger #explore
+You enter a dark cave. It's eerily quiet.
+```
+
+In this example, the passage "DarkCave" would have the tags `dark`, `danger`, and `explore` associated with it. These tags can then be used in your CSS (e.g., to apply specific styles to passages with the `dark` tag) or in your game logic (e.g., to check if the current passage has the `danger` tag).
+
+#### Special Tags
+##### The `#menu` Tag
+
+Passages tagged with `#menu` are typically used for UI screens like inventory, character stats, or save/load menus. The engine treats these passages specially when tracking the `last_passage` variable. When you navigate *from* a `#menu` tagged passage, the `last_passage` variable is *not* updated. This ensures that `last_passage` always points to the last "gameplay" passage, making it easy to implement a "Back to Game" button.
+
+**Example:**
+
+```
+:: Inventory #menu
+Your inventory items...
+[[Back to Game->{{ last_passage }}]]
+```
+
+##### The `#silent` Tag
+
+Passages tagged with `#silent` are unique: they are never displayed to the player. Instead, when the engine navigates to a silent passage, it executes all its Python and Jinja logic, and then immediately redirects to the first link found within that passage. This happens entirely on the server, making it a powerful tool for invisible logic and conditional routing.
+
+**Use Cases:**
+
+*   **Invisible Logic:** Perform calculations, update game state, or trigger events without showing an intermediate screen.
+*   **Conditional Routing:** Direct players to different passages based on game state (e.g., `[[->GoodEnding]]` or `[[->BadEnding]]` based on player choices).
+*   **Random Events:** Determine the outcome of a random event and then send the player to the appropriate result passage.
+
+**Example:**
+
+```
+:: CheckItem #silent
+{% if has_item('key') %}
+    [[->DoorUnlocked]]
+{% else %}
+    [[->DoorLocked]]
+{% endif %}
 ```
 
 ### Special Passages

@@ -14,9 +14,11 @@ class SafeExecutor:
 
     def load_systems(self, python_files: List[str]):
         """Load functions and classes from .py files into the executor."""
+        self.debug_print(f"Found {len(python_files)} Python files to load.")
         temp_globals = {}
         # First, execute all code in a shared temporary environment
         for py_file in python_files:
+            self.debug_print(f"Loading system file: {py_file}")
             with open(py_file, 'r', encoding='utf-8') as f:
                 try:
                     exec(f.read(), temp_globals)
@@ -55,6 +57,7 @@ class SafeExecutor:
             '__builtins__': safe_builtins,
             'flags': self.game_state.get('flags', {}),
             'variables': self.game_state.get('variables', {}),
+            'passage_tags': self.game_state.get('passage_tags', []), # Expose current passage tags
             'set_flag': self.set_flag,
             'get_flag': self.get_flag,
             'set_variable': self.set_variable,
@@ -66,9 +69,18 @@ class SafeExecutor:
         safe_globals.update(self.systems)
 
         # Conditionally add player object
-        if self.features.get('use_default_player', False):
+        if self.features.get('use_default_player', True):
             player_dict = self.game_state.get('player', {})
             safe_globals['player'] = SimpleNamespace(**player_dict)
+        else:
+            # Use custom player class if provided
+            if 'Player' in self.systems and isinstance(self.systems['Player'], type):
+                # Check if a player state already exists (e.g., from a save)
+                player_data = self.game_state.get('player', {})
+                safe_globals['player'] = self.systems['Player'](**player_data)
+            else:
+                # Optionally, raise an error or default to a basic object
+                raise TypeError("Custom player class 'Player' not found in project Python files.")
 
         # Conditionally add inventory helpers
         if self.features.get('use_default_inventory', False):
@@ -82,9 +94,11 @@ class SafeExecutor:
         return safe_globals
 
     def execute_code(self, code: str) -> Optional[str]:
+        self.debug_print(f"execute_code received: {code}")
         """Execute a block of code from a passage safely."""
         try:
             safe_globals = self.create_safe_globals()
+
             exec(code, safe_globals)
             self.update_game_state(safe_globals)
             return None
@@ -97,9 +111,11 @@ class SafeExecutor:
 
     def update_game_state(self, safe_globals: Dict):
         """Update the main game state from the sandbox environment after execution."""
-        if 'player' in safe_globals and isinstance(safe_globals['player'], SimpleNamespace):
-            player_ns = safe_globals['player']
-            self.game_state['player'] = {k: v for k, v in vars(player_ns).items() if not k.startswith('_')}
+        if 'player' in safe_globals:
+            player_obj = safe_globals['player']
+            # Convert the player object (whether it's a SimpleNamespace or a custom class instance) to a dictionary
+            player_dict = {k: v for k, v in vars(player_obj).items() if not k.startswith('__') and not callable(v)}
+            self.game_state['player'] = player_dict
 
     def debug_print(self, *args):
         if self.debug_mode:
