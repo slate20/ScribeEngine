@@ -13,6 +13,7 @@ from watchdog.events import FileSystemEventHandler
 
 import config_manager
 import app
+from app import reset_game_engine
 import build
 import webview_wrapper
 
@@ -152,6 +153,8 @@ def restart_flask_server():
     if project_path_for_watcher and restart_lock.acquire(blocking=False):
         try:
             print("Acquired lock, restarting server...")
+            # Reset the game engine to force a reload of game files
+            app.reset_game_engine()
             stop_flask_server()
             run_flask_server(project_path_for_watcher)
             print(f"Flask server restarted. Access your game at http://127.0.0.1:5000")
@@ -229,12 +232,15 @@ def stop_flask_server():
         print("Attempting to shut down Flask server thread...")
         try:
             # Make a request to the shutdown endpoint
-            requests.get('http://127.0.0.1:5000/shutdown')
-            # Give the server a moment to shut down
-            time.sleep(1) # Give the server a moment to shut down
-            print("Flask server thread shutdown initiated.")
-        except requests.exceptions.ConnectionError:
-            print("Flask server thread was not running or already shut down.")
+            requests.get('http://127.0.0.1:5000/shutdown', timeout=2)
+            # Wait for the thread to terminate
+            flask_thread_instance.join(timeout=3)
+            if flask_thread_instance.is_alive():
+                 print("Warning: Flask server thread did not terminate in time.")
+            else:
+                 print("Flask server thread terminated successfully.")
+        except requests.exceptions.RequestException as e:
+            print(f"Could not send shutdown signal to server: {e}")
         finally:
             flask_thread_instance = None
     else:

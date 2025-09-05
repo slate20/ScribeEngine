@@ -37,6 +37,12 @@ def set_debug_mode(mode: bool):
     global _app_debug_mode
     _app_debug_mode = mode
 
+def reset_game_engine():
+    """Resets the global game engine instance to force re-initialization."""
+    global game_engine
+    game_engine = None
+    print("Game engine has been reset. It will be re-initialized on the next request.")
+
 @app.before_request
 def initialize_game_engine():
     global game_engine, GAME_PROJECT_PATH
