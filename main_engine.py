@@ -210,7 +210,7 @@ def run_flask_server(project_absolute_path: str):
         env = os.environ.copy()
         env['FLASK_APP'] = 'app.py'
         env['FLASK_DEBUG'] = '0' # Disable debug mode to prevent Flask's reloader
-        env['PYVN_GAME_PROJECT_PATH'] = project_absolute_path # Pass project path via environment variable
+        env['SCRIBE_ENGINE_GAME_PROJECT_PATH'] = project_absolute_path # Pass project path via environment variable
 
         print(f"Running Flask server with command: {' '.join(cmd)}")
         flask_process = subprocess.Popen(cmd, env=env, cwd=os.path.dirname(os.path.abspath(__file__)))
@@ -306,7 +306,7 @@ def main_menu(project_root):
         elif choice == '3':
             stop_watcher() # Stop watcher if it was running from a previous session
             while True:
-                new_root_input = input("Enter the NEW path for your PyVN game projects (e.g., ~/MyPyVN_Games): ").strip()
+                new_root_input = input("Enter the NEW path for your Scribe Engine game projects (e.g., ~/MyScribeEngine_Games): ").strip()
                 if new_root_input:
                     new_project_root = os.path.abspath(os.path.expanduser(new_root_input))
                     try:
@@ -334,7 +334,7 @@ def project_menu(project_root):
     project_name = os.path.basename(active_project_path)
     while True:
         clear_screen()
-        print(f"--- PyVN Engine Launcher (Project Root: {project_root}) ---")
+        print(f"--- Scribe Engine Launcher (Project Root: {project_root}) ---")
         print(f"\nActive Project: {project_name}")
         print("\nProject Menu:")
         print("1. Start Development Server")
@@ -386,7 +386,7 @@ def server_running_menu(project_root):
     project_name = os.path.basename(active_project_path)
     while True:
         clear_screen()
-        print(f"--- PyVN Engine Launcher (Project Root: {project_root}) ---")
+        print(f"--- Scribe Engine Launcher (Project Root: {project_root}) ---")
         print(f"\nActive Project: {project_name} (Server Running)")
         print(f"Access your game at http://127.0.0.1:5000")
         print("\nServer Running Menu:")
@@ -406,7 +406,7 @@ def server_running_menu(project_root):
 def main():
     global active_project_path, flask_server_running
 
-    parser = argparse.ArgumentParser(description='PyVN Engine Launcher')
+    parser = argparse.ArgumentParser(description='Scribe Engine Launcher')
     parser.add_argument('--project-root', '-r', type=str, 
                         help='Override the default or configured project root directory.')
     args = parser.parse_args()
@@ -419,7 +419,7 @@ def main():
             clear_screen()
             print("\nNo project root configured or found. Please specify one.")
             while True:
-                user_input = input("Enter the path for your PyVN game projects (e.g., ~/PyVN_Games): ").strip()
+                user_input = input("Enter the path for your Scribe Engine game projects (e.g., ~/ScribeEngine_Games): ").strip()
                 if user_input:
                     project_root = os.path.expanduser(user_input)
                     try:

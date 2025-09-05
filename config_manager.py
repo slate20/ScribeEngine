@@ -4,9 +4,9 @@ import json
 def get_config_dir():
     """Returns the appropriate configuration directory based on the OS."""
     if os.name == 'nt':  # Windows
-        return os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'PyVN')
+        return os.path.join(os.environ.get('APPDATA', os.path.expanduser('~')), 'ScribeEngine')
     else:  # Linux, macOS, etc.
-        return os.path.join(os.path.expanduser('~'), '.config', 'pyvn')
+        return os.path.join(os.path.expanduser('~'), '.config', 'scribe_engine')
 
 def get_config_file_path():
     """Returns the absolute path to the configuration file."""

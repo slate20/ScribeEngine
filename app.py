@@ -51,8 +51,8 @@ def initialize_game_engine():
         return
 
     # Prioritize environment variable for GAME_PROJECT_PATH
-    if os.environ.get('PYVN_GAME_PROJECT_PATH') and GAME_PROJECT_PATH is None:
-        GAME_PROJECT_PATH = os.environ.get('PYVN_GAME_PROJECT_PATH')
+    if os.environ.get('SCRIBE_ENGINE_GAME_PROJECT_PATH') and GAME_PROJECT_PATH is None:
+        GAME_PROJECT_PATH = os.environ.get('SCRIBE_ENGINE_GAME_PROJECT_PATH')
 
     if game_engine is None:
         if GAME_PROJECT_PATH is None:
@@ -246,7 +246,7 @@ def run_app_server(debug_mode=False, use_reloader=False, host='0.0.0.0', port=50
     server.serve_forever()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='PyVN Flask App')
+    parser = argparse.ArgumentParser(description='Scribe Engine Flask App')
     parser.add_argument('--host', type=str, default='0.0.0.0', help='Host address to bind to')
     parser.add_argument('--port', type=int, default=5000, help='Port to listen on')
     args = parser.parse_args()

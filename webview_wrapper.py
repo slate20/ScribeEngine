@@ -27,5 +27,5 @@ def run_webview_app(project_path_for_app: str):
 
     # Create webview window
     # The URL should match the Flask app's host and port
-    webview.create_window('PyVN Engine', 'http://127.0.0.1:5000', width=1024, height=768)
+    webview.create_window('Scribe Engine', 'http://127.0.0.1:5000', width=1024, height=768)
     webview.start()

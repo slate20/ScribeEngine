@@ -3,7 +3,7 @@ import os
 import sys
 
 def build_engine_executable():
-    print("Building PyVN Engine standalone executable...")
+    print("Building Scribe Engine standalone executable...")
 
     # Determine the base directory of the project
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,7 +33,7 @@ def build_engine_executable():
         main_engine_path,  # Main script to execute
         '--noconsole',         # For GUI application (no console window)
         '--onefile',           # Create a single executable file
-        '--name=pyvn-engine',  # Name of the executable
+        '--name=scribe-engine',  # Name of the executable
         
         # Add Python source files that are imported dynamically or needed by other parts
         f'--add-data={app_path}{os.pathsep}.',
@@ -72,7 +72,7 @@ def build_engine_executable():
 
     PyInstaller.__main__.run(pyinstaller_args)
 
-    print("PyVN Engine build completed. Executable can be found in the 'dist_engine' directory.")
+    print("Scribe Engine build completed. Executable can be found in the 'dist_engine' directory.")
 
 if __name__ == '__main__':
     build_engine_executable()

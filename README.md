@@ -1,47 +1,45 @@
-# PyVN - A Python-based Visual Novel Engine
+# Scribe Engine - A Robust Text-Based Game Engine
 
-This is a text-based game engine that allows creators to build interactive fiction games using a combination of plain text, HTML, Jinja2 templating, and embedded Python code. The engine is inspired by Twine but provides more programming flexibility through Python integration.
+Scribe Engine is a powerful and versatile text-based game engine designed for creating rich, interactive experiences. While perfectly capable of building simpler visual novels and interactive fiction, its core strength lies in empowering developers to craft more complex and dynamic games, overcoming the limitations often found in traditional story-authoring tools.
 
-## Setup and Run
+Leveraging Python for deep game logic, Jinja2 for flexible content rendering, and modern web technologies for a smooth player experience, Scribe Engine allows you to build intricate systems and responsive narratives without the constraints of page reloads or fragmented logic. It's built for creators who demand refined control over game mechanics, state management, and narrative flow, delivering a seamless and engaging experience for players.
 
-1.  **Install dependencies:**
+## Get Started
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+To begin creating your visual novel, you'll need the Scribe Engine executable. This single, self-contained file contains everything you need to run the engine and build your games.
 
-## Running the Engine and Developing Your Game
+### 1. Download the Executable
 
-To start the PyVN engine and begin developing or playing a game, use the `launcher.py` script:
+Obtain the latest `scribe-engine` executable for your operating system (Windows or Linux) from the [Releases](https://github.com/your-github-username/scribe-engine/releases) page.
 
-```bash
-python3 launcher.py
-```
+### 2. Run the Engine
 
-Upon running the launcher, you will be presented with options:
+Simply run the `scribe-engine` executable from your terminal or command line:
 
-*   **Create New Project:** This will prompt you for a new game name and set up a basic project structure under the `game/` directory (e.g., `game/your_project_name`).
-*   **Load Existing Project:** This will list all existing game projects found under the `game/` directory and allow you to select one to load.
+*   **Windows:** Double-click `scribe-engine.exe`.
+*   **Linux:** Make the executable runnable (`chmod +x scribe-engine`) and then run `./scribe-engine`.
 
-Once a project is created or selected, the Flask development server will start. You can then open your web browser and navigate to `http://127.0.0.1:5000` to view and interact with your game. Changes to your game files will be reflected in the browser.
+On the first run, the engine will prompt you to set a **Project Root** directory where all your game projects will be stored. This directory will be remembered for future sessions.
 
-## Building a Standalone Game Executable
+### 3. Create or Load a Project
 
-When you are ready to distribute your game as a standalone executable, use the `build.py` script. This will package the engine and your chosen game into a single executable using PyInstaller and PyWebview.
+Once the engine is running, you'll be presented with a menu. You can:
 
-```bash
-python3 build.py <your_project_name>
-```
+*   **Create New Project:** Set up a new game project with a basic structure. The engine will guide you through naming your project.
+*   **Load Existing Project:** Select an existing game project from your Project Root to work on.
 
-Replace `<your_project_name>` with the name of the game project you wish to build (e.g., `example` or `my_new_game`).
+### 4. Start Development Server
 
-The executable will be generated in the `dist/` directory (e.g., `dist/your_project_name_game`).
+After creating or loading a project, you'll enter the **Project Menu**. Choose **"Start Development Server"** to launch your game in a web browser (typically at `http://127.0.0.1:5000`). The engine features **live-reloading**, so changes to your game files will automatically update in your browser.
 
-## Development Conventions
+### 5. Build Your Game
 
-*   **Language:** Primarily Python.
-*   **Web Framework:** Flask is used for handling web requests and serving the game.
-*   **Templating:** Jinja2 is used for rendering HTML templates, found in the `templates/` directory.
-*   **Game Content:** Game stories and configurations are defined in `.tgame` files and `project.json` within the `game/` directory.
-*   **Static Assets:** CSS and JavaScript files are located in the `static/` directory.
-*   **Engine Logic:** Core game engine components (parser, executor, state management, storage) are encapsulated within the `engine/` directory.
+When your game is ready for distribution, select **"Build Standalone Game"** from the **Project Menu**. The engine will package your game into a single executable file, located in the `dist/` folder next to your `scribe-engine` executable. This self-contained game can then be shared with players.
+
+## Documentation
+
+For detailed instructions on writing your story, managing game logic, customizing your game, and advanced features, please refer to the comprehensive [Scribe Engine Documentation](docs/Guide/0.%20Introduction.md).
+
+## Contributing
+
+Scribe Engine is open-source! If you're interested in contributing to the engine's development, please see the [CONTRIBUTING.md](CONTRIBUTING.md) file (coming soon) for guidelines and setup instructions.
