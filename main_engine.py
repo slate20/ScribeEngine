@@ -10,12 +10,14 @@ import requests
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-
 import config_manager
 import app
 from app import reset_game_engine
 import build
 import webview_wrapper
+
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
 
 # --- Helper function adapted from create_game.py ---
 def create_new_project(project_name: str, project_root_dir: str):
@@ -246,7 +248,164 @@ def stop_flask_server():
     else:
         print("No Flask server process or thread to terminate.")
 
+active_project_path = None
+flask_server_running = False
+
+def main_menu(project_root):
+    global active_project_path
+    while True:
+        clear_screen()
+        print("""
+  █████████                      ███  █████                 ██████████                      ███                     
+ ███▒▒▒▒▒███                    ▒▒▒  ▒▒███                 ▒▒███▒▒▒▒▒█                     ▒▒▒                      
+▒███    ▒▒▒   ██████  ████████  ████  ▒███████   ██████     ▒███  █ ▒  ████████    ███████ ████  ████████    ██████ 
+▒▒█████████  ███▒▒███▒▒███▒▒███▒▒███  ▒███▒▒███ ███▒▒███    ▒██████   ▒▒███▒▒███  ███▒▒███▒▒███ ▒▒███▒▒███  ███▒▒███
+ ▒▒▒▒▒▒▒▒███▒███ ▒▒▒  ▒███ ▒▒▒  ▒███  ▒███ ▒███▒███████     ▒███▒▒█    ▒███ ▒███ ▒███ ▒███ ▒███  ▒███ ▒███ ▒███████ 
+ ███    ▒███▒███  ███ ▒███      ▒███  ▒███ ▒███▒███▒▒▒      ▒███ ▒   █ ▒███ ▒███ ▒███ ▒███ ▒███  ▒███ ▒███ ▒███▒▒▒  
+▒▒█████████ ▒▒██████  █████     █████ ████████ ▒▒██████     ██████████ ████ █████▒▒███████ █████ ████ █████▒▒██████ 
+ ▒▒▒▒▒▒▒▒▒   ▒▒▒▒▒▒  ▒▒▒▒▒     ▒▒▒▒▒ ▒▒▒▒▒▒▒▒   ▒▒▒▒▒▒     ▒▒▒▒▒▒▒▒▒▒ ▒▒▒▒ ▒▒▒▒▒  ▒▒▒▒▒███▒▒▒▒▒ ▒▒▒▒ ▒▒▒▒▒  ▒▒▒▒▒▒  
+                                                                                  ███ ▒███                          
+                                                                                 ▒▒██████                           
+                                                                                  ▒▒▒▒▒▒
+        """)
+        print(f"---(Projects Root: {project_root}) ---")
+        print("\nMain Menu:")
+        print("1. Create New Project")
+        print("2. Load Existing Project")
+        print("3. Change Projects Root Path")
+        print("4. Exit")
+
+        choice = input("Enter your choice (1-4): ")
+
+        if choice == '1':
+            project_name = input("Enter new project name: ").strip()
+            if not project_name:
+                print("Project name cannot be empty.")
+                continue
+            try:
+                create_new_project(project_name, project_root)
+                active_project_path = os.path.abspath(os.path.join(project_root, project_name))
+                print(f"Project '{project_name}' created and set as active.")
+                return "project_menu" # Transition to project menu
+            except FileExistsError as e:
+                print(f"Error: {e}")
+            except Exception as e:
+                print(f"An unexpected error occurred: {e}")
+        elif choice == '2':
+            projects = get_game_projects(project_root)
+            if not projects:
+                print("No projects found. Please create one first.")
+                continue
+            selected_project_name = select_project(projects)
+            if selected_project_name:
+                active_project_path = os.path.abspath(os.path.join(project_root, selected_project_name))
+                print(f"Project '{selected_project_name}' set as active.")
+                return "project_menu" # Transition to project menu
+            else:
+                pass # User cancelled project selection
+        elif choice == '3':
+            stop_watcher() # Stop watcher if it was running from a previous session
+            while True:
+                new_root_input = input("Enter the NEW path for your PyVN game projects (e.g., ~/MyPyVN_Games): ").strip()
+                if new_root_input:
+                    new_project_root = os.path.abspath(os.path.expanduser(new_root_input))
+                    try:
+                        os.makedirs(new_project_root, exist_ok=True)
+                        config_manager.set_project_root(new_project_root)
+                        project_root = new_project_root # Update current session's root
+                        print(f"Project root successfully changed to: {project_root}")
+                        break
+                    except OSError as e:
+                        print(f"Error creating directory {new_project_root}: {e}. Please try again.")
+                else:
+                    print("New project root cannot be empty.")
+            # Stay in main menu
+        elif choice == '4':
+            print("Exiting launcher.")
+            stop_watcher()
+            stop_flask_server()
+            clear_screen()
+            sys.exit(0)
+        else:
+            print("Invalid choice. Please enter 1, 2, 3 or 4.")
+
+def project_menu(project_root):
+    global active_project_path, flask_server_running
+    project_name = os.path.basename(active_project_path)
+    while True:
+        clear_screen()
+        print(f"--- PyVN Engine Launcher (Project Root: {project_root}) ---")
+        print(f"\nActive Project: {project_name}")
+        print("\nProject Menu:")
+        print("1. Start Development Server")
+        print("2. Build Standalone Game")
+        print("3. Go Back to Main Menu")
+        print("4. Quit Engine")
+
+        choice = input("Enter your choice (1-4): ")
+
+        if choice == '1':
+            print(f"\nStarting Flask development server for {project_name}...")
+            run_flask_server(active_project_path)
+            start_watcher(active_project_path)
+            flask_server_running = True
+            print(f"Flask server started. Access your game at http://127.0.0.1:5000")
+            return "server_running_menu" # Transition to server running menu
+        elif choice == '2':
+            print(f"\nBuilding standalone game for project: {project_name}")
+            # Ensure server is stopped before building
+            if flask_server_running:
+                print("Stopping development server before building...")
+                stop_flask_server()
+                stop_watcher()
+                flask_server_running = False
+                time.sleep(2) # Give server time to shut down
+            build.build_standalone_game(project_name, project_root)
+            print(f"Build process for {project_name} completed. Executable can be found in the 'dist' directory.")
+            # Stay in project menu
+        elif choice == '3':
+            if flask_server_running:
+                print("Stopping development server before returning to main menu...")
+                stop_flask_server()
+                stop_watcher()
+                flask_server_running = False
+                time.sleep(2) # Give server time to shut down
+            active_project_path = None # Deselect project
+            return "main_menu" # Transition to main menu
+        elif choice == '4':
+            print("Exiting launcher.")
+            if flask_server_running:
+                stop_flask_server()
+                stop_watcher()
+            sys.exit(0)
+        else:
+            print("Invalid choice. Please enter 1, 2, 3 or 4.")
+
+def server_running_menu(project_root):
+    global flask_server_running
+    project_name = os.path.basename(active_project_path)
+    while True:
+        clear_screen()
+        print(f"--- PyVN Engine Launcher (Project Root: {project_root}) ---")
+        print(f"\nActive Project: {project_name} (Server Running)")
+        print(f"Access your game at http://127.0.0.1:5000")
+        print("\nServer Running Menu:")
+        print("1. Stop Development Server")
+
+        choice = input("Enter your choice (1): ")
+
+        if choice == '1':
+            print("Stopping Flask development server...")
+            stop_flask_server()
+            stop_watcher()
+            flask_server_running = False
+            return "project_menu" # Transition to project menu
+        else:
+            print("Invalid choice. Please enter 1.")
+
 def main():
+    global active_project_path, flask_server_running
+
     parser = argparse.ArgumentParser(description='PyVN Engine Launcher')
     parser.add_argument('--project-root', '-r', type=str, 
                         help='Override the default or configured project root directory.')
@@ -257,6 +416,7 @@ def main():
     if not project_root:
         project_root = config_manager.get_project_root()
         if not project_root or not os.path.isdir(project_root):
+            clear_screen()
             print("\nNo project root configured or found. Please specify one.")
             while True:
                 user_input = input("Enter the path for your PyVN game projects (e.g., ~/PyVN_Games): ").strip()
@@ -275,96 +435,23 @@ def main():
         project_root = os.path.abspath(os.path.expanduser(project_root))
         os.makedirs(project_root, exist_ok=True)
         config_manager.set_project_root(project_root) # Save if overridden via CLI
+        print(f"Project root set to: {project_root}")
 
-    print(f"\n--- PyVN Engine Launcher (Project Root: {project_root}) ---")
-    
-    selected_project_path = None # Store the path of the currently loaded project
+    current_state = "main_menu"
 
     while True:
-        print("\nOptions:")
-        print("1. Create New Project")
-        print("2. Load Existing Project")
-        print("3. Build Standalone Game")
-        print("4. Change Project Root Path")
-        print("5. Exit")
-        
-        choice = input("Enter your choice (1-5): ")
-        
-        if choice == '1':
-            project_name = input("Enter new project name: ").strip()
-            if not project_name:
-                print("Project name cannot be empty.")
-                continue
-            try:
-                create_new_project(project_name, project_root)
-                selected_project = project_name
-                # After creating, automatically load it for development
-                project_absolute_path = os.path.abspath(os.path.join(project_root, selected_project))
-                selected_project_path = project_absolute_path # Store for restart
-                print(f"\nLaunching engine for project: {selected_project} (Path: {project_absolute_path})")
-                print("\nStarting Flask development server... Press CTRL+C in this terminal to stop it.")
-                run_flask_server(project_absolute_path)
-                start_watcher(project_absolute_path)
-                print(f"Flask server started. Access your game at http://127.0.0.1:5000")
-                print("Returning to main menu. Press CTRL+C in this terminal to stop the Flask server.")
-            except FileExistsError as e:
-                print(f"Error: {e}")
-            except Exception as e:
-                print(f"An unexpected error occurred: {e}")
-        elif choice == '2':
-            projects = get_game_projects(project_root)
-            if not projects:
-                print("No projects to load. Please create a new one first.")
-                continue
-            selected_project = select_project(projects)
-            if selected_project:
-                project_absolute_path = os.path.abspath(os.path.join(project_root, selected_project))
-                selected_project_path = project_absolute_path # Store for restart
-                print(f"\nLaunching engine for project: {selected_project} (Path: {project_absolute_path})")
-                print("\nStarting Flask development server... Press CTRL+C in this terminal to stop it.")
-                run_flask_server(project_absolute_path)
-                start_watcher(project_absolute_path)
-                print(f"Flask server started. Access your game at http://127.0.0.1:5000")
-                print("Returning to main menu. Press CTRL+C in this terminal to stop the Flask server.")
-        elif choice == '3':
-            projects = get_game_projects(project_root)
-            if not projects:
-                print("No projects to build. Please create or load one first.")
-                continue
-            selected_project = select_project(projects)
-            if selected_project:
-                project_absolute_path = os.path.abspath(os.path.join(project_root, selected_project))
-                print(f"\nBuilding standalone game for project: {selected_project}")
-                # Call build.build_standalone_game
-                # We need to pass the project_root_dir to build.py
-                build.build_standalone_game(selected_project, project_root)
-                print(f"Build process for {selected_project} completed. Executable can be found in the 'dist' directory.")
-                input("Press Enter to return to main menu...")
-        elif choice == '4':
-            stop_watcher()
-            # Change Project Root Path
-            while True:
-                new_root_input = input("Enter the NEW path for your PyVN game projects (e.g., ~/MyPyVN_Games): ").strip()
-                if new_root_input:
-                    new_project_root = os.path.abspath(os.path.expanduser(new_root_input))
-                    try:
-                        os.makedirs(new_project_root, exist_ok=True)
-                        config_manager.set_project_root(new_project_root)
-                        project_root = new_project_root # Update current session's root
-                        print(f"Project root successfully changed to: {project_root}")
-                        break
-                    except OSError as e:
-                        print(f"Error creating directory {new_project_root}: {e}. Please try again.")
-                else:
-                    print("New project root cannot be empty.")
-            input("Press Enter to return to main menu...")
-        elif choice == '5':
-            print("Exiting launcher.")
-            stop_watcher()
-            stop_flask_server() # Ensure Flask server is stopped on exit
-            sys.exit(0)
+        if current_state == "main_menu":
+            next_state = main_menu(project_root)
+        elif current_state == "project_menu":
+            next_state = project_menu(project_root)
+        elif current_state == "server_running_menu":
+            next_state = server_running_menu(project_root)
         else:
-            print("Invalid choice. Please enter 1, 2, 3, 4, or 5.")
+            print("Unknown state. Exiting.")
+            sys.exit(1)
+        
+        current_state = next_state
+
 
 if __name__ == "__main__":
     main()
