@@ -31,6 +31,8 @@ Once the engine is running, you'll be presented with a menu. You can:
 *   **Create New Project:** Set up a new game project with a basic structure. The engine will guide you through naming your project.
 *   **Load Existing Project:** Select an existing game project from your Project Root to work on.
 
+Once a project is created or loaded, you can begin developing your game using your preferred Integrated Development Environment (IDE) to edit the game files within the project directory.
+
 ### 4. Start Development Server
 
 After creating or loading a project, you'll enter the **Project Menu**. Choose **"Start Development Server"** to launch your game in a web browser (typically at `http://127.0.0.1:5000`). The engine features **live-reloading**, so changes to your game files will automatically update in your browser.
