@@ -1,0 +1,7 @@
+{
+	"contextFileName": ["GEMINI.md", "PROJECT_OVERVIEW.md"],
+	"preferredEditor": "neovim",
+	"fileFiltering": {
+		"respectGitIgnore": false
+	}
+}

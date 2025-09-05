@@ -4,3 +4,4 @@ Werkzeug==2.3.7
 pywebview[qt]
 pyinstaller
 requests
+watchdog

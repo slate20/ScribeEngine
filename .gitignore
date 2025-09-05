@@ -1,6 +1,8 @@
 venv
 GEMINI.md
 .obsidian
+PROJECT_OVERVIEW.md
+'Engine Design Document.md'
 
 # PyInstaller build artifacts
 __pycache__/

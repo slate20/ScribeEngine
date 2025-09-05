@@ -7,6 +7,9 @@ import argparse
 import threading
 import time
 import requests
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
 
 import config_manager
 import app
@@ -126,6 +129,55 @@ def select_project(projects):
 
 flask_process = None # Global variable to hold the Flask server subprocess
 flask_thread_instance = None # Global variable to hold the Flask server thread instance
+observer = None # Global variable to hold the watchdog observer
+project_path_for_watcher = None # Global variable to hold the project path for the watcher
+restart_lock = threading.Lock()
+
+class ChangeHandler(FileSystemEventHandler):
+    def __init__(self):
+        self.last_restart_time = 0
+
+    def on_modified(self, event):
+        if event.is_directory:
+            return
+        if event.src_path.endswith(('.tgame', '.py')):
+            current_time = time.time()
+            if current_time - self.last_restart_time > 2:
+                print(f"Detected change in {event.src_path}. Restarting server...")
+                self.last_restart_time = current_time
+                restart_flask_server()
+
+def restart_flask_server():
+    global project_path_for_watcher
+    if project_path_for_watcher and restart_lock.acquire(blocking=False):
+        try:
+            print("Acquired lock, restarting server...")
+            stop_flask_server()
+            run_flask_server(project_path_for_watcher)
+            print(f"Flask server restarted. Access your game at http://127.0.0.1:5000")
+        finally:
+            restart_lock.release()
+            print("Released lock.")
+    else:
+        print("Could not acquire lock, another restart is in progress.")
+
+def start_watcher(path):
+    global observer, project_path_for_watcher
+    project_path_for_watcher = path
+    event_handler = ChangeHandler()
+    observer = Observer()
+    observer.schedule(event_handler, path, recursive=True)
+    observer.start()
+    print(f"Started watching {path} for changes.")
+
+def stop_watcher():
+    global observer
+    if observer:
+        observer.stop()
+        observer.join()
+        print("Stopped watching for file changes.")
+
+
 
 def run_flask_server(project_absolute_path: str):
     global flask_process, flask_thread_instance
@@ -152,12 +204,13 @@ def run_flask_server(project_absolute_path: str):
         # Set FLASK_APP environment variable
         env = os.environ.copy()
         env['FLASK_APP'] = 'app.py'
-        env['FLASK_DEBUG'] = '1' # Enable debug mode for reloader
+        env['FLASK_DEBUG'] = '0' # Disable debug mode to prevent Flask's reloader
         env['PYVN_GAME_PROJECT_PATH'] = project_absolute_path # Pass project path via environment variable
 
         print(f"Running Flask server with command: {' '.join(cmd)}")
         flask_process = subprocess.Popen(cmd, env=env, cwd=os.path.dirname(os.path.abspath(__file__)))
         flask_thread_instance = None # Clear the thread handle as we are using a subprocess
+        time.sleep(1) # Give the server a moment to start up
 
 def stop_flask_server():
     global flask_process, flask_thread_instance
@@ -225,12 +278,11 @@ def main():
         print("\nOptions:")
         print("1. Create New Project")
         print("2. Load Existing Project")
-        print("3. Restart Server (if project loaded)")
-        print("4. Build Standalone Game")
-        print("5. Change Project Root Path")
-        print("6. Exit")
+        print("3. Build Standalone Game")
+        print("4. Change Project Root Path")
+        print("5. Exit")
         
-        choice = input("Enter your choice (1-6): ")
+        choice = input("Enter your choice (1-5): ")
         
         if choice == '1':
             project_name = input("Enter new project name: ").strip()
@@ -246,6 +298,7 @@ def main():
                 print(f"\nLaunching engine for project: {selected_project} (Path: {project_absolute_path})")
                 print("\nStarting Flask development server... Press CTRL+C in this terminal to stop it.")
                 run_flask_server(project_absolute_path)
+                start_watcher(project_absolute_path)
                 print(f"Flask server started. Access your game at http://127.0.0.1:5000")
                 print("Returning to main menu. Press CTRL+C in this terminal to stop the Flask server.")
             except FileExistsError as e:
@@ -264,22 +317,10 @@ def main():
                 print(f"\nLaunching engine for project: {selected_project} (Path: {project_absolute_path})")
                 print("\nStarting Flask development server... Press CTRL+C in this terminal to stop it.")
                 run_flask_server(project_absolute_path)
+                start_watcher(project_absolute_path)
                 print(f"Flask server started. Access your game at http://127.0.0.1:5000")
                 print("Returning to main menu. Press CTRL+C in this terminal to stop the Flask server.")
         elif choice == '3':
-            if selected_project_path:
-                print("\nAttempting to restart Flask server...")
-                stop_flask_server()
-                
-                print(f"\nLaunching engine for project: {os.path.basename(selected_project_path)} (Path: {selected_project_path})")
-                print("\nStarting Flask development server... Press CTRL+C in this terminal to stop it.")
-                run_flask_server(selected_project_path)
-                print(f"Flask server started. Access your game at http://127.0.0.1:5000")
-                print("Server restarted. Returning to main menu.")
-            else:
-                print("No project loaded. Please load a project first to restart the server.")
-            input("Press Enter to return to main menu...")
-        elif choice == '4':
             projects = get_game_projects(project_root)
             if not projects:
                 print("No projects to build. Please create or load one first.")
@@ -293,7 +334,8 @@ def main():
                 build.build_standalone_game(selected_project, project_root)
                 print(f"Build process for {selected_project} completed. Executable can be found in the 'dist' directory.")
                 input("Press Enter to return to main menu...")
-        elif choice == '5':
+        elif choice == '4':
+            stop_watcher()
             # Change Project Root Path
             while True:
                 new_root_input = input("Enter the NEW path for your PyVN game projects (e.g., ~/MyPyVN_Games): ").strip()
@@ -310,12 +352,13 @@ def main():
                 else:
                     print("New project root cannot be empty.")
             input("Press Enter to return to main menu...")
-        elif choice == '6':
+        elif choice == '5':
             print("Exiting launcher.")
+            stop_watcher()
             stop_flask_server() # Ensure Flask server is stopped on exit
             sys.exit(0)
         else:
-            print("Invalid choice. Please enter 1, 2, 3, 4, 5 or 6.")
+            print("Invalid choice. Please enter 1, 2, 3, 4, or 5.")
 
 if __name__ == "__main__":
     main()
