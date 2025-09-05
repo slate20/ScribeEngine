@@ -2,6 +2,8 @@ import PyInstaller.__main__
 import os
 import sys
 
+version = '1.0'
+
 def build_engine_executable():
     print("Building Scribe Engine standalone executable...")
 
@@ -19,6 +21,16 @@ def build_engine_executable():
     build_py_path = os.path.join(script_dir, 'build.py')
     config_manager_path = os.path.join(script_dir, 'config_manager.py')
 
+    # Determine platform for naming
+    if sys.platform.startswith('linux'):
+        platform_suffix = 'linux'
+    elif sys.platform.startswith('win'):
+        platform_suffix = 'windows'
+    elif sys.platform.startswith('darwin'): # macOS
+        platform_suffix = 'macos'
+    else:
+        platform_suffix = 'unknown'
+
     # PyInstaller options
     # --noconsole: Do not open a console window (for GUI apps)
     # --onefile: Create a single executable file
@@ -33,7 +45,7 @@ def build_engine_executable():
         main_engine_path,  # Main script to execute
         '--noconsole',         # For GUI application (no console window)
         '--onefile',           # Create a single executable file
-        '--name=scribe-engine',  # Name of the executable
+        f'--name=scribe-engine-v{version}-{platform_suffix}',  # Name of the executable
         
         # Add Python source files that are imported dynamically or needed by other parts
         f'--add-data={app_path}{os.pathsep}.',
