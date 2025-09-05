@@ -1,5 +1,8 @@
 # Scribe Engine - A Robust Text-Based Game Engine
 
+<img width="1204" height="649" alt="Screenshot from 2025-09-05 13-54-54" src="https://github.com/user-attachments/assets/33785820-f0ba-4f94-851c-bcc802082469" />
+
+
 Scribe Engine is a powerful and versatile text-based game engine designed for creating rich, interactive experiences. While perfectly capable of building simpler visual novels and interactive fiction, its core strength lies in empowering developers to craft more complex and dynamic games, overcoming the limitations often found in traditional story-authoring tools.
 
 Leveraging Python for deep game logic, Jinja2 for flexible content rendering, and modern web technologies for a smooth player experience, Scribe Engine allows you to build intricate systems and responsive narratives without the constraints of page reloads or fragmented logic. It's built for creators who demand refined control over game mechanics, state management, and narrative flow, delivering a seamless and engaging experience for players.
