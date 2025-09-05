@@ -1,5 +1,13 @@
-import os
 import sys
+import io
+
+if sys.stdout is not None and sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+
+if sys.stderr is not None and sys.stderr.encoding != 'utf-8':
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    
+import os
 import subprocess
 import json
 from datetime import datetime

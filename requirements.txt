@@ -5,3 +5,4 @@ pywebview[qt]
 pyinstaller
 requests
 watchdog
+Pillow
