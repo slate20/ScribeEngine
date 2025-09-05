@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 from jinja2 import Template, Environment
 from markupsafe import Markup
-
+from html import escape
 from .parser import GameParser
 from .executor import SafeExecutor
 from .state import StateManager
@@ -243,21 +243,33 @@ class GameEngine:
         
         if links:
             html_parts.append('<div class="choices">')
-            for text, target in links:
-                html_parts.append(f'''
-                    <button hx-get="/passage/{target}" 
-                            hx-target="#game-content" 
-                            class="choice-btn"
-                            data-target="{target}">
-                        {text}
-                    </button>
-                ''')
+            for text, target, action in links:
+                if action:
+                    escaped_action = escape(action)
+                    html_parts.append(f'''
+                        <form hx-post="/action_link" hx-target="#game-content" class="action-link-form">
+                            <input type="hidden" name="action" value="{escaped_action}">
+                            <input type="hidden" name="target_passage" value="{target}">
+                            <button type="submit" class="choice-btn" data-target="{target}">
+                                {text if text else "Continue"}
+                            </button>
+                        </form>
+                    ''')
+                else:
+                    display_text = text if text else "Continue"
+                    html_parts.append(f'''
+                        <button hx-get="/passage/{target}" 
+                                hx-target="#game-content" 
+                                class="choice-btn"
+                                data-target="{target}">
+                            {display_text}
+                        </button>
+                    ''')
             html_parts.append('</div>')
         
         html_parts.append('</div>')
         
-        return ''.join(html_parts)
-    
+        return ''.join(html_parts)    
     def generate_input_html(self, variable_name: str, input_type: str = 'text', placeholder: str = '', button_text: str = 'Submit', next_passage: str = None, **kwargs) -> str:
         """
         Generates HTML for an input field and a submit button, using HTMX to update game state.

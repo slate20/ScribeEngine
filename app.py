@@ -4,6 +4,7 @@ import json
 import sys
 import argparse
 from datetime import datetime
+from jinja2 import Environment
 from engine.core import GameEngine
 
 # Add these imports for graceful shutdown
@@ -152,9 +153,32 @@ def submit_input():
             return f'<div class="debug-error">Error submitting input: {str(e)}</div>', 500
         return '<div class="error">Error submitting input</div>', 500
 
+@app.route('/action_link', methods=['POST'])
+def handle_action_link():
+    try:
+        action_string = request.form.get('action')
+        target_passage = request.form.get('target_passage')
 
+        if not all([action_string, target_passage]):
+            return "Error: 'action' and 'target_passage' are required.", 400
+        
+        # Get the current game context (state + helper functions)
+        context = game_engine.get_template_context()
+        
+        # Use Jinja to execute the action string
+        # The {% do %} extension is needed for statements that don't produce output
+        env = Environment(extensions=['jinja2.ext.do'])
+        template = env.from_string(action_string)
+        template.render(**context) # This calls helpers like set_variable that modify the game_state
 
+        # Render the target passage and return the HTML
+        html = game_engine.render_main_passage(target_passage)
+        return html
 
+    except Exception as e:
+        if game_engine.debug_mode:
+            return f'<div class="debug-error">Error executing action link: {str(e)}</div>', 500
+        return '<div class="error">An error occurred while processing the action.</div>', 500
 
 @app.route('/saves')
 def list_saves():

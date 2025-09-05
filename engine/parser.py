@@ -8,7 +8,7 @@ class GameParser:
             re.DOTALL
         )
         # CORRECTED REGEX: Changed \\|\\| to \|\| to properly escape the pipes
-        self.link_pattern = re.compile(r'\[\[([^-]+)->([^\]]+)\]\]')
+        self.link_pattern = re.compile(r'\[\[(.*?)\s*->\s*(.*?)(?:\s*\|\|\s*(.*?))?\]\]', re.DOTALL)
     
     def parse_file(self, filename: str) -> Dict:
         """Parse a .tgame file into passage data"""
@@ -51,7 +51,7 @@ class GameParser:
         processed_content = self.python_block_pattern.sub(extract_python, content)
         
         # Extract links
-        links = self.link_pattern.findall(processed_content)
+        raw_links = self.link_pattern.findall(processed_content)
         # This print statement is useful for debugging, you can remove it if you wish
         # print(f"DEBUG: Parsed links: {links}")
         
@@ -62,6 +62,6 @@ class GameParser:
             'content': processed_content_no_links,
             'raw_content': processed_content,
             'python_blocks': python_blocks,
-            'links': [(text.strip(), target.strip()) for text, target in links],
+            'links': [(text.strip(), target.strip(), action.strip()) for text, target, action in raw_links],
             'tags': tags
         }

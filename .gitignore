@@ -1,5 +1,6 @@
 venv
 GEMINI.md
+.obsidian
 
 # PyInstaller build artifacts
 __pycache__/
@@ -10,5 +11,6 @@ build/
 dist/
 spec/
 
+engine/__pycache__/
 # User-created game projects (keep the 'game/' directory, ignore its contents)
 game/*/
