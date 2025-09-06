@@ -1,0 +1,38 @@
+<div class="startup-screen" id="startupScreen">
+	<div class="startup-content">
+		<div class="startup-logo">
+			<svg viewBox="0 0 100 100">
+				<path d="M20 20 L50 10 L80 20 L50 30 Z M50 30 L50 70 M30 40 L70 40 M25 60 L75 60" />
+			</svg>
+		</div>
+		<h1 class="startup-title">Scribe Engine</h1>
+		<p class="startup-subtitle">Create rich, interactive text-based games with powerful scripting and modern web
+			technologies</p>
+
+		<div class="startup-actions" id="startup-actions">
+			<div class="action-card" hx-post="/api/new-project"
+				hx-vals='js:{"project_name": prompt("Enter new project name:")}' hx-target="body" hx-swap="innerHTML"
+				hx-on::after-request="if (event.detail.successful) window.location.href='/api/open-editor/' + JSON.parse(event.detail.xhr.response).message; else alert(event.detail.xhr.responseText);">
+				<div class="action-icon">
+					<svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+						<path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 11 5.16-1.26 9-5.45 9-11V7l-10-5z" />
+						<path d="M12 8v8m-4-4h8" />
+					</svg>
+				</div>
+				<h3 class="action-title">New Project</h3>
+				<p class="action-description">Start a new game project with basic structure and templates</p>
+			</div>
+
+			<div class="action-card" hx-get="/api/projects" hx-target="#startup-container" hx-swap="innerHTML"
+				hx-on::after-request="if (event.detail.successful) document.getElementById('startup-actions').style.display='none';">
+				<div class="action-icon">
+					<svg width="24" height="24" fill="white" viewBox="0 0 24 24">
+						<path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+					</svg>
+				</div>
+				<h3 class="action-title">Open Project</h3>
+				<p class="action-description">Continue working on an existing game project</p>
+			</div>
+		</div>
+	</div>
+</div>

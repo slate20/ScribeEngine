@@ -3,6 +3,8 @@ import os
 import json
 import sys
 import argparse
+import shutil
+import config_manager
 from datetime import datetime
 from jinja2 import Environment
 from engine.core import GameEngine
@@ -16,6 +18,7 @@ import time # Needed for time.sleep
 
 # Global variable for game project path, to be set externally
 GAME_PROJECT_PATH = None
+active_project_path = None
 
 def set_game_project_path(path):
     global GAME_PROJECT_PATH
@@ -46,8 +49,8 @@ def reset_game_engine():
 @app.before_request
 def initialize_game_engine():
     global game_engine, GAME_PROJECT_PATH
-    # Skip initialization if the request is for shutdown
-    if request.path == '/shutdown':
+    # Skip initialization if the request is for shutdown or a GUI route
+    if request.path == '/shutdown' or request.path.startswith('/gui') or request.path.startswith('/api') or request.path.startswith('/static') or request.path.startswith('/favicon.ico'):
         return
 
     # Prioritize environment variable for GAME_PROJECT_PATH
@@ -197,6 +200,63 @@ def serve_custom_css():
     if os.path.exists(custom_css_path):
         return send_file(custom_css_path, mimetype='text/css')
     return '', 404
+
+# GUI routes
+# New route for the main GUI launcher page
+@app.route('/gui')
+def gui_launcher():
+    return render_template('launcher.html', project_root=config_manager.get_project_root())
+
+@app.route('/api/startup-screen')
+def get_startup_screen():
+    return render_template('_fragments/_startup_screen.html')
+
+# New route to list projects as an HTMX fragment
+@app.route('/api/projects')
+def list_projects_fragment():
+    project_root = config_manager.get_project_root()
+    projects = [d for d in os.listdir(project_root) if os.path.isdir(os.path.join(project_root, d))]
+    projects.sort()
+    return render_template('_fragments/_project_list.html', projects=projects)
+
+# New route for the project-specific menu fragment
+@app.route('/api/project-menu/<project_name>')
+def project_menu_fragment(project_name):
+    return render_template('_fragments/_project_menu.html', project_name=project_name)
+
+# New route to handle project creation from the GUI
+@app.route('/api/new-project', methods=['POST'])
+def create_project_api():
+    from main_engine import create_new_project
+    
+    # Check the Content-Type to determine how to parse the data
+    content_type = request.headers.get('Content-Type')
+    if content_type and 'application/json' in content_type:
+        data = request.get_json()
+    else:
+        data = request.form
+    
+    project_name = data.get('project_name')
+    project_root = config_manager.get_project_root()
+    
+    if not project_name:
+        return jsonify({'status': 'error', 'message': 'Project name is required'}), 400
+        
+    project_path = os.path.join(project_root, project_name)
+    if os.path.exists(project_path):
+        return jsonify({'status': 'error', 'message': 'Project already exists'}), 409
+        
+    create_new_project(project_name, project_root)
+    
+    return jsonify({'status': 'success', 'message': project_name}), 200
+# New route to handle opening the editor for a project
+@app.route('/api/open-editor/<project_name>')
+def open_editor(project_name):
+    global active_project_path
+    project_root = config_manager.get_project_root()
+    active_project_path = os.path.join(project_root, project_name)
+    set_game_project_path(active_project_path)
+    return render_template('editor.html', project_name=project_name)
 
 # Debug routes
 @app.route('/debug/state')

@@ -1,0 +1,19 @@
+<div class="project-list-container">
+	<h2>Existing Projects</h2>
+	<ul class="file-tree">
+		{% for project in projects %}
+		<li>
+			<a hx-get="/api/open-editor/{{ project }}" hx-target="body" hx-swap="innerHTML">
+				{{ project }}
+			</a>
+		</li>
+		{% else %}
+		<li>No projects found.</li>
+		{% endfor %}
+	</ul>
+
+	<button class="btn btn-secondary" hx-get="/api/startup-screen" hx-target="#startup-container" hx-swap="innerHTML"
+		hx-on::after-request="document.getElementById('startup-actions').style.display='flex';">
+		Go Back
+	</button>
+</div>

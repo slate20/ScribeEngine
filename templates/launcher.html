@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Scribe Engine - GUI Frontend</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/gui.css') }}">
+	<script src="https://unpkg.com/htmx.org@2.0.6"></script>
+	<script src="{{ url_for('static', filename='js/gui.js') }}"></script>
+</head>
+
+<body>
+	<div class="startup-container" id="startup-container" hx-get="/api/startup-screen" hx-trigger="load">
+	</div>
+</body>
+
+</html>
