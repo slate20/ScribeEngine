@@ -179,6 +179,16 @@ body {
 	width: 100%;
 }
 
+.main-content.preview-hidden .preview-panel,
+.main-content.preview-hidden .resizer {
+    display: none;
+}
+
+.main-content.preview-hidden .editor-area {
+    flex: 1; /* Take up all available space */
+    width: auto !important; /* Override JS width */
+}
+
 /* Sidebar */
 .sidebar {
 	width: 300px;

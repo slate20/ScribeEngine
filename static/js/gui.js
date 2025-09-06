@@ -307,10 +307,13 @@ function updateGameStateDisplay() {
 }
 
 function togglePreview() {
-    const previewPanel = document.getElementById('previewPanel');
-    if (previewPanel) {
-        const isVisible = previewPanel.style.display !== 'none';
-        previewPanel.style.display = isVisible ? 'none' : 'flex';
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.classList.toggle('preview-hidden');
+        // Re-initialize resizer to recalculate widths if it's shown again
+        if (!mainContent.classList.contains('preview-hidden')) {
+            initResizer();
+        }
     }
 }
 
