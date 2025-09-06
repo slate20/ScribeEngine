@@ -11,7 +11,23 @@
 </head>
 
 <body>
-	<div class="startup-container" id="startup-container" hx-get="/api/startup-screen" hx-trigger="load">
+	<div class="startup-container" id="startup-container">
+		<div class="startup-screen" id="startupScreen">
+			<div class="startup-content">
+				<div class="startup-logo">
+					<img src="{{ url_for('static', filename='img/SE_icon.png') }}" alt="Scribe Engine Logo"
+						style="width: 80px; height: 80px;">
+				</div>
+				<h1 class="startup-title">Scribe Engine</h1>
+				<p class="startup-subtitle">Create rich, interactive text-based games with powerful scripting and modern
+					web
+					technologies</p>
+				<hr>
+
+				<div class="startup-actions" id="startup-actions" hx-get="/api/startup-screen" hx-trigger="load">
+				</div>
+			</div>
+		</div>
 	</div>
 </body>
 

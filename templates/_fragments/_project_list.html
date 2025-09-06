@@ -12,8 +12,7 @@
 		{% endfor %}
 	</ul>
 
-	<button class="btn btn-secondary" hx-get="/api/startup-screen" hx-target="#startup-container" hx-swap="innerHTML"
-		hx-on::after-request="document.getElementById('startup-actions').style.display='flex';">
+	<button class="btn btn-secondary" hx-get="/api/startup-screen" hx-target="#startup-actions" hx-swap="innerHTML">
 		Go Back
 	</button>
 </div>
