@@ -340,7 +340,7 @@ body {
 	display: flex;
 	flex-direction: column;
 	min-width: 300px;
-	flex: 1;
+	flex: 0 0 auto;
 }
 
 .editor-tabs {
@@ -522,7 +522,7 @@ body {
 	display: flex;
 	flex-direction: column;
 	min-width: 300px;
-	flex: 1;
+	flex: 0 0 auto;
 }
 
 .preview-panel.collapsed {

@@ -241,6 +241,7 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 	if (editorContainer) {
 		// If it exists, initialize the editor
 		initEditor();
+		initResizer();
 
 		// We also attach listeners for buttons that only exist on the editor page
 		const saveBtn = document.getElementById('save-file-btn');
