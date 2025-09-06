@@ -612,13 +612,39 @@ body {
 	color: #2c3e50;
 }
 
-/* Game State Display */
+/* Debug Terminal */
 .game-state {
-	background: #f8f9fa;
-	border-top: 1px solid #e9ecef;
-	padding: 12px 20px;
+	display: flex;
+	flex-direction: column;
+	background: #1e1e1e;
+	border-top: 1px solid #444444;
 	font-size: 12px;
-	color: #6c757d;
+	color: #0f0; /* Green text for terminal look */
+	font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+	min-height: 30px; /* Minimum height for the terminal */
+	max-height: 80%; /* Maximum height relative to parent */
+	height: 200px; /* Initial height */
+}
+
+.debug-terminal-header {
+	background: #2d2d2d;
+	padding: 8px 12px;
+	font-weight: bold;
+	color: var(--text-primary);
+	cursor: ns-resize; /* North-south resize cursor */
+	border-bottom: 1px solid #444444;
+	flex-shrink: 0; /* Prevent header from shrinking */
+}
+
+.game-state pre {
+	flex-grow: 1; /* Allow content to take remaining space */
+	padding: 12px 20px;
+	overflow-y: auto; /* Scroll content independently */
+	white-space: pre-wrap;
+}
+
+.game-state.hidden {
+	display: none;
 }
 
 .state-item {

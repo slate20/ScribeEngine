@@ -40,7 +40,7 @@ app.secret_key = 'your-secret-key-here'  # Change in production
 
 # Initialize game engine (will be done after GAME_PROJECT_PATH is set)
 game_engine = None
-_app_debug_mode = True # Default to True for development
+_app_debug_mode = False # Default to False for production
 
 # Add a server object to manage the Flask server instance
 server = None

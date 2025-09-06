@@ -59,7 +59,8 @@ def create_new_project(project_name: str, project_root_dir: str):
             "use_engine_defaults": True,
             "colors": {},
             "fonts": {}
-        }
+        },
+        "debug_mode": False
     }
 
     # Default story.tgame content

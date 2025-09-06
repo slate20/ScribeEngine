@@ -121,8 +121,8 @@ function saveFile() {
 function refreshPreview() {
 	const iframe = document.getElementById('preview-iframe');
 	if (iframe) {
-		// Appending a timestamp as a query parameter is a common trick to bypass browser caching
-		iframe.src = `/passage/start?t=${new Date().getTime()}`;
+		// Appending ?t=${new Date().getTime()} is a common trick to bypass browser caching
+		iframe.src = `/`;
 		showNotification('Preview refreshed!', 'info');
 	}
 }
@@ -230,6 +230,48 @@ function initResizer() {
 	});
 }
 
+/**
+ * Initializes the draggable resizer for the debug terminal.
+ */
+function initDebugTerminalResizer() {
+    const handle = document.getElementById('debug-terminal-handle');
+    const terminal = document.getElementById('debug-terminal');
+
+    if (!handle || !terminal) return;
+
+    let isDragging = false;
+    let startY, startHeight;
+
+    handle.addEventListener('mousedown', function (e) {
+        isDragging = true;
+        startY = e.clientY;
+        startHeight = terminal.offsetHeight;
+
+        document.body.style.cursor = 'ns-resize';
+        document.body.style.userSelect = 'none';
+        document.body.style.pointerEvents = 'none';
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!isDragging) return;
+
+        const deltaY = e.clientY - startY;
+        const newHeight = startHeight - deltaY; // Invert deltaY for dragging from top
+
+        // Apply constraints (min-height and max-height)
+        if (newHeight > 30 && newHeight < window.innerHeight * 0.8) { // Example constraints
+            terminal.style.height = `${newHeight}px`;
+        }
+    });
+
+    document.addEventListener('mouseup', function (e) {
+        isDragging = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        document.body.style.pointerEvents = '';
+    });
+}
+
 // --- Event Listeners ---
 
 // This listener waits for HTMX to finish swapping content onto the page.
@@ -242,6 +284,7 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 		// If it exists, initialize the editor
 		initEditor();
 		initResizer();
+		initDebugTerminalResizer(); // Initialize the debug terminal resizer
 
 		// We also attach listeners for buttons that only exist on the editor page
 		const saveBtn = document.getElementById('save-file-btn');
@@ -274,31 +317,41 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 			});
 		}
 
+		const toggleDebugBtn = document.getElementById('toggle-debug-terminal-btn');
+		if (toggleDebugBtn) {
+			toggleDebugBtn.addEventListener('click', toggleDebugTerminal);
+		}
+
+		// Initially hide the debug terminal
+		const debugTerminal = document.getElementById('debug-terminal');
+		if (debugTerminal) {
+			debugTerminal.classList.add('hidden');
+		}
+
 		// Start polling for game state
 		setInterval(updateGameStateDisplay, 2000); // Update every 2 seconds
 	}
 });
 
+function toggleDebugTerminal() {
+    const debugTerminal = document.getElementById('debug-terminal');
+    if (debugTerminal) {
+        debugTerminal.classList.toggle('hidden');
+    }
+}
+
 function updateGameStateDisplay() {
-    const display = document.getElementById('game-state-display');
+    const display = document.getElementById('game-state-content'); // Target the new content div
     if (!display) return;
 
     fetch('/api/game-state')
         .then(response => response.json())
         .then(state => {
             display.innerHTML = ''; // Clear previous state
-            for (const key in state) {
-                const item = document.createElement('div');
-                item.className = 'state-item';
-                
-                let value = state[key];
-                if (typeof value === 'object' && value !== null) {
-                    value = JSON.stringify(value, null, 2);
-                }
-
-                item.innerHTML = `<strong>${key}:</strong> ${value}`;
-                display.appendChild(item);
-            }
+            // Display the raw JSON for now, can be formatted later
+            const pre = document.createElement('pre');
+            pre.textContent = JSON.stringify(state, null, 2);
+            display.appendChild(pre);
         })
         .catch(err => {
             console.error('Error fetching game state:', err);
