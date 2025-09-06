@@ -1,0 +1,22 @@
+<div class="project-explorer" id="settingsTab">
+    <div class="explorer-section">
+        <div class="section-header">
+            <span>Project Settings</span>
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: block; margin-bottom: 8px; font-size: 14px;">Game Title:</label>
+            <input type="text" name="title" value="{{ config.get('title', 'Untitled') }}" class="form-control">
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: block; margin-bottom: 8px; font-size: 14px;">Author:</label>
+            <input type="text" name="author" value="{{ config.get('author', '') }}" class="form-control">
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: block; margin-bottom: 8px; font-size: 14px;">Starting Passage:</label>
+            <input type="text" name="start_passage" value="{{ config.get('start_passage', 'start') }}" class="form-control">
+        </div>
+        <button class="btn btn-primary" hx-post="/api/project-settings/{{ project_name }}" hx-include="#settingsTab input">
+            Save Settings
+        </button>
+    </div>
+</div>

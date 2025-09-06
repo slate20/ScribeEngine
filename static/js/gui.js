@@ -252,5 +252,55 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 		if (refreshBtn) {
 			refreshBtn.addEventListener('click', refreshPreview);
 		}
+
+		const toggleBtn = document.getElementById('toggle-preview-btn');
+		if (toggleBtn) {
+			toggleBtn.addEventListener('click', togglePreview);
+		}
+
+		// Start polling for game state
+		setInterval(updateGameStateDisplay, 2000); // Update every 2 seconds
 	}
 });
+
+function updateGameStateDisplay() {
+    const display = document.getElementById('game-state-display');
+    if (!display) return;
+
+    fetch('/api/game-state')
+        .then(response => response.json())
+        .then(state => {
+            display.innerHTML = ''; // Clear previous state
+            for (const key in state) {
+                const item = document.createElement('div');
+                item.className = 'state-item';
+                
+                let value = state[key];
+                if (typeof value === 'object' && value !== null) {
+                    value = JSON.stringify(value, null, 2);
+                }
+
+                item.innerHTML = `<strong>${key}:</strong> ${value}`;
+                display.appendChild(item);
+            }
+        })
+        .catch(err => {
+            console.error('Error fetching game state:', err);
+            display.innerHTML = '<div class="state-item error">Could not load game state.</div>';
+        });
+}
+
+function togglePreview() {
+    const previewPanel = document.getElementById('previewPanel');
+    if (previewPanel) {
+        const isVisible = previewPanel.style.display !== 'none';
+        previewPanel.style.display = isVisible ? 'none' : 'flex';
+    }
+}
+
+function switchTab(clickedTab) {
+    // Remove active class from all tabs
+    document.querySelectorAll('.sidebar-tab').forEach(tab => tab.classList.remove('active'));
+    // Add active class to the clicked tab
+    clickedTab.classList.add('active');
+}

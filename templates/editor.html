@@ -17,15 +17,31 @@
 				</div>
 				<div class="project-info">
 					<div class="project-name">{{ project_name }}</div>
-					<div class="project-path" id="project-path-display">~/ScribeEngine_Games/{{ project_name }}</div>
+					<div class="project-path" id="project-path-display">{{ project_root }}/{{ project_name }}</div>
 				</div>
 			</div>
 			<div class="header-actions">
-				<button class="btn btn-secondary" id="save-file-btn">
-					Save File (Ctrl+S)
-				</button>
+				<a href="/gui" class="btn btn-secondary">Back to Launcher</a>
+				<div class="server-status">
+					<div class="status-dot" style="background-color: #4caf50;"></div>
+					<span>Server Running - localhost:5000</span>
+				</div>
+				<a href="/" target="_blank" class="btn btn-secondary">
+					<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+						<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+						<path d="M15 3h6v6" />
+						<path d="M10 14L21 3" />
+					</svg>
+					Open in Browser
+				</a>
+				<button class="btn btn-secondary" id="toggle-preview-btn">Toggle Preview</button>
 				<button class="btn btn-primary" hx-post="/api/build-game/{{ project_name }}" hx-trigger="click"
-					hx-swap="none">
+					hx-swap="none" hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
+					<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+						<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+						<path d="M17 8l-5-5-5 5" />
+						<path d="M12 3v12" />
+					</svg>
 					Build Game
 				</button>
 			</div>
@@ -34,7 +50,12 @@
 		<div class="main-content">
 			<div class="sidebar">
 				<div class="sidebar-tabs">
-					<button class="sidebar-tab active">Files</button>
+					<button class="sidebar-tab active" onclick="switchTab(this)" hx-get="/api/files/{{ project_name }}" hx-target="#sidebar-content" hx-trigger="click">
+						Files
+					</button>
+					<button class="sidebar-tab" onclick="switchTab(this)" hx-get="/api/project-settings/{{ project_name }}" hx-target="#sidebar-content" hx-trigger="click">
+						Settings
+					</button>
 				</div>
 				<div class="sidebar-content" id="sidebar-content" hx-get="/api/files/{{ project_name }}"
 					hx-trigger="load">
@@ -62,6 +83,9 @@
 				</div>
 				<div class="preview-content">
 					<iframe id="preview-iframe" src="/" style="width: 100%; height: 100%; border: none;"></iframe>
+				</div>
+				<div class="game-state" id="game-state-display">
+					<!-- Game state will be rendered here by JavaScript -->
 				</div>
 			</div>
 		</div>

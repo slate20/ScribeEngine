@@ -278,7 +278,7 @@ def open_editor(project_name):
     # Initialize the game engine for the selected project
     game_engine = GameEngine(active_project_path, debug_mode=_app_debug_mode)
 
-    return render_template('editor.html', project_name=project_name)
+    return render_template('editor.html', project_name=project_name, project_root=project_root)
 
 @app.route('/api/files/<project_name>')
 def list_files(project_name):
@@ -441,7 +441,52 @@ def set_project_root_api():
     except Exception as e:
         return (f'<div class="error">Failed to set project root: {e}</div>', 500)
 
+@app.route('/api/project-settings/<project_name>', methods=['GET'])
+def get_project_settings(project_name):
+    project_root = config_manager.get_project_root()
+    project_path = os.path.join(project_root, project_name)
+    config_path = os.path.join(project_path, 'project.json')
+
+    config = {}
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+            
+    return render_template('_fragments/_project_settings.html', project_name=project_name, config=config)
+
+@app.route('/api/project-settings/<project_name>', methods=['POST'])
+def save_project_settings(project_name):
+    project_root = config_manager.get_project_root()
+    project_path = os.path.join(project_root, project_name)
+    config_path = os.path.join(project_path, 'project.json')
+
+    config = {}
+    if os.path.exists(config_path):
+        with open(config_path, 'r') as f:
+            config = json.load(f)
+
+    # Update config with form data
+    config['title'] = request.form.get('title', config.get('title'))
+    config['author'] = request.form.get('author', config.get('author'))
+    config['start_passage'] = request.form.get('start_passage', config.get('start_passage'))
+
+    with open(config_path, 'w') as f:
+        json.dump(config, f, indent=4)
+
+    # It's good practice to reload the engine's config if it's running
+    if game_engine and game_engine.project_path == project_path:
+        game_engine.load_config()
+
+    return render_template('_fragments/_project_settings.html', project_name=project_name, config=config)
+
+
 # Debug routes
+@app.route('/api/game-state')
+def get_game_state():
+    if game_engine and hasattr(game_engine, 'game_state'):
+        return jsonify(game_engine.game_state)
+    return jsonify({})
+
 @app.route('/debug/state')
 def debug_state():
     if not game_engine.debug_mode:
