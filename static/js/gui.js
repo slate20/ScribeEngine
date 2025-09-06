@@ -59,7 +59,7 @@ function openFile(projectName, fileName, element) {
 				editor.setOption("readOnly", false); // Make editor writable
 
 				// Set the correct syntax highlighting mode based on file extension
-				let mode = 'jinja2'; // Default for .tgame
+				let mode = 'scribe'; // Default for .tgame
 				if (fileName.endsWith('.py')) {
 					mode = 'python';
 				} else if (fileName.endsWith('.json')) {
@@ -257,6 +257,21 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 		const toggleBtn = document.getElementById('toggle-preview-btn');
 		if (toggleBtn) {
 			toggleBtn.addEventListener('click', togglePreview);
+		}
+
+		const themeSelector = document.getElementById('theme-selector');
+		if (themeSelector) {
+			themeSelector.addEventListener('change', function() {
+				const theme = this.value;
+				// Set CodeMirror theme
+				editor.setOption("theme", theme);
+				// Set body class for UI theme
+				if (theme === 'default') { // 'default' is the CodeMirror theme name for light theme
+					document.body.classList.add('theme-light');
+				} else {
+					document.body.classList.remove('theme-light');
+				}
+			});
 		}
 
 		// Start polling for game state

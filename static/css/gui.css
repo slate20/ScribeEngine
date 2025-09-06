@@ -795,3 +795,38 @@ body {
 ::-webkit-scrollbar-thumb:hover {
 	background: #555;
 }
+
+/* Custom Scribe Mode Syntax Highlighting */
+.cm-s-material-darker .cm-keyword { color: var(--syntax-passage); font-weight: bold; }
+.cm-s-material-darker .cm-tag { color: var(--syntax-tag); font-style: italic; }
+.cm-s-material-darker .cm-link { color: var(--syntax-link); text-decoration: none; }
+.cm-s-material-darker .cm-link-action { color: var(--syntax-action); font-weight: bold; }
+
+/* Light Theme */
+.theme-light {
+    --primary-bg: #ffffff;
+    --secondary-bg: #f0f0f0;
+    --tertiary-bg: #e0e0e0;
+    --accent-color: #007bff;
+    --text-primary: #000000;
+    --text-secondary: #444444;
+    --text-muted: #888888;
+    --border-color: #dddddd;
+    --editor-bg: #ffffff;
+
+    /* Syntax highlighting colors */
+    --syntax-passage: #0000ff;
+    --syntax-tag: #ff00ff;
+    --syntax-link: #008000;
+    --syntax-action: #ff8c00;
+    --syntax-jinja: #8b0000;
+    --syntax-comment: #808080;
+    --syntax-string: #a52a2a;
+    --syntax-keyword: #0000ff;
+}
+
+/* Custom Scribe Mode Syntax Highlighting for default theme */
+.cm-s-default .cm-keyword { color: var(--syntax-passage); font-weight: bold; }
+.cm-s-default .cm-tag { color: var(--syntax-tag); font-style: italic; }
+.cm-s-default .cm-link { color: var(--syntax-link); text-decoration: none; }
+.cm-s-default .cm-link-action { color: var(--syntax-action); font-weight: bold; }
