@@ -268,18 +268,54 @@ def list_files(project_name):
     if not os.path.isdir(project_path):
         return "Project not found", 404
 
-    story_files = [os.path.relpath(f, project_path) for f in glob.glob(f"{project_path}/**/*.tgame", recursive=True)]
-    logic_files = [os.path.relpath(f, project_path) for f in glob.glob(f"{project_path}/**/*.py", recursive=True)]
-    config_files = [os.path.relpath(f, project_path) for f in glob.glob(f"{project_path}/**/*.json", recursive=True)]
-    asset_files = [os.path.relpath(f, project_path) for f in glob.glob(f"{project_path}/assets/**/*", recursive=True) if os.path.isfile(f)]
+    # Add .replace() to normalize paths here
+    story_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.tgame", recursive=True)]
+    logic_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.py", recursive=True)]
+    config_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.json", recursive=True)]
+    asset_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/assets/**/*", recursive=True) if os.path.isfile(f)]
 
-    # Using a new fragment for the file list
     return render_template('_fragments/_file_list.html', 
                            story_files=sorted(story_files),
                            logic_files=sorted(logic_files),
                            config_files=sorted(config_files),
                            asset_files=sorted(asset_files),
                            project_name=project_name)
+
+@app.route('/api/create-item/<project_name>', methods=['POST'])
+def create_item(project_name):
+    project_root = config_manager.get_project_root()
+    data = request.form
+    item_path = data.get('path')
+    item_type = data.get('type') # 'file' or 'folder'
+
+    if not all([item_path, item_type]):
+        # In a real app, you'd return an error message to the user
+        return list_files(project_name) # For simplicity, just refresh the list
+
+    # Basic security check
+    if ".." in item_path or os.path.isabs(item_path):
+        print(f"SECURITY: Invalid path requested: {item_path}")
+        return list_files(project_name)
+
+    full_path = os.path.join(project_root, project_name, item_path)
+
+    if os.path.exists(full_path):
+        print(f"INFO: Item already exists at {full_path}")
+        return list_files(project_name)
+
+    try:
+        if item_type == 'folder':
+            os.makedirs(full_path)
+        elif item_type == 'file':
+            # Ensure parent directory exists
+            os.makedirs(os.path.dirname(full_path), exist_ok=True)
+            with open(full_path, 'w') as f:
+                f.write("") # Create an empty file
+    except Exception as e:
+        print(f"ERROR: Could not create item {full_path}. Reason: {e}")
+
+    # After action, return the updated file list fragment
+    return list_files(project_name)
 
 @app.route('/api/get-file-content/<project_name>/<path:filename>')
 def get_file_content(project_name, filename):
@@ -321,6 +357,36 @@ def save_file_content(project_name, filename):
         return jsonify({'status': 'success', 'message': f'{filename} saved successfully'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/delete-item/<project_name>', methods=['POST'])
+def delete_item(project_name):
+    project_root = config_manager.get_project_root()
+    item_path = request.form.get('path')
+
+    if not item_path:
+        return list_files(project_name)
+    
+    # Basic security check
+    if ".." in item_path or os.path.isabs(item_path):
+        print(f"SECURITY: Invalid path requested: {item_path}")
+        return list_files(project_name)
+
+    full_path = os.path.join(project_root, project_name, item_path)
+
+    if not os.path.exists(full_path):
+        print(f"INFO: Item to delete does not exist at {full_path}")
+        return list_files(project_name)
+
+    try:
+        if os.path.isfile(full_path):
+            os.remove(full_path)
+        elif os.path.isdir(full_path):
+            shutil.rmtree(full_path)
+    except Exception as e:
+        print(f"ERROR: Could not delete item {full_path}. Reason: {e}")
+    
+    # After action, return the updated file list fragment
+    return list_files(project_name)
 
 @app.route('/api/build-game/<project_name>', methods=['POST'])
 def build_game_api(project_name):

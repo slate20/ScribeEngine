@@ -176,6 +176,7 @@ body {
 	display: flex;
 	margin-top: 60px;
 	height: calc(100vh - 60px);
+	width: 100%;
 }
 
 /* Sidebar */
@@ -276,11 +277,70 @@ body {
 	font-size: 14px;
 }
 
+/* Styling for the Add/Delete buttons in the file explorer */
+.section-header .header-actions button {
+	background: var(--tertiary-bg);
+	border: none;
+	color: var(--text-secondary);
+	width: 24px;
+	height: 24px;
+	border-radius: 4px;
+	cursor: pointer;
+	font-size: 18px;
+	line-height: 24px;
+}
+
+.section-header .header-actions button:hover {
+	background: var(--accent-color);
+	color: white;
+}
+
+.file-item {
+	display: flex;
+	/* Make file item a flex container */
+	justify-content: space-between;
+	/* Push file name and delete button apart */
+	align-items: center;
+}
+
+.file-item .file-name {
+	flex-grow: 1;
+	/* Allow filename to take up available space */
+	padding: 6px 4px;
+}
+
+.delete-btn {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	font-size: 20px;
+	padding: 0 8px;
+	border-radius: 4px;
+	visibility: hidden;
+	/* Hide by default */
+	opacity: 0;
+	transition: all 0.2s;
+}
+
+.file-item:hover .delete-btn {
+	visibility: visible;
+	/* Show on hover */
+	opacity: 1;
+}
+
+.delete-btn:hover {
+	background: var(--danger-color);
+	color: white;
+}
+
+
 /* Editor Area */
 .editor-area {
 	display: flex;
 	flex-direction: column;
 	min-width: 300px;
+	flex: 1;
 }
 
 .editor-tabs {
@@ -358,7 +418,8 @@ body {
 /* Make CodeMirror fill its container */
 #codemirror-container,
 .CodeMirror {
-	height: 100%;
+	height: 100% !important;
+	font-size: 14px;
 }
 
 /* Draggable Resizer Styles */

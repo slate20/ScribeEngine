@@ -184,26 +184,26 @@ function initResizer() {
 	const handle = document.getElementById('drag-handle');
 	const leftPanel = document.getElementById('editor-area');
 	const rightPanel = document.getElementById('previewPanel');
-
-	if (!handle || !leftPanel || !rightPanel) return;
-
-	// Set initial panel sizes
 	const container = document.querySelector('.main-content');
-	if (container) {
-		const containerWidth = container.offsetWidth;
-		leftPanel.style.width = `${containerWidth * 0.6}px`;
-        rightPanel.style.flex = '1'; // Let the right panel fill the rest
-	}
+
+	if (!handle || !leftPanel || !rightPanel || !container) return;
+
+	// Set initial panel sizes (e.g., 65% for editor, 35% for preview)
+	const sidebarWidth = document.querySelector('.sidebar').offsetWidth;
+	const availableWidth = container.offsetWidth - sidebarWidth - handle.offsetWidth;
+	leftPanel.style.width = `${availableWidth * 0.65}px`;
+	rightPanel.style.width = `${availableWidth * 0.35}px`;
 
 	let isDragging = false;
-	let startX, startWidth;
+	let startX, startLeftWidth, startRightWidth;
 
 	handle.addEventListener('mousedown', function (e) {
 		isDragging = true;
 		startX = e.clientX;
-		startWidth = leftPanel.offsetWidth;
+		startLeftWidth = leftPanel.offsetWidth;
+		startRightWidth = rightPanel.offsetWidth;
 		
-		// Prevent text selection and iframe interaction during drag
+		document.body.style.cursor = 'col-resize';
 		document.body.style.userSelect = 'none';
 		document.body.style.pointerEvents = 'none';
 	});
@@ -212,17 +212,19 @@ function initResizer() {
 		if (!isDragging) return;
 		
 		const deltaX = e.clientX - startX;
-		const newLeftWidth = startWidth + deltaX;
+		const newLeftWidth = startLeftWidth + deltaX;
+		const newRightWidth = startRightWidth - deltaX;
 
-		// Apply constraints to prevent panels from becoming too small
-		if (newLeftWidth > 300 && container.offsetWidth - newLeftWidth > 300) {
+		// Apply constraints
+		if (newLeftWidth > 300 && newRightWidth > 300) {
 			leftPanel.style.width = `${newLeftWidth}px`;
+			rightPanel.style.width = `${newRightWidth}px`;
 		}
 	});
 
 	document.addEventListener('mouseup', function (e) {
 		isDragging = false;
-		// Re-enable text selection and iframe interaction
+		document.body.style.cursor = '';
 		document.body.style.userSelect = '';
 		document.body.style.pointerEvents = '';
 	});
