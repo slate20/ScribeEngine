@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 import os
 import json
 import sys
@@ -20,6 +20,14 @@ import time # Needed for time.sleep
 # Global variable for game project path, to be set externally
 GAME_PROJECT_PATH = None
 active_project_path = None
+
+# Flag to indicate if running in GUI mode
+_gui_mode = False
+
+def set_gui_mode(enabled: bool):
+    """Sets the GUI mode flag."""
+    global _gui_mode
+    _gui_mode = enabled
 
 def set_game_project_path(path):
     global GAME_PROJECT_PATH
@@ -50,6 +58,11 @@ def reset_game_engine():
 @app.before_request
 def initialize_game_engine():
     global game_engine, GAME_PROJECT_PATH
+
+    # If in GUI mode, engine is initialized on project load, not automatically.
+    if _gui_mode:
+        return
+
     # Skip initialization if the request is for shutdown or a GUI route
     if request.path == '/shutdown' or request.path.startswith('/gui') or request.path.startswith('/api') or request.path.startswith('/static') or request.path.startswith('/favicon.ico'):
         return
@@ -70,6 +83,10 @@ def initialize_game_engine():
 
 @app.route('/')
 def index():
+    # In GUI mode, if no project is loaded, show a message.
+    if _gui_mode and game_engine is None:
+        return "<h1>No project loaded</h1><p>Please select a project from the Scribe Engine launcher.</p>"
+
     nav_config = game_engine.config.get('nav', {'enabled': True, 'position': 'horizontal'})
     nav_content = ''
     if nav_config.get('enabled', False):
@@ -253,10 +270,14 @@ def create_project_api():
 # New route to handle opening the editor for a project
 @app.route('/api/open-editor/<project_name>')
 def open_editor(project_name):
-    global active_project_path
+    global active_project_path, game_engine
     project_root = config_manager.get_project_root()
     active_project_path = os.path.join(project_root, project_name)
     set_game_project_path(active_project_path)
+    
+    # Initialize the game engine for the selected project
+    game_engine = GameEngine(active_project_path, debug_mode=_app_debug_mode)
+
     return render_template('editor.html', project_name=project_name)
 
 @app.route('/api/files/<project_name>')
@@ -393,13 +414,32 @@ def build_game_api(project_name):
     from build import build_standalone_game
     project_root = config_manager.get_project_root()
     try:
-        # In a real app, you'd trigger the build process here.
-        # For now, we'll just simulate it.
         print(f"Received build request for {project_name} at {project_root}")
         # build_standalone_game(project_name, project_root) # This can be uncommented when ready
         return jsonify({'status': 'success', 'message': f'Build started for {project_name}'}), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/settings-panel')
+def settings_panel():
+    project_root = config_manager.get_project_root()
+    if not project_root:
+        project_root = os.path.join(os.path.expanduser('~'), 'ScribeEngineProjects')
+    return render_template('_fragments/_settings_panel.html', project_root=project_root)
+
+@app.route('/api/settings/project_root', methods=['POST'])
+def set_project_root_api():
+    new_path = request.form.get('project_root')
+
+    if not new_path:
+        return ('<div class="error">Project root path cannot be empty.</div>', 400)
+
+    try:
+        os.makedirs(new_path, exist_ok=True)
+        config_manager.set_project_root(new_path)
+        return get_startup_screen()
+    except Exception as e:
+        return (f'<div class="error">Failed to set project root: {e}</div>', 500)
 
 # Debug routes
 @app.route('/debug/state')

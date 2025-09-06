@@ -10,7 +10,7 @@ import requests
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from app import app as flask_app
-from app import set_game_project_path, set_debug_mode, reset_game_engine
+from app import set_game_project_path, set_debug_mode, reset_game_engine, set_gui_mode
 import config_manager
 
 # Global variables for server management
@@ -26,6 +26,9 @@ def run_gui_app():
     """Main function to launch the GUI and the Flask server."""
     global project_root_path, flask_thread_instance
     
+    # Set the application to run in GUI mode
+    set_gui_mode(True)
+
     # Check for the project root and handle first-run setup
     project_root_path = config_manager.get_project_root()
     if not project_root_path or not os.path.isdir(project_root_path):
