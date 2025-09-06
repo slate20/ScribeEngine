@@ -5,6 +5,7 @@ import sys
 import argparse
 import shutil
 import config_manager
+import glob
 from datetime import datetime
 from jinja2 import Environment
 from engine.core import GameEngine
@@ -257,6 +258,82 @@ def open_editor(project_name):
     active_project_path = os.path.join(project_root, project_name)
     set_game_project_path(active_project_path)
     return render_template('editor.html', project_name=project_name)
+
+@app.route('/api/files/<project_name>')
+def list_files(project_name):
+    """Lists all files in the project directory, grouped by type."""
+    project_root = config_manager.get_project_root()
+    project_path = os.path.join(project_root, project_name)
+    
+    if not os.path.isdir(project_path):
+        return "Project not found", 404
+
+    story_files = [os.path.relpath(f, project_path) for f in glob.glob(f"{project_path}/**/*.tgame", recursive=True)]
+    logic_files = [os.path.relpath(f, project_path) for f in glob.glob(f"{project_path}/**/*.py", recursive=True)]
+    config_files = [os.path.relpath(f, project_path) for f in glob.glob(f"{project_path}/**/*.json", recursive=True)]
+    asset_files = [os.path.relpath(f, project_path) for f in glob.glob(f"{project_path}/assets/**/*", recursive=True) if os.path.isfile(f)]
+
+    # Using a new fragment for the file list
+    return render_template('_fragments/_file_list.html', 
+                           story_files=sorted(story_files),
+                           logic_files=sorted(logic_files),
+                           config_files=sorted(config_files),
+                           asset_files=sorted(asset_files),
+                           project_name=project_name)
+
+@app.route('/api/get-file-content/<project_name>/<path:filename>')
+def get_file_content(project_name, filename):
+    project_root = config_manager.get_project_root()
+    
+    # Sanitize filename to prevent directory traversal
+    if ".." in filename or filename.startswith("/"):
+        return jsonify({'status': 'error', 'message': 'Invalid file path'}), 400
+        
+    file_path = os.path.join(project_root, project_name, filename)
+    
+    if not os.path.exists(file_path):
+        return jsonify({'status': 'error', 'message': 'File not found'}), 404
+        
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return jsonify({'status': 'success', 'content': content})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/save-file/<project_name>/<path:filename>', methods=['POST'])
+def save_file_content(project_name, filename):
+    project_root = config_manager.get_project_root()
+    data = request.json
+    
+    if "content" not in data:
+        return jsonify({'status': 'error', 'message': 'No content provided'}), 400
+
+    # Sanitize filename to prevent directory traversal
+    if ".." in filename or filename.startswith("/"):
+        return jsonify({'status': 'error', 'message': 'Invalid file path'}), 400
+        
+    file_path = os.path.join(project_root, project_name, filename)
+    
+    try:
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(data['content'])
+        return jsonify({'status': 'success', 'message': f'{filename} saved successfully'})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/build-game/<project_name>', methods=['POST'])
+def build_game_api(project_name):
+    from build import build_standalone_game
+    project_root = config_manager.get_project_root()
+    try:
+        # In a real app, you'd trigger the build process here.
+        # For now, we'll just simulate it.
+        print(f"Received build request for {project_name} at {project_root}")
+        # build_standalone_game(project_name, project_root) # This can be uncommented when ready
+        return jsonify({'status': 'success', 'message': f'Build started for {project_name}'}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 # Debug routes
 @app.route('/debug/state')

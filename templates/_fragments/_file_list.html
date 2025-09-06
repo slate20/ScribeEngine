@@ -1,0 +1,61 @@
+<div class="project-explorer">
+	<div class="explorer-section">
+		<div class="section-header">
+			<span>Story Files (.tgame)</span>
+		</div>
+		<ul class="file-tree">
+			{% for file in story_files %}
+			<li class="file-item" onclick="openFile('{{ project_name }}', '{{ file }}', this)">
+				<span class="file-name">{{ file }}</span>
+			</li>
+			{% else %}
+			<li class="file-item-empty">No story files found.</li>
+			{% endfor %}
+		</ul>
+	</div>
+
+	<div class="explorer-section">
+		<div class="section-header">
+			<span>Game Logic (.py)</span>
+		</div>
+		<ul class="file-tree">
+			{% for file in logic_files %}
+			<li class="file-item" onclick="openFile('{{ project_name }}', '{{ file }}', this)">
+				<span class="file-name">{{ file }}</span>
+			</li>
+			{% else %}
+			<li class="file-item-empty">No logic files found.</li>
+			{% endfor %}
+		</ul>
+	</div>
+
+	<div class="explorer-section">
+		<div class="section-header">
+			<span>Configuration (.json)</span>
+		</div>
+		<ul class="file-tree">
+			{% for file in config_files %}
+			<li class="file-item" onclick="openFile('{{ project_name }}', '{{ file }}', this)">
+				<span class="file-name">{{ file }}</span>
+			</li>
+			{% else %}
+			<li class="file-item-empty">No config files found.</li>
+			{% endfor %}
+		</ul>
+	</div>
+
+	<div class="explorer-section">
+		<div class="section-header">
+			<span>Assets</span>
+		</div>
+		<ul class="file-tree">
+			{% for file in asset_files %}
+			<li class="file-item asset" onclick="alert('Asset file selected: {{ file }}. Editing not supported yet.')">
+				<span class="file-name">{{ file }}</span>
+			</li>
+			{% else %}
+			<li class="file-item-empty">No assets found.</li>
+			{% endfor %}
+		</ul>
+	</div>
+</div>

@@ -278,9 +278,9 @@ body {
 
 /* Editor Area */
 .editor-area {
-	flex: 1;
 	display: flex;
 	flex-direction: column;
+	min-width: 300px;
 }
 
 .editor-tabs {
@@ -353,6 +353,22 @@ body {
 	outline: none;
 	resize: none;
 	overflow: auto;
+}
+
+/* Make CodeMirror fill its container */
+#codemirror-container,
+.CodeMirror {
+	height: 100%;
+}
+
+/* Draggable Resizer Styles */
+.resizer {
+	background: var(--border-color);
+	width: 5px;
+	cursor: col-resize;
+	flex-shrink: 0;
+	user-select: none;
+	/* Prevent text selection while dragging */
 }
 
 /* Syntax Highlighting for .tgame files */
@@ -440,12 +456,12 @@ body {
 
 /* Preview Panel */
 .preview-panel {
-	width: 400px;
 	background: var(--secondary-bg);
 	border-left: 1px solid var(--border-color);
 	display: flex;
 	flex-direction: column;
-	transition: width 0.3s;
+	min-width: 300px;
+	flex: 1;
 }
 
 .preview-panel.collapsed {

@@ -1,18 +1,254 @@
-// Global state
+// Global state for the editor
+let editor;
 let currentProject = null;
-let activeFiles = [];
 let currentFile = null;
 
-// Utility functions
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
+/**
+ * Initializes the CodeMirror editor instance.
+ */
+function initEditor() {
+	const container = document.getElementById('codemirror-container');
+	if (!container) {
+		console.error("CodeMirror container could not be found in the DOM.");
+		return;
+	}
+
+	// Prevent initializing more than once
+	if (editor) {
+		return;
+	}
+
+	editor = CodeMirror(container, {
+		value: "// Select a file from the list to begin editing.",
+		mode: 'jinja2',
+		theme: 'material-darker',
+		lineNumbers: true,
+		readOnly: true, // Start as read-only until a file is opened
+		extraKeys: {
+			"Ctrl-S": function (cm) {
+				saveFile();
+			}
+		}
+	});
 }
 
-// Editor functionality
-document.addEventListener('DOMContentLoaded', function () {
-    // You can add your editor-related logic here as we build out the GUI.
-    // For now, this event listener is intentionally left empty to prevent
-    // any demo code from running.
+/**
+ * Opens a file in the editor by fetching its content from the server.
+ * @param {string} projectName - The name of the current project.
+ * @param {string} fileName - The name of the file to open.
+ * @param {HTMLElement} element - The clicked file list item.
+ */
+function openFile(projectName, fileName, element) {
+	if (!editor) {
+		console.error("Editor is not initialized. Cannot open file.");
+		return;
+	}
+	// Update UI to show which file is active
+	document.querySelectorAll('.file-item').forEach(item => item.classList.remove('active'));
+	element.classList.add('active');
+
+	// Store current project and file
+	currentProject = projectName;
+	currentFile = fileName;
+
+	fetch(`/api/get-file-content/${projectName}/${fileName}`)
+		.then(response => response.json())
+		.then(data => {
+			if (data.status === 'success') {
+				editor.setValue(data.content);
+				editor.setOption("readOnly", false); // Make editor writable
+
+				// Set the correct syntax highlighting mode based on file extension
+				let mode = 'jinja2'; // Default for .tgame
+				if (fileName.endsWith('.py')) {
+					mode = 'python';
+				} else if (fileName.endsWith('.json')) {
+					mode = { name: 'javascript', json: true };
+				} else if (fileName.endsWith('.css')) {
+					mode = 'css';
+				}
+				editor.setOption("mode", mode);
+
+			} else {
+				showNotification(data.message, 'error');
+			}
+		})
+		.catch(err => {
+			console.error('Error fetching file:', err);
+			showNotification('Could not load file.', 'error');
+		});
+}
+
+/**
+ * Saves the current content of the editor to the server.
+ */
+function saveFile() {
+	if (!currentProject || !currentFile || !editor || editor.getOption("readOnly")) {
+		showNotification('No file is open to save.', 'warning');
+		return;
+	}
+
+	const content = editor.getValue();
+
+	fetch(`/api/save-file/${currentProject}/${currentFile}`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			content: content
+		})
+	})
+		.then(response => response.json())
+		.then(data => {
+			if (data.status === 'success') {
+				showNotification(data.message, 'success');
+				// Refresh the preview iframe after a successful save
+				refreshPreview();
+			} else {
+				showNotification(data.message, 'error');
+			}
+		})
+		.catch(err => {
+			console.error('Error saving file:', err);
+			showNotification('Could not save file.', 'error');
+		});
+}
+
+/**
+ * Reloads the content of the preview iframe.
+ */
+function refreshPreview() {
+	const iframe = document.getElementById('preview-iframe');
+	if (iframe) {
+		// Appending a timestamp as a query parameter is a common trick to bypass browser caching
+		iframe.src = `/passage/start?t=${new Date().getTime()}`;
+		showNotification('Preview refreshed!', 'info');
+	}
+}
+
+/**
+ * Displays a temporary notification on the screen.
+ * @param {string} message - The message to display.
+ * @param {string} type - The type of notification ('success', 'error', 'warning', 'info').
+ */
+function showNotification(message, type = 'info') {
+	const notification = document.createElement('div');
+	const colors = {
+		success: 'var(--success-color)',
+		error: 'var(--danger-color)',
+		warning: 'var(--warning-color)',
+		info: 'var(--accent-color)'
+	};
+
+	notification.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 12px 20px;
+        background: ${colors[type] || colors.info};
+        color: white;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 500;
+        z-index: 1001;
+        opacity: 0;
+        transform: translateY(-10px);
+        transition: all 0.3s;
+        max-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    `;
+	notification.textContent = message;
+	document.body.appendChild(notification);
+
+	setTimeout(() => {
+		notification.style.opacity = '1';
+		notification.style.transform = 'translateY(0)';
+	}, 10);
+
+	setTimeout(() => {
+		notification.style.opacity = '0';
+		notification.style.transform = 'translateY(-10px)';
+		setTimeout(() => {
+			if (notification.parentNode) {
+				notification.parentNode.removeChild(notification);
+			}
+		}, 300);
+	}, 4000);
+}
+
+/**
+ * Initializes the draggable divider between the editor and preview panels.
+ */
+function initResizer() {
+	const handle = document.getElementById('drag-handle');
+	const leftPanel = document.getElementById('editor-area');
+	const rightPanel = document.getElementById('previewPanel');
+
+	if (!handle || !leftPanel || !rightPanel) return;
+
+	// Set initial panel sizes
+	const container = document.querySelector('.main-content');
+	if (container) {
+		const containerWidth = container.offsetWidth;
+		leftPanel.style.width = `${containerWidth * 0.6}px`;
+        rightPanel.style.flex = '1'; // Let the right panel fill the rest
+	}
+
+	let isDragging = false;
+	let startX, startWidth;
+
+	handle.addEventListener('mousedown', function (e) {
+		isDragging = true;
+		startX = e.clientX;
+		startWidth = leftPanel.offsetWidth;
+		
+		// Prevent text selection and iframe interaction during drag
+		document.body.style.userSelect = 'none';
+		document.body.style.pointerEvents = 'none';
+	});
+
+	document.addEventListener('mousemove', function (e) {
+		if (!isDragging) return;
+		
+		const deltaX = e.clientX - startX;
+		const newLeftWidth = startWidth + deltaX;
+
+		// Apply constraints to prevent panels from becoming too small
+		if (newLeftWidth > 300 && container.offsetWidth - newLeftWidth > 300) {
+			leftPanel.style.width = `${newLeftWidth}px`;
+		}
+	});
+
+	document.addEventListener('mouseup', function (e) {
+		isDragging = false;
+		// Re-enable text selection and iframe interaction
+		document.body.style.userSelect = '';
+		document.body.style.pointerEvents = '';
+	});
+}
+
+// --- Event Listeners ---
+
+// This listener waits for HTMX to finish swapping content onto the page.
+// It's the key to initializing the editor at the right time.
+document.body.addEventListener('htmx:afterSwap', function (event) {
+	// Check if the editor container is now present in the DOM
+	const editorContainer = document.getElementById('codemirror-container');
+
+	if (editorContainer) {
+		// If it exists, initialize the editor
+		initEditor();
+
+		// We also attach listeners for buttons that only exist on the editor page
+		const saveBtn = document.getElementById('save-file-btn');
+		if (saveBtn) {
+			saveBtn.addEventListener('click', saveFile);
+		}
+
+		const refreshBtn = document.getElementById('refresh-preview-btn');
+		if (refreshBtn) {
+			refreshBtn.addEventListener('click', refreshPreview);
+		}
+	}
 });
