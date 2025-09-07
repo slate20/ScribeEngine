@@ -33,9 +33,15 @@ def set_game_project_path(path):
     global GAME_PROJECT_PATH
     GAME_PROJECT_PATH = path
 
+import logging
+
 app = Flask(__name__,
             template_folder=os.path.join(os.path.dirname(__file__), 'templates'),
             static_folder=os.path.join(os.path.dirname(__file__), 'static'))
+
+# Suppress Werkzeug access logs
+log = logging.getLogger('werkzeug')
+log.setLevel(logging.ERROR)
 app.secret_key = 'your-secret-key-here'  # Change in production
 
 # Initialize game engine (will be done after GAME_PROJECT_PATH is set)
@@ -478,6 +484,10 @@ def save_project_settings(project_name):
         game_engine.load_config()
 
     return render_template('_fragments/_project_settings.html', project_name=project_name, config=config)
+
+@app.route('/api/preview-panel')
+def get_preview_panel():
+    return render_template('_fragments/_preview_panel.html')
 
 
 # Debug routes

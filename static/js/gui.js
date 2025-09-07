@@ -2,6 +2,7 @@
 let editor;
 let currentProject = null;
 let currentFile = null;
+let gameStateIntervalId = null; // Global variable to store the interval ID
 
 /**
  * Initializes the CodeMirror editor instance.
@@ -329,7 +330,10 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 		}
 
 		// Start polling for game state
-		setInterval(updateGameStateDisplay, 2000); // Update every 2 seconds
+		if (gameStateIntervalId) {
+			clearInterval(gameStateIntervalId);
+		}
+		gameStateIntervalId = setInterval(updateGameStateDisplay, 2000); // Update every 2 seconds
 	}
 });
 
