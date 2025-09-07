@@ -961,3 +961,141 @@ body {
 	background-color: #e6b800;
 	/* Slightly darker yellow on hover */
 }
+
+/* New Project Form */
+.new-project-form {
+    text-align: left;
+}
+
+.new-project-form .form-group {
+    margin-bottom: 20px;
+}
+
+.new-project-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.new-project-form .form-control {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 16px;
+}
+
+.new-project-form .form-control:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.5);
+}
+
+.new-project-form .input-hint {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 8px;
+}
+
+.new-project-form .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 30px;
+}
+
+/* Project Settings Form */
+.project-settings-form {
+    padding: 24px;
+}
+
+.project-settings-form .form-section {
+    margin-bottom: 32px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 24px;
+}
+
+.project-settings-form .form-section:last-of-type {
+    border-bottom: none;
+}
+
+.project-settings-form .section-header {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 20px;
+}
+
+.project-settings-form .form-group {
+    margin-bottom: 16px;
+}
+
+.project-settings-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.project-settings-form .form-control {
+    width: 100%;
+    padding: 10px;
+    background: var(--primary-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.project-settings-form .form-control:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.5);
+}
+
+.project-settings-form .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.project-settings-form .checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+}
+
+.project-settings-form .subsection {
+    margin-top: 24px;
+    padding-left: 16px;
+    border-left: 2px solid var(--border-color);
+}
+
+.project-settings-form .subsection-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 16px;
+}
+
+.project-settings-form .form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 16px;
+}
+
+.project-settings-form .form-actions-sticky {
+    position: sticky;
+    bottom: 0;
+    background: var(--secondary-bg);
+    padding: 16px 24px;
+    border-top: 1px solid var(--border-color);
+    margin: 0 -24px -24px;
+    text-align: right;
+}

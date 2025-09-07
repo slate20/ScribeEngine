@@ -8,9 +8,7 @@
     <p class="action-description">Configure the engine's project directory</p>
 </div>
 
-<div class="action-card" hx-post="/api/new-project" hx-vals='js:{"project_name": prompt("Enter new project name:")}'
-	hx-target="body" hx-swap="innerHTML"
-	hx-on::after-request="if (event.detail.successful) window.location.href='/api/open-editor/' + JSON.parse(event.detail.xhr.response).message; else alert(event.detail.xhr.responseText);">
+<div class="action-card" hx-get="/api/new-project-form" hx-target="#startup-actions" hx-swap="innerHTML">
 	<div class="action-icon">
 		<svg width="24" height="24" fill="white" viewBox="0 0 24 24">
 			<path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 11 5.16-1.26 9-5.45 9-11V7l-10-5z" />

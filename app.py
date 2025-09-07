@@ -248,6 +248,11 @@ def list_projects_fragment():
 def project_menu_fragment(project_name):
     return render_template('_fragments/_project_menu.html', project_name=project_name)
 
+# Route for the new project form
+@app.route('/api/new-project-form')
+def new_project_form():
+    return render_template('_fragments/_new_project_form.html')
+
 # New route to handle project creation from the GUI
 @app.route('/api/new-project', methods=['POST'])
 def create_project_api():
