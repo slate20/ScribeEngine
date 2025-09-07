@@ -381,6 +381,11 @@ def save_file_content(project_name, filename):
     try:
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(data['content'])
+        reset_game_engine() # Reset the game engine to pick up changes
+        # Re-initialize the game engine for the current project
+        global game_engine
+        game_engine = GameEngine(active_project_path, debug_mode=_app_debug_mode)
+        print("Game engine reset and re-initialized!") # For testing purposes
         return jsonify({'status': 'success', 'message': f'{filename} saved successfully'})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
