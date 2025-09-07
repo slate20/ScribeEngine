@@ -1,111 +1,121 @@
-<div class="project-explorer">
-	<div class="explorer-section">
-		<div class="section-header">
-			<span>Story Files (.tgame)</span>
-			<div class="header-actions">
-				<button title="New File" hx-post="/api/create-item/{{ project_name }}"
-					hx-vals='js:{"path": prompt("Enter new story file path:", "story/new_scene.tgame"), "type": "file"}'
-					hx-target="#sidebar-content" hx-swap="innerHTML">
-					+
-				</button>
-			</div>
-		</div>
-		<ul class="file-tree">
-			{% for file in story_files %}
-			<li class="file-item" data-filepath="{{ file }}">
-				<span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{
-					file }}</span>
-				<button class="delete-btn" title="Delete File" hx-post="/api/delete-item/{{ project_name }}"
-					hx-vals='{"path": "{{ file }}"}' hx-confirm="Are you sure you want to delete '{{ file }}'?"
-					hx-target="#sidebar-content" hx-swap="innerHTML">
-					&times;
-				</button>
-			</li>
-			{% else %}
-			<li class="file-item-empty">No story files found.</li>
-			{% endfor %}
-		</ul>
-	</div>
+<div class="file-explorer-panel">
+    <div class="explorer-section">
+        <div class="section-header">
+            <span>Story Files (.tgame)</span>
+            <div class="header-actions">
+                <button class="btn-icon" title="New Story File" 
+                        hx-post="/api/create-item/{{ project_name }}"
+                        hx-vals='js:{"path": prompt("Enter new story file path:", "story/new_scene.tgame"), "type": "file"}'
+                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                    <i data-lucide="file-plus-2"></i>
+                </button>
+            </div>
+        </div>
+        <ul class="file-tree">
+            {% for file in story_files %}
+            <li class="file-item" data-filepath="{{ file }}">
+                <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{ file }}</span>
+                <button class="delete-btn" title="Delete File" 
+                        hx-post="/api/delete-item/{{ project_name }}"
+                        hx-vals='{"path": "{{ file }}"}' 
+                        hx-confirm="Are you sure you want to delete '{{ file }}'?"
+                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                    <i data-lucide="x"></i>
+                </button>
+            </li>
+            {% else %}
+            <li class="file-item-empty">No story files found.</li>
+            {% endfor %}
+        </ul>
+    </div>
 
-	<div class="explorer-section">
-		<div class="section-header">
-			<span>Game Logic (.py)</span>
-			<div class="header-actions">
-				<button title="New File" hx-post="/api/create-item/{{ project_name }}"
-					hx-vals='js:{"path": prompt("Enter new logic file path:", "systems/new_logic.py"), "type": "file"}'
-					hx-target="#sidebar-content" hx-swap="innerHTML">
-					+
-				</button>
-			</div>
-		</div>
-		<ul class="file-tree">
-			{% for file in logic_files %}
-			<li class="file-item" data-filepath="{{ file }}">
-				<span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{
-					file }}</span>
-				<button class="delete-btn" title="Delete File" hx-post="/api/delete-item/{{ project_name }}"
-					hx-vals='{"path": "{{ file }}"}' hx-confirm="Are you sure you want to delete '{{ file }}'?"
-					hx-target="#sidebar-content" hx-swap="innerHTML">
-					&times;
-				</button>
-			</li>
-			{% else %}
-			<li class="file-item-empty">No logic files found.</li>
-			{% endfor %}
-		</ul>
-	</div>
+    <div class="explorer-section">
+        <div class="section-header">
+            <span>Game Logic (.py)</span>
+            <div class="header-actions">
+                <button class="btn-icon" title="New Logic File" 
+                        hx-post="/api/create-item/{{ project_name }}"
+                        hx-vals='js:{"path": prompt("Enter new logic file path:", "systems/new_logic.py"), "type": "file"}'
+                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                    <i data-lucide="file-plus-2"></i>
+                </button>
+            </div>
+        </div>
+        <ul class="file-tree">
+            {% for file in logic_files %}
+            <li class="file-item" data-filepath="{{ file }}">
+                <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{ file }}</span>
+                <button class="delete-btn" title="Delete File" 
+                        hx-post="/api/delete-item/{{ project_name }}"
+                        hx-vals='{"path": "{{ file }}"}' 
+                        hx-confirm="Are you sure you want to delete '{{ file }}'?"
+                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                    <i data-lucide="x"></i>
+                </button>
+            </li>
+            {% else %}
+            <li class="file-item-empty">No logic files found.</li>
+            {% endfor %}
+        </ul>
+    </div>
 
-		<div class="explorer-section">
-		<div class="section-header">
-			<span>Styling (.css)</span>
-			<div class="header-actions">
-				<button title="New File" hx-post="/api/create-item/{{ project_name }}"
-					hx-vals='js:{"path": prompt("Enter new CSS file path:", "custom.css"), "type": "file"}'
-					hx-target="#sidebar-content" hx-swap="innerHTML">
-					+
-				</button>
-			</div>
-		</div>
-		<ul class="file-tree">
-			{% for file in css_files %}
-			<li class="file-item" data-filepath="{{ file }}">
-				<span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{ file }}</span>
-				<button class="delete-btn" title="Delete File" hx-post="/api/delete-item/{{ project_name }}"
-					hx-vals='{"path": "{{ file }}"}' hx-confirm="Are you sure you want to delete '{{ file }}'?"
-					hx-target="#sidebar-content" hx-swap="innerHTML">
-					&times;
-				</button>
-			</li>
-			{% else %}
-			<li class="file-item-empty">No CSS files found.</li>
-			{% endfor %}
-		</ul>
-	</div>
+    <div class="explorer-section">
+        <div class="section-header">
+            <span>Styling (.css)</span>
+            <div class="header-actions">
+                <button class="btn-icon" title="New CSS File" 
+                        hx-post="/api/create-item/{{ project_name }}"
+                        hx-vals='js:{"path": prompt("Enter new CSS file path:", "custom.css"), "type": "file"}'
+                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                    <i data-lucide="file-plus-2"></i>
+                </button>
+            </div>
+        </div>
+        <ul class="file-tree">
+            {% for file in css_files %}
+            <li class="file-item" data-filepath="{{ file }}">
+                <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{ file }}</span>
+                <button class="delete-btn" title="Delete File" 
+                        hx-post="/api/delete-item/{{ project_name }}"
+                        hx-vals='{"path": "{{ file }}"}' 
+                        hx-confirm="Are you sure you want to delete '{{ file }}'?"
+                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                    <i data-lucide="x"></i>
+                </button>
+            </li>
+            {% else %}
+            <li class="file-item-empty">No CSS files found.</li>
+            {% endfor %}
+        </ul>
+    </div>
 
-	<div class="explorer-section">
-		<div class="section-header">
-			<span>Assets</span>
-			<div class="header-actions">
-				<button title="New Folder" hx-post="/api/create-item/{{ project_name }}"
-					hx-vals='js:{"path": prompt("Enter new folder path inside assets:", "assets/images/"), "type": "folder"}'
-					hx-target="#sidebar-content" hx-swap="innerHTML">
-					&#x1F4C2; </button>
-			</div>
-		</div>
-		<ul class="file-tree">
-			{% for file in asset_files %}
-			<li class="file-item" data-filepath="{{ file }}">
-				<span class="file-name"
-					onclick="alert('Asset file selected: {{ file }}. Editing not supported yet.')">{{ file }}</span>
-				<button class="delete-btn" title="Delete File" hx-post="/api/delete-item/{{ project_name }}"
-					hx-vals='{"path": "{{ file }}"}' hx-confirm="Are you sure you want to delete '{{ file }}'?"
-					hx-target="#sidebar-content" hx-swap="innerHTML">
-					&times;
-				</button>
-			</li>
-			{% else %}
-			<li class="file-item-empty">No assets found.</li>
-			{% endfor %}
-		</ul>
-	</div>
+    <div class="explorer-section">
+        <div class="section-header">
+            <span>Assets</span>
+            <div class="header-actions">
+                <button class="btn-icon" title="New Folder" 
+                        hx-post="/api/create-item/{{ project_name }}"
+                        hx-vals='js:{"path": prompt("Enter new folder path inside assets:", "assets/images/"), "type": "folder"}'
+                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                    <i data-lucide="folder-plus"></i>
+                </button>
+            </div>
+        </div>
+        <ul class="file-tree">
+            {% for file in asset_files %}
+            <li class="file-item" data-filepath="{{ file }}">
+                <span class="file-name" onclick="alert('Asset file selected: {{ file }}. Editing not supported yet.')">{{ file }}</span>
+                <button class="delete-btn" title="Delete File" 
+                        hx-post="/api/delete-item/{{ project_name }}"
+                        hx-vals='{"path": "{{ file }}"}' 
+                        hx-confirm="Are you sure you want to delete '{{ file }}'?"
+                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                    <i data-lucide="x"></i>
+                </button>
+            </li>
+            {% else %}
+            <li class="file-item-empty">No assets found.</li>
+            {% endfor %}
+        </ul>
+    </div>
 </div>

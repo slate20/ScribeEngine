@@ -19,6 +19,7 @@
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/mode/javascript/javascript.min.js"></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.13/addon/mode/overlay.min.js"></script>
     <script src="{{ url_for('static', filename='js/scribe-mode.js') }}"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 
 <body>
@@ -40,6 +41,15 @@
 			</div>
 		</div>
 	</div>
+	<script>
+		// Initial call
+		lucide.createIcons();
+
+		// Call after HTMX swaps content
+		document.body.addEventListener('htmx:afterSwap', function(event) {
+			lucide.createIcons();
+		});
+	</script>
 	<body>
 
 </html>

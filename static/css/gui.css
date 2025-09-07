@@ -98,7 +98,7 @@ body {
 .header-actions {
 	display: flex;
 	align-items: center;
-	gap: 12px;
+	gap: 8px;
 }
 
 .server-status {
@@ -171,6 +171,30 @@ body {
 	background: #e85555;
 }
 
+.btn-icon {
+	background: var(--tertiary-bg);
+	color: var(--text-primary);
+	width: 36px;
+	height: 36px;
+	border-radius: 6px;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: none;
+	padding: 0;
+}
+
+.btn-icon:hover {
+	background: var(--accent-color);
+	color: white;
+}
+
+.btn-icon.btn-danger:hover {
+	background: var(--danger-color);
+	color: white;
+}
+
 /* Main Content */
 .main-content {
 	display: flex;
@@ -239,16 +263,16 @@ body {
 	overflow-y: auto;
 }
 
-/* Project Explorer */
-.project-explorer {
+/* Project Explorer Panel */
+.file-explorer-panel {
 	padding: 16px;
 }
 
-.explorer-section {
+.file-explorer-panel .explorer-section {
 	margin-bottom: 24px;
 }
 
-.section-header {
+.file-explorer-panel .section-header {
 	font-size: 12px;
 	font-weight: 600;
 	color: var(--text-muted);
@@ -260,94 +284,109 @@ body {
 	justify-content: space-between;
 }
 
-.file-tree {
-	list-style: none;
-}
-
-.file-item {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 0;
-	cursor: pointer;
-	border-radius: 4px;
-	transition: background 0.2s;
-}
-
-.file-item:hover {
-	background: var(--tertiary-bg);
-}
-
-.file-item.active {
-	background: var(--tertiary-bg);
-	color: white;
-}
-
-.file-icon {
-	width: 16px;
-	height: 16px;
-	opacity: 0.7;
-}
-
-.file-name {
-	font-size: 14px;
-}
-
-/* Styling for the Add/Delete buttons in the file explorer */
-.section-header .header-actions button {
-	background: var(--tertiary-bg);
+.file-explorer-panel .header-actions .btn-icon {
+	background: none;
 	border: none;
 	color: var(--text-secondary);
 	width: 24px;
 	height: 24px;
 	border-radius: 4px;
 	cursor: pointer;
-	font-size: 18px;
-	line-height: 24px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
-.section-header .header-actions button:hover {
+.file-explorer-panel .header-actions .btn-icon:hover {
 	background: var(--accent-color);
 	color: white;
 }
 
-.file-item {
+.file-explorer-panel .header-actions .btn-icon svg {
+	width: 18px;
+	height: 18px;
+}
+
+.file-explorer-panel .file-tree {
+	list-style: none;
+	padding-left: 8px;
+}
+
+.file-explorer-panel .file-item {
 	display: flex;
-	/* Make file item a flex container */
-	justify-content: space-between;
-	/* Push file name and delete button apart */
 	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	cursor: pointer;
+	border-radius: 4px;
+	transition: background 0.2s;
+	margin-left: -8px;
 }
 
-.file-item .file-name {
+.file-explorer-panel .file-item:hover {
+	background: var(--tertiary-bg);
+}
+
+.file-explorer-panel .file-item.active {
+	background: var(--accent-color);
+	color: white;
+}
+
+.file-explorer-panel .file-item.active .file-name {
+	color: white;
+}
+
+.file-explorer-panel .file-item .file-name {
 	flex-grow: 1;
-	/* Allow filename to take up available space */
-	padding: 6px 4px;
+	font-size: 14px;
+	color: var(--text-secondary);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.delete-btn {
+.file-explorer-panel .file-item.active .delete-btn {
+	color: white;
+}
+
+.file-explorer-panel .delete-btn {
 	background: none;
 	border: none;
 	color: var(--text-muted);
 	cursor: pointer;
-	font-size: 20px;
-	padding: 0 8px;
+	padding: 0;
 	border-radius: 4px;
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	visibility: hidden;
-	/* Hide by default */
 	opacity: 0;
 	transition: all 0.2s;
 }
 
-.file-item:hover .delete-btn {
+.file-explorer-panel .delete-btn svg {
+	width: 16px;
+	height: 16px;
+}
+
+.file-explorer-panel .file-item:hover .delete-btn {
 	visibility: visible;
-	/* Show on hover */
 	opacity: 1;
 }
 
-.delete-btn:hover {
+.file-explorer-panel .delete-btn:hover {
 	background: var(--danger-color);
 	color: white;
+}
+
+.file-explorer-panel .file-item-empty {
+	font-size: 13px;
+	color: var(--text-muted);
+	padding: 8px;
+	font-style: italic;
 }
 
 
@@ -739,6 +778,7 @@ body {
 	gap: 16px;
 	justify-content: center;
 	flex-wrap: wrap;
+	flex-direction: column;
 }
 
 .action-card {
@@ -964,138 +1004,138 @@ body {
 
 /* New Project Form */
 .new-project-form {
-    text-align: left;
+	text-align: left;
 }
 
 .new-project-form .form-group {
-    margin-bottom: 20px;
+	margin-bottom: 20px;
 }
 
 .new-project-form label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: var(--text-secondary);
+	display: block;
+	margin-bottom: 8px;
+	font-weight: 600;
+	color: var(--text-secondary);
 }
 
 .new-project-form .form-control {
-    width: 100%;
-    padding: 12px;
-    background: var(--primary-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
-    font-size: 16px;
+	width: 100%;
+	padding: 12px;
+	background: var(--primary-bg);
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	color: var(--text-primary);
+	font-size: 16px;
 }
 
 .new-project-form .form-control:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.5);
+	outline: none;
+	border-color: var(--accent-color);
+	box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.5);
 }
 
 .new-project-form .input-hint {
-    font-size: 12px;
-    color: var(--text-muted);
-    margin-top: 8px;
+	font-size: 12px;
+	color: var(--text-muted);
+	margin-top: 8px;
 }
 
 .new-project-form .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-    margin-top: 30px;
+	display: flex;
+	justify-content: flex-end;
+	gap: 12px;
+	margin-top: 30px;
 }
 
 /* Project Settings Form */
 .project-settings-form {
-    padding: 24px;
+	padding: 24px;
 }
 
 .project-settings-form .form-section {
-    margin-bottom: 32px;
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 24px;
+	margin-bottom: 32px;
+	border-bottom: 1px solid var(--border-color);
+	padding-bottom: 24px;
 }
 
 .project-settings-form .form-section:last-of-type {
-    border-bottom: none;
+	border-bottom: none;
 }
 
 .project-settings-form .section-header {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 20px;
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--text-primary);
+	margin-bottom: 20px;
 }
 
 .project-settings-form .form-group {
-    margin-bottom: 16px;
+	margin-bottom: 16px;
 }
 
 .project-settings-form label {
-    display: block;
-    margin-bottom: 8px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-secondary);
+	display: block;
+	margin-bottom: 8px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-secondary);
 }
 
 .project-settings-form .form-control {
-    width: 100%;
-    padding: 10px;
-    background: var(--primary-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    color: var(--text-primary);
-    font-size: 14px;
+	width: 100%;
+	padding: 10px;
+	background: var(--primary-bg);
+	border: 1px solid var(--border-color);
+	border-radius: 6px;
+	color: var(--text-primary);
+	font-size: 14px;
 }
 
 .project-settings-form .form-control:focus {
-    outline: none;
-    border-color: var(--accent-color);
-    box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.5);
+	outline: none;
+	border-color: var(--accent-color);
+	box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.5);
 }
 
 .project-settings-form .checkbox-label {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 14px;
-    font-weight: 500;
-    color: var(--text-secondary);
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--text-secondary);
 }
 
 .project-settings-form .checkbox-label input[type="checkbox"] {
-    width: 16px;
-    height: 16px;
+	width: 16px;
+	height: 16px;
 }
 
 .project-settings-form .subsection {
-    margin-top: 24px;
-    padding-left: 16px;
-    border-left: 2px solid var(--border-color);
+	margin-top: 24px;
+	padding-left: 16px;
+	border-left: 2px solid var(--border-color);
 }
 
 .project-settings-form .subsection-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 16px;
+	font-size: 14px;
+	font-weight: 600;
+	color: var(--text-muted);
+	margin-bottom: 16px;
 }
 
 .project-settings-form .form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 16px;
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	gap: 16px;
 }
 
 .project-settings-form .form-actions-sticky {
-    position: sticky;
-    bottom: 0;
-    background: var(--secondary-bg);
-    padding: 16px 24px;
-    border-top: 1px solid var(--border-color);
-    margin: 0 -24px -24px;
-    text-align: right;
+	position: sticky;
+	bottom: 0;
+	background: var(--secondary-bg);
+	padding: 16px 24px;
+	border-top: 1px solid var(--border-color);
+	margin: 0 -24px -24px;
+	text-align: center;
 }

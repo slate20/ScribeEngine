@@ -26,34 +26,21 @@
 				</center>
 			</div>
 			<div class="header-actions">
-
-				<div class="server-status">
-					<div class="status-dot" style="background-color: #4caf50;"></div>
-					<span>Server Running - localhost:5000</span>
-				</div>
-				<a href="/" target="_blank" class="btn btn-secondary">
-					<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-						<path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" />
-						<path d="M15 3h6v6" />
-						<path d="M10 14L21 3" />
-					</svg>
-					Open in Browser
+				<a href="/" target="_blank" class="btn btn-secondary" title="Open in Browser">
+					<i data-lucide="external-link"></i> Open
 				</a>
-				<button class="btn btn-secondary" id="toggle-preview-btn">Toggle Preview</button>
-				<button class="btn btn-primary" hx-post="/api/build-game/{{ project_name }}" hx-trigger="click"
-					hx-swap="none"
-					hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
-					<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
-						<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-						<path d="M17 8l-5-5-5 5" />
-						<path d="M12 3v12" />
-					</svg>
-					Build Game
+				<button class="btn btn-secondary" id="toggle-preview-btn" title="Toggle Preview">
+					<i data-lucide="panel-right-open"></i> Preview
 				</button>
-				<select id="theme-selector" class="btn btn-secondary">
-					<option value="material-darker">Dark</option>
-					<option value="default">Light</option>
-				</select>
+				<button class="btn btn-secondary" title="Build Game"
+						hx-post="/api/build-game/{{ project_name }}" hx-trigger="click"
+						hx-swap="none"
+						hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
+					<i data-lucide="package"></i> Build
+				</button>
+				<a href="/api/close-project" class="btn btn-icon btn-danger" title="Close Project">
+					<i data-lucide="power"></i>
+				</a>
 			</div>
 		</div>
 
@@ -74,10 +61,6 @@
 					hx-trigger="load">
 					<p style="padding: 16px; color: var(--text-muted);">Loading files...</p>
 				</div>
-				<div style="text-align: center; margin-top: auto; padding-bottom: 16px;">
-					<a href="/api/close-project" class="btn btn-danger"
-						style="margin-bottom: 0; display: inline-block;">Close Project</a>
-				</div>
 			</div>
 
 			<div class="editor-area" id="editor-area">
@@ -85,9 +68,8 @@
 					<div class="editor-header">
 						<span class="editor-title" id="editor-file-title">No file open</span>
 						<div class="editor-actions">
-							<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;"
-								id="save-file-btn">
-								Save File
+							<button class="btn btn-primary" id="save-file-btn">
+								<i data-lucide="save"></i> Save
 							</button>
 						</div>
 					</div>

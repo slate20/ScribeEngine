@@ -1,19 +1,6 @@
-<div class="action-card" hx-get="/api/settings-panel" hx-target="#startup-actions" hx-swap="innerHTML">
-    <div class="action-icon">
-        <svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-            <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.44,0.17-0.48,0.41L9.18,5.59C8.59,5.83,8.06,6.16,7.56,6.54L5.17,5.58C4.95,5.5,4.7,5.57,4.59,5.78L2.67,9.1 c-0.11,0.2-0.06,0.47,0.12,0.61l2.03,1.58C4.74,11.64,4.72,11.96,4.72,12.28c0,0.32,0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.42,2.78 c0.04,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.48-0.41l0.42-2.78c0.59-0.24,1.12-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0.01,0.59-0.22l1.92-3.32c0.11-0.2,0.06-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
-        </svg>
-    </div>
-    <h3 class="action-title">Engine Settings</h3>
-    <p class="action-description">Configure the engine's project directory</p>
-</div>
-
 <div class="action-card" hx-get="/api/new-project-form" hx-target="#startup-actions" hx-swap="innerHTML">
 	<div class="action-icon">
-		<svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-			<path d="M12 2L2 7v10c0 5.55 3.84 9.74 9 11 5.16-1.26 9-5.45 9-11V7l-10-5z" />
-			<path d="M12 8v8m-4-4h8" />
-		</svg>
+		<i data-lucide="file-plus-2"></i>
 	</div>
 	<h3 class="action-title">New Project</h3>
 	<p class="action-description">Start a new game project with basic structure and templates</p>
@@ -22,10 +9,16 @@
 <div class="action-card" hx-get="/api/projects" hx-target="#startup-actions" hx-swap="innerHTML"
 	hx-on::after-request="if (event.detail.successful) document.getElementById('startup-actions').style.display='none';">
 	<div class="action-icon">
-		<svg width="24" height="24" fill="white" viewBox="0 0 24 24">
-			<path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-		</svg>
+		<i data-lucide="folder-open"></i>
 	</div>
 	<h3 class="action-title">Open Project</h3>
 	<p class="action-description">Continue working on an existing game project</p>
+</div>
+
+<div class="action-card" hx-get="/api/settings-panel" hx-target="#startup-actions" hx-swap="innerHTML">
+	<div class="action-icon">
+		<i data-lucide="settings"></i>
+	</div>
+	<h3 class="action-title">Engine Settings</h3>
+	<p class="action-description">Configure the engine's project directory</p>
 </div>
