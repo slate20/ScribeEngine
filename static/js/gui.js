@@ -4,6 +4,7 @@ let unsavedFiles = new Set(); // To track files with unsaved changes
 let currentProject = null;
 let currentFile = null;
 let gameStateIntervalId = null; // Global variable to store the interval ID
+let ignoreNextChange = false; // Flag to ignore programmatic changes
 
 /**
  * Initializes the CodeMirror editor instance.
@@ -34,6 +35,10 @@ function initEditor() {
 	});
 
 	editor.on('change', function() {
+		if (ignoreNextChange) {
+			ignoreNextChange = false; // Reset the flag
+			return; // Ignore this change
+		}
 		if (currentFile && !editor.getOption("readOnly")) {
 			unsavedFiles.add(currentFile);
 			updateEditorUI();
@@ -70,9 +75,10 @@ function openFile(projectName, fileName, element) {
 		.then(response => response.json())
 		.then(data => {
 			if (data.status === 'success') {
-				editor.setValue(data.content);
-				editor.setOption("readOnly", false); // Make editor writable
-				updateEditorUI(); // Call updateEditorUI after file is loaded
+					ignoreNextChange = true; // Set flag to ignore the change event from setValue
+					editor.setValue(data.content);
+					editor.setOption("readOnly", false); // Make editor writable
+					updateEditorUI(); // Call updateEditorUI after file is loaded
 
 				// Set the correct syntax highlighting mode based on file extension
 				let mode = 'scribe'; // Default for .tgame
@@ -293,8 +299,9 @@ function initDebugTerminalResizer() {
 // New function to update editor UI based on unsaved changes
 function updateEditorUI() {
     const saveBtn = document.getElementById('save-file-btn');
-    // For Step 1, we only handle the save button.
-    // Later steps will expand this to handle file list and editor title.
+    const editorFileTitle = document.getElementById('editor-file-title');
+
+    // Update Save File button
     if (saveBtn) {
         if (currentFile && unsavedFiles.has(currentFile)) {
             saveBtn.classList.add('unsaved-changes');
@@ -302,6 +309,35 @@ function updateEditorUI() {
             saveBtn.classList.remove('unsaved-changes');
         }
     }
+
+    // Update Editor Title
+    if (editorFileTitle && currentFile) {
+        let titleText = currentFile;
+        if (unsavedFiles.has(currentFile)) {
+            titleText += ' *';
+        }
+        editorFileTitle.textContent = titleText;
+    }
+
+    // Update File List Items
+    document.querySelectorAll('.file-item').forEach(item => {
+        const filePath = item.dataset.filepath;
+        const fileNameSpan = item.querySelector('.file-name'); // Assuming file-name span holds the text
+
+        if (filePath && fileNameSpan) {
+            let originalFileName = fileNameSpan.textContent.replace(' *', ''); // Remove existing asterisk if any
+
+            if (unsavedFiles.has(filePath)) {
+                item.classList.add('unsaved-file-item');
+                if (!fileNameSpan.textContent.endsWith(' *')) { // Add asterisk only if not already present
+                    fileNameSpan.textContent = originalFileName + ' *';
+                }
+            } else {
+                item.classList.remove('unsaved-file-item');
+                fileNameSpan.textContent = originalFileName; // Ensure no asterisk
+            }
+        }
+    });
 }
 
 // --- Event Listeners ---
@@ -365,6 +401,9 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 			clearInterval(gameStateIntervalId);
 		}
 		gameStateIntervalId = setInterval(updateGameStateDisplay, 2000); // Update every 2 seconds
+
+        // Ensure UI state is correct after HTMX swap
+        updateEditorUI();
 	}
 });
 

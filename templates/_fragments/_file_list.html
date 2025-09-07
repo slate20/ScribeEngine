@@ -12,7 +12,7 @@
 		</div>
 		<ul class="file-tree">
 			{% for file in story_files %}
-			<li class="file-item">
+			<li class="file-item" data-filepath="{{ file }}">
 				<span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{
 					file }}</span>
 				<button class="delete-btn" title="Delete File" hx-post="/api/delete-item/{{ project_name }}"
@@ -40,7 +40,7 @@
 		</div>
 		<ul class="file-tree">
 			{% for file in logic_files %}
-			<li class="file-item">
+			<li class="file-item" data-filepath="{{ file }}">
 				<span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{
 					file }}</span>
 				<button class="delete-btn" title="Delete File" hx-post="/api/delete-item/{{ project_name }}"
@@ -61,7 +61,7 @@
 		</div>
 		<ul class="file-tree">
 			{% for file in config_files %}
-			<li class="file-item">
+			<li class="file-item" data-filepath="{{ file }}">
 				<span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{
 					file }}</span>
 				<button class="delete-btn" title="Delete File" hx-post="/api/delete-item/{{ project_name }}"
@@ -88,7 +88,7 @@
 		</div>
 		<ul class="file-tree">
 			{% for file in asset_files %}
-			<li class="file-item">
+			<li class="file-item" data-filepath="{{ file }}">
 				<span class="file-name"
 					onclick="alert('Asset file selected: {{ file }}. Editing not supported yet.')">{{ file }}</span>
 				<button class="delete-btn" title="Delete File" hx-post="/api/delete-item/{{ project_name }}"
