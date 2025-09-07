@@ -26,7 +26,7 @@
 				</center>
 			</div>
 			<div class="header-actions">
-				<a href="/gui" class="btn btn-secondary">Back to Launcher</a>
+				
 				<div class="server-status">
 					<div class="status-dot" style="background-color: #4caf50;"></div>
 					<span>Server Running - localhost:5000</span>
@@ -73,6 +73,9 @@
 				<div class="sidebar-content" id="sidebar-content" hx-get="/api/files/{{ project_name }}"
 					hx-trigger="load">
 					<p style="padding: 16px; color: var(--text-muted);">Loading files...</p>
+				</div>
+				<div style="text-align: center; margin-top: auto; padding-bottom: 16px;">
+					<a href="/api/close-project" class="btn btn-danger" style="margin-bottom: 0; display: inline-block;">Close Project</a>
 				</div>
 			</div>
 

@@ -306,7 +306,8 @@ def list_files(project_name):
     # Add .replace() to normalize paths here
     story_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.tgame", recursive=True)]
     logic_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.py", recursive=True)]
-    config_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.json", recursive=True)]
+    config_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}//**.json", recursive=True) if os.path.basename(f) != 'project.json']
+    css_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.css", recursive=True)]
     asset_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/assets/**/*", recursive=True) if os.path.isfile(f)]
 
     return render_template('_fragments/_file_list.html', 
@@ -314,7 +315,8 @@ def list_files(project_name):
                            logic_files=sorted(logic_files),
                            config_files=sorted(config_files),
                            asset_files=sorted(asset_files),
-                           project_name=project_name)
+                           project_name=project_name,
+                           css_files=sorted(css_files))
 
 @app.route('/api/create-item/<project_name>', methods=['POST'])
 def create_item(project_name):
@@ -525,6 +527,13 @@ def save_project_settings(project_name):
         game_engine.load_project()
 
     return jsonify({'status': 'success', 'message': 'Settings saved successfully'})
+
+@app.route('/api/close-project')
+def close_project():
+    global game_engine, active_project_path
+    game_engine = None
+    active_project_path = None
+    return redirect(url_for('gui_launcher'))
 
 @app.route('/api/preview-panel')
 def get_preview_panel():
