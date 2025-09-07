@@ -230,6 +230,10 @@ body {
 	border-bottom-color: var(--accent-color);
 }
 
+.sidebar-tab:hover:not(.active) {
+	background: var(--tertiary-bg);
+}
+
 .sidebar-content {
 	flex: 1;
 	overflow-y: auto;
@@ -466,6 +470,8 @@ body {
 	flex: 1;
 	border: none;
 	outline: none;
+	resize: none;
+	overflow: auto;
 }
 
 /* Syntax highlighting styles */
@@ -914,4 +920,24 @@ body {
 .cm-s-default .cm-link-action {
 	color: var(--syntax-action);
 	font-weight: bold;
+}
+
+/* Default grey for save button */
+#save-file-btn {
+    background-color: var(--tertiary-bg); /* Using an existing grey variable */
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Blue for unsaved changes */
+#save-file-btn.unsaved-changes {
+    background-color: var(--accent-color); /* Blue */
+    color: white;
+    border-color: var(--accent-color);
+}
+
+#save-file-btn.unsaved-changes:hover {
+    background-color: #3a8ae6; /* A slightly darker blue for hover */
+    border-color: #3a8ae6;
 }

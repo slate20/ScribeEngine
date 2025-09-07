@@ -1,5 +1,6 @@
 // Global state for the editor
 let editor;
+let unsavedFiles = new Set(); // To track files with unsaved changes
 let currentProject = null;
 let currentFile = null;
 let gameStateIntervalId = null; // Global variable to store the interval ID
@@ -29,6 +30,13 @@ function initEditor() {
 			"Ctrl-S": function (cm) {
 				saveFile();
 			}
+		}
+	});
+
+	editor.on('change', function() {
+		if (currentFile && !editor.getOption("readOnly")) {
+			unsavedFiles.add(currentFile);
+			updateEditorUI();
 		}
 	});
 }
@@ -64,6 +72,7 @@ function openFile(projectName, fileName, element) {
 			if (data.status === 'success') {
 				editor.setValue(data.content);
 				editor.setOption("readOnly", false); // Make editor writable
+				updateEditorUI(); // Call updateEditorUI after file is loaded
 
 				// Set the correct syntax highlighting mode based on file extension
 				let mode = 'scribe'; // Default for .tgame
@@ -110,6 +119,8 @@ function saveFile() {
 		.then(data => {
 			if (data.status === 'success') {
 				showNotification(data.message, 'success');
+				unsavedFiles.delete(currentFile); // Remove from unsavedFiles
+				updateEditorUI(); // Update UI after save
 				// Refresh the preview iframe after a successful save
 				refreshPreview();
 			} else {
@@ -277,6 +288,20 @@ function initDebugTerminalResizer() {
         document.body.style.userSelect = '';
         document.body.style.pointerEvents = '';
     });
+}
+
+// New function to update editor UI based on unsaved changes
+function updateEditorUI() {
+    const saveBtn = document.getElementById('save-file-btn');
+    // For Step 1, we only handle the save button.
+    // Later steps will expand this to handle file list and editor title.
+    if (saveBtn) {
+        if (currentFile && unsavedFiles.has(currentFile)) {
+            saveBtn.classList.add('unsaved-changes');
+        } else {
+            saveBtn.classList.remove('unsaved-changes');
+        }
+    }
 }
 
 // --- Event Listeners ---
