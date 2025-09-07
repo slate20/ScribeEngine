@@ -52,6 +52,12 @@ function openFile(projectName, fileName, element) {
 	currentProject = projectName;
 	currentFile = fileName;
 
+	// Update the editor header title
+	const editorFileTitle = document.getElementById('editor-file-title');
+	if (editorFileTitle) {
+		editorFileTitle.textContent = fileName;
+	}
+
 	fetch(`/api/get-file-content/${projectName}/${fileName}`)
 		.then(response => response.json())
 		.then(data => {

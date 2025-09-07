@@ -181,12 +181,14 @@ body {
 
 .main-content.preview-hidden .preview-panel,
 .main-content.preview-hidden .resizer {
-    display: none;
+	display: none;
 }
 
 .main-content.preview-hidden .editor-area {
-    flex: 1; /* Take up all available space */
-    width: auto !important; /* Override JS width */
+	flex: 1;
+	/* Take up all available space */
+	width: auto !important;
+	/* Override JS width */
 }
 
 /* Sidebar */
@@ -351,6 +353,15 @@ body {
 	flex-direction: column;
 	min-width: 300px;
 	flex: 0 0 auto;
+}
+
+.editor-header {
+	background: var(--secondary-bg);
+	padding: 16px;
+	border-bottom: 1px solid var(--border-color);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
 }
 
 .editor-tabs {
@@ -619,11 +630,15 @@ body {
 	background: #1e1e1e;
 	border-top: 1px solid #444444;
 	font-size: 12px;
-	color: #0f0; /* Green text for terminal look */
+	color: #0f0;
+	/* Green text for terminal look */
 	font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-	min-height: 30px; /* Minimum height for the terminal */
-	max-height: 80%; /* Maximum height relative to parent */
-	height: 200px; /* Initial height */
+	min-height: 30px;
+	/* Minimum height for the terminal */
+	max-height: 80%;
+	/* Maximum height relative to parent */
+	height: 200px;
+	/* Initial height */
 }
 
 .debug-terminal-header {
@@ -631,15 +646,19 @@ body {
 	padding: 8px 12px;
 	font-weight: bold;
 	color: var(--text-primary);
-	cursor: ns-resize; /* North-south resize cursor */
+	cursor: ns-resize;
+	/* North-south resize cursor */
 	border-bottom: 1px solid #444444;
-	flex-shrink: 0; /* Prevent header from shrinking */
+	flex-shrink: 0;
+	/* Prevent header from shrinking */
 }
 
 .game-state pre {
-	flex-grow: 1; /* Allow content to take remaining space */
+	flex-grow: 1;
+	/* Allow content to take remaining space */
 	padding: 12px 20px;
-	overflow-y: auto; /* Scroll content independently */
+	overflow-y: auto;
+	/* Scroll content independently */
 	white-space: pre-wrap;
 }
 
@@ -833,36 +852,66 @@ body {
 }
 
 /* Custom Scribe Mode Syntax Highlighting */
-.cm-s-material-darker .cm-keyword { color: var(--syntax-passage); font-weight: bold; }
-.cm-s-material-darker .cm-tag { color: var(--syntax-tag); font-style: italic; }
-.cm-s-material-darker .cm-link { color: var(--syntax-link); text-decoration: none; }
-.cm-s-material-darker .cm-link-action { color: var(--syntax-action); font-weight: bold; }
+.cm-s-material-darker .cm-keyword {
+	color: var(--syntax-passage);
+	font-weight: bold;
+}
+
+.cm-s-material-darker .cm-tag {
+	color: var(--syntax-tag);
+	font-style: italic;
+}
+
+.cm-s-material-darker .cm-link {
+	color: var(--syntax-link);
+	text-decoration: none;
+}
+
+.cm-s-material-darker .cm-link-action {
+	color: var(--syntax-action);
+	font-weight: bold;
+}
 
 /* Light Theme */
 .theme-light {
-    --primary-bg: #ffffff;
-    --secondary-bg: #f0f0f0;
-    --tertiary-bg: #e0e0e0;
-    --accent-color: #007bff;
-    --text-primary: #000000;
-    --text-secondary: #444444;
-    --text-muted: #888888;
-    --border-color: #dddddd;
-    --editor-bg: #ffffff;
+	--primary-bg: #ffffff;
+	--secondary-bg: #f0f0f0;
+	--tertiary-bg: #e0e0e0;
+	--accent-color: #007bff;
+	--text-primary: #000000;
+	--text-secondary: #444444;
+	--text-muted: #888888;
+	--border-color: #dddddd;
+	--editor-bg: #ffffff;
 
-    /* Syntax highlighting colors */
-    --syntax-passage: #0000ff;
-    --syntax-tag: #ff00ff;
-    --syntax-link: #008000;
-    --syntax-action: #ff8c00;
-    --syntax-jinja: #8b0000;
-    --syntax-comment: #808080;
-    --syntax-string: #a52a2a;
-    --syntax-keyword: #0000ff;
+	/* Syntax highlighting colors */
+	--syntax-passage: #0000ff;
+	--syntax-tag: #ff00ff;
+	--syntax-link: #008000;
+	--syntax-action: #ff8c00;
+	--syntax-jinja: #8b0000;
+	--syntax-comment: #808080;
+	--syntax-string: #a52a2a;
+	--syntax-keyword: #0000ff;
 }
 
 /* Custom Scribe Mode Syntax Highlighting for default theme */
-.cm-s-default .cm-keyword { color: var(--syntax-passage); font-weight: bold; }
-.cm-s-default .cm-tag { color: var(--syntax-tag); font-style: italic; }
-.cm-s-default .cm-link { color: var(--syntax-link); text-decoration: none; }
-.cm-s-default .cm-link-action { color: var(--syntax-action); font-weight: bold; }
+.cm-s-default .cm-keyword {
+	color: var(--syntax-passage);
+	font-weight: bold;
+}
+
+.cm-s-default .cm-tag {
+	color: var(--syntax-tag);
+	font-style: italic;
+}
+
+.cm-s-default .cm-link {
+	color: var(--syntax-link);
+	text-decoration: none;
+}
+
+.cm-s-default .cm-link-action {
+	color: var(--syntax-action);
+	font-weight: bold;
+}

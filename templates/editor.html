@@ -15,10 +15,15 @@
 					<img src="{{ url_for('static', filename='img/SE_icon.png') }}" alt="Scribe Engine Logo"
 						style="width: 32px; height: 32px;">
 				</div>
-				<div class="project-info">
-					<div class="project-name">{{ project_name }}</div>
-					<div class="project-path" id="project-path-display">{{ project_root }}/{{ project_name }}</div>
-				</div>
+				<h2>Scribe Engine</h2>
+			</div>
+			<div class="header-project-info">
+				<center>
+					<div class="project-info">
+						<div class="project-name">{{ project_name }}</div>
+						<div class="project-path" id="project-path-display">{{ project_root }}/{{ project_name }}</div>
+					</div>
+				</center>
 			</div>
 			<div class="header-actions">
 				<a href="/gui" class="btn btn-secondary">Back to Launcher</a>
@@ -36,7 +41,8 @@
 				</a>
 				<button class="btn btn-secondary" id="toggle-preview-btn">Toggle Preview</button>
 				<button class="btn btn-primary" hx-post="/api/build-game/{{ project_name }}" hx-trigger="click"
-					hx-swap="none" hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
+					hx-swap="none"
+					hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
 					<svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
 						<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
 						<path d="M17 8l-5-5-5 5" />
@@ -54,10 +60,13 @@
 		<div class="main-content">
 			<div class="sidebar">
 				<div class="sidebar-tabs">
-					<button class="sidebar-tab active" onclick="switchTab(this)" hx-get="/api/files/{{ project_name }}" hx-target="#sidebar-content" hx-trigger="click">
+					<button class="sidebar-tab active" onclick="switchTab(this)" hx-get="/api/files/{{ project_name }}"
+						hx-target="#sidebar-content" hx-trigger="click">
 						Files
 					</button>
-					<button class="sidebar-tab" onclick="switchTab(this)" hx-get="/api/project-settings/{{ project_name }}" hx-target="#sidebar-content" hx-trigger="click">
+					<button class="sidebar-tab" onclick="switchTab(this)"
+						hx-get="/api/project-settings/{{ project_name }}" hx-target="#sidebar-content"
+						hx-trigger="click">
 						Settings
 					</button>
 				</div>
@@ -69,13 +78,22 @@
 
 			<div class="editor-area" id="editor-area">
 				<div id="editor-pane" style="height: 100%; display: flex; flex-direction: column;">
+					<div class="editor-header">
+						<span class="editor-title" id="editor-file-title">No file open</span>
+						<div class="editor-actions">
+							<button class="btn btn-secondary" style="padding: 4px 8px; font-size: 12px;"
+								id="save-file-btn">
+								Save File
+							</button>
+						</div>
+					</div>
 					<div style="flex: 1; overflow: auto;" id="codemirror-container"></div>
 				</div>
 			</div>
 
 			<div class="resizer" id="drag-handle"></div>
 
-						<div id="preview-panel-container" hx-get="/api/preview-panel" hx-trigger="load" hx-swap="outerHTML">
+			<div id="preview-panel-container" hx-get="/api/preview-panel" hx-trigger="load" hx-swap="outerHTML">
 				<!-- Preview panel will be loaded here via HTMX -->
 			</div>
 		</div>
