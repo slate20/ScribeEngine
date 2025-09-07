@@ -15,7 +15,104 @@
             <label style="display: block; margin-bottom: 8px; font-size: 14px;">Starting Passage:</label>
             <input type="text" name="start_passage" value="{{ config.get('start_passage', 'start') }}" class="form-control">
         </div>
-        <button class="btn btn-primary" hx-post="/api/project-settings/{{ project_name }}" hx-include="#settingsTab input">
+
+        <div class="section-header" style="margin-top: 24px;">
+            <span>Features</span>
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <input type="checkbox" name="features.use_default_player" {% if config.get('features', {}).get('use_default_player', True) %}checked{% endif %}>
+                Use Default Player Object
+            </label>
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <input type="checkbox" name="features.use_default_inventory" {% if config.get('features', {}).get('use_default_inventory', True) %}checked{% endif %}>
+                Use Default Inventory System
+            </label>
+        </div>
+
+        <div class="section-header" style="margin-top: 24px;">
+            <span>Navigation</span>
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <input type="checkbox" name="nav.enabled" {% if config.get('nav', {}).get('enabled', True) %}checked{% endif %}>
+                Enable Navigation Menu
+            </label>
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: block; margin-bottom: 8px; font-size: 14px;">Navigation Position:</label>
+            <select name="nav.position" class="form-control">
+                <option value="horizontal" {% if config.get('nav', {}).get('position', 'horizontal') == 'horizontal' %}selected{% endif %}>Horizontal</option>
+                <option value="vertical-left" {% if config.get('nav', {}).get('position', 'horizontal') == 'vertical-left' %}selected{% endif %}>Vertical Left</option>
+                <option value="vertical-right" {% if config.get('nav', {}).get('position', 'horizontal') == 'vertical-right' %}selected{% endif %}>Vertical Right</option>
+            </select>
+        </div>
+
+        <div class="section-header" style="margin-top: 24px;">
+            <span>Theme</span>
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <input type="checkbox" name="theme.enabled" {% if config.get('theme', {}).get('enabled', True) %}checked{% endif %}>
+                Enable Custom Theme
+            </label>
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <input type="checkbox" name="theme.use_engine_defaults" {% if config.get('theme', {}).get('use_engine_defaults', True) %}checked{% endif %}>
+                Use Engine Default CSS
+            </label>
+        </div>
+
+        <div style="padding: 16px 0 0 16px;">
+            <h4 style="font-size: 14px; margin-bottom: 10px; color: var(--text-secondary);">Colors</h4>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px;">Primary Color:</label>
+                <input type="text" name="theme.colors.primary_color" value="{{ config.get('theme', {}).get('colors', {}).get('primary_color', '') }}" class="form-control">
+            </div>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px;">Background Color:</label>
+                <input type="text" name="theme.colors.background_color" value="{{ config.get('theme', {}).get('colors', {}).get('background_color', '') }}" class="form-control">
+            </div>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px;">Text Color:</label>
+                <input type="text" name="theme.colors.text_color" value="{{ config.get('theme', {}).get('colors', {}).get('text_color', '') }}" class="form-control">
+            </div>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px;">Link Color:</label>
+                <input type="text" name="theme.colors.link_color" value="{{ config.get('theme', {}).get('colors', {}).get('link_color', '') }}" class="form-control">
+            </div>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px;">Border Color:</label>
+                <input type="text" name="theme.colors.border_color" value="{{ config.get('theme', {}).get('colors', {}).get('border_color', '') }}" class="form-control">
+            </div>
+        </div>
+
+        <div style="padding: 16px 0 0 16px;">
+            <h4 style="font-size: 14px; margin-bottom: 10px; color: var(--text-secondary);">Fonts</h4>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px;">Body Font:</label>
+                <input type="text" name="theme.fonts.body_font" value="{{ config.get('theme', {}).get('fonts', {}).get('body_font', '') }}" class="form-control">
+            </div>
+            <div style="margin-bottom: 8px;">
+                <label style="display: block; margin-bottom: 4px; font-size: 12px;">Heading Font:</label>
+                <input type="text" name="theme.fonts.heading_font" value="{{ config.get('theme', {}).get('fonts', {}).get('heading_font', '') }}" class="form-control">
+            </div>
+        </div>
+
+        <div class="section-header" style="margin-top: 24px;">
+            <span>Development</span>
+        </div>
+        <div style="padding: 16px 0;">
+            <label style="display: flex; align-items: center; gap: 8px; font-size: 14px;">
+                <input type="checkbox" name="debug_mode" {% if config.get('debug_mode', False) %}checked{% endif %}>
+                Enable Debug Mode
+            </label>
+        </div>
+
+        <button class="btn btn-primary" hx-post="/api/project-settings/{{ project_name }}" hx-include="#settingsTab input, #settingsTab select" hx-swap="none" hx-on::after-request="refreshPreview(); showNotification('Settings saved successfully', 'success');">
             Save Settings
         </button>
     </div>

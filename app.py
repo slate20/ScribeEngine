@@ -282,7 +282,15 @@ def open_editor(project_name):
     set_game_project_path(active_project_path)
     
     # Initialize the game engine for the selected project
-    game_engine = GameEngine(active_project_path, debug_mode=_app_debug_mode)
+    # Read project.json to get debug_mode for this project
+    project_config_path = os.path.join(active_project_path, 'project.json')
+    project_debug_mode = False
+    if os.path.exists(project_config_path):
+        with open(project_config_path, 'r') as f:
+            project_config = json.load(f)
+            project_debug_mode = project_config.get('debug_mode', False)
+
+    game_engine = GameEngine(active_project_path, debug_mode=project_debug_mode)
 
     return render_template('editor.html', project_name=project_name, project_root=project_root)
 
@@ -476,19 +484,47 @@ def save_project_settings(project_name):
         with open(config_path, 'r') as f:
             config = json.load(f)
 
+    # Helper to update nested dictionary
+    def update_nested(d, keys, value):
+        for key in keys[:-1]:
+            d = d.setdefault(key, {})
+        d[keys[-1]] = value
+
     # Update config with form data
     config['title'] = request.form.get('title', config.get('title'))
     config['author'] = request.form.get('author', config.get('author'))
     config['start_passage'] = request.form.get('start_passage', config.get('start_passage'))
+
+    # Features
+    update_nested(config, ['features', 'use_default_player'], 'features.use_default_player' in request.form)
+    update_nested(config, ['features', 'use_default_inventory'], 'features.use_default_inventory' in request.form)
+
+    # Navigation
+    update_nested(config, ['nav', 'enabled'], 'nav.enabled' in request.form)
+    update_nested(config, ['nav', 'position'], request.form.get('nav.position'))
+
+    # Debug Mode
+    config['debug_mode'] = 'debug_mode' in request.form
+
+    # Theme
+    update_nested(config, ['theme', 'enabled'], 'theme.enabled' in request.form)
+    update_nested(config, ['theme', 'use_engine_defaults'], 'theme.use_engine_defaults' in request.form)
+    update_nested(config, ['theme', 'colors', 'primary_color'], request.form.get('theme.colors.primary_color'))
+    update_nested(config, ['theme', 'colors', 'background_color'], request.form.get('theme.colors.background_color'))
+    update_nested(config, ['theme', 'colors', 'text_color'], request.form.get('theme.colors.text_color'))
+    update_nested(config, ['theme', 'colors', 'link_color'], request.form.get('theme.colors.link_color'))
+    update_nested(config, ['theme', 'colors', 'border_color'], request.form.get('theme.colors.border_color'))
+    update_nested(config, ['theme', 'fonts', 'body_font'], request.form.get('theme.fonts.body_font'))
+    update_nested(config, ['theme', 'fonts', 'heading_font'], request.form.get('theme.fonts.heading_font'))
 
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=4)
 
     # It's good practice to reload the engine's config if it's running
     if game_engine and game_engine.project_path == project_path:
-        game_engine.load_config()
+        game_engine.load_project()
 
-    return render_template('_fragments/_project_settings.html', project_name=project_name, config=config)
+    return jsonify({'status': 'success', 'message': 'Settings saved successfully'})
 
 @app.route('/api/preview-panel')
 def get_preview_panel():
