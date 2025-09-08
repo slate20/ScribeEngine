@@ -13,6 +13,7 @@
     {% if use_engine_defaults %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     {% endif %}
+    <link rel="stylesheet" href="{{ url_for('serve_custom_css') }}">
     <script src="https://unpkg.com/htmx.org@2.0.6"></script>
 </head>
 <body id="main-body" class="{% if use_engine_defaults %}engine-themed{% endif %}">

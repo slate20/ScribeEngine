@@ -184,7 +184,7 @@ def submit_input():
     except Exception as e:
         if game_engine.debug_mode:
             return f'<div class="debug-error">Error submitting input: {str(e)}</div>', 500
-        return '<div class="error">Error submitting input</div>', 500
+        return '<div class="error">Error submitting input: ' + str(e) + '</div>', 500
 
 @app.route('/action_link', methods=['POST'])
 def handle_action_link():

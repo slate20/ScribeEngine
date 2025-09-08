@@ -46,14 +46,14 @@ def run_gui_app():
     time.sleep(2) # Give Flask a moment to start up
 
     # Create the webview window
-    # webview.create_window('Scribe Engine', 'http://127.0.0.1:5000/gui', width=1920, height=1080)
-    # webview.start()
+    webview.create_window('Scribe Engine', 'http://127.0.0.1:5000/gui', width=1920, height=1080)
+    webview.start()
 
     # Keep the main thread alive to prevent the Flask daemon from exiting
-    try:
-        input("Press Enter to stop the server and exit...")
-    except KeyboardInterrupt:
-        print("\nExiting...")
+    # try:
+    #     input("Press Enter to stop the server and exit...")
+    # except KeyboardInterrupt:
+    #     print("\nExiting...")
     
 if __name__ == '__main__':
     run_gui_app()
