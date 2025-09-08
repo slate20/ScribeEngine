@@ -104,13 +104,33 @@ function openFile(projectName, fileName, element) {
 /**
  * Saves the current content of the editor to the server.
  */
-function saveFile() {
+async function saveFile() {
 	if (!currentProject || !currentFile || !editor || editor.getOption("readOnly")) {
 		showNotification('No file is open to save.', 'warning');
 		return;
 	}
 
 	const content = editor.getValue();
+
+	// Capture game state before saving file
+	try {
+		const gameStateResponse = await fetch('/api/game-state');
+		const currentGameState = await gameStateResponse.json();
+
+		// Send game state to a temporary storage endpoint on the backend
+		await fetch('/api/set-temp-game-state', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify(currentGameState)
+		});
+	} catch (error) {
+		console.error('Error capturing or sending game state:', error);
+		showNotification('Could not capture game state.', 'error');
+		// Decide if you want to proceed with file save even if state capture fails
+		// For now, we'll proceed, but a more robust solution might stop here.
+	}
 
 	fetch(`/api/save-file/${currentProject}/${currentFile}`, {
 		method: 'POST',
@@ -128,7 +148,17 @@ function saveFile() {
 				unsavedFiles.delete(currentFile); // Remove from unsavedFiles
 				updateEditorUI(); // Update UI after save
 				// Refresh the preview iframe after a successful save
-				refreshPreview();
+				if (data.passage_html) {
+					const iframeDoc = document.getElementById('preview-iframe').contentWindow.document;
+					const gameContentDiv = iframeDoc.getElementById('game-content');
+					gameContentDiv.innerHTML = data.passage_html;
+					// Re-process HTMX on the newly loaded content within the iframe
+					if (iframeDoc.defaultView.htmx) { // Check if htmx is available in the iframe's context
+						iframeDoc.defaultView.htmx.process(gameContentDiv);
+					}
+				} else {
+					refreshPreview();
+				}
 			} else {
 				showNotification(data.message, 'error');
 			}

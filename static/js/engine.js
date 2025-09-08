@@ -47,6 +47,9 @@ document.addEventListener('DOMContentLoaded', function () {
                 .then(data => {
                     if (data.status === 'success') {
                         console.log('Game loaded:', data);
+                        if (data.passage_html) {
+                            document.getElementById('game-content').innerHTML = data.passage_html;
+                        }
                         alert('Game loaded!');
                         htmx.process(document.getElementById('game-content'));
                     } else {

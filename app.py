@@ -47,6 +47,7 @@ app.secret_key = 'your-secret-key-here'  # Change in production
 # Initialize game engine (will be done after GAME_PROJECT_PATH is set)
 game_engine = None
 _app_debug_mode = False # Default to False for production
+_temp_game_state = None # New global variable to store temporary game state
 
 # Add a server object to manage the Flask server instance
 server = None
@@ -398,10 +399,20 @@ def save_file_content(project_name, filename):
             f.write(data['content'])
         reset_game_engine() # Reset the game engine to pick up changes
         # Re-initialize the game engine for the current project
-        global game_engine
+        global game_engine, _temp_game_state
         game_engine = GameEngine(active_project_path, debug_mode=_app_debug_mode)
-        print("Game engine reset and re-initialized!") # For testing purposes
-        return jsonify({'status': 'success', 'message': f'{filename} saved successfully'})
+
+        # Restore game state if available
+        if _temp_game_state:
+            game_engine.set_game_state(_temp_game_state)
+            _temp_game_state = None # Clear the temporary state after use
+            print("Game state restored after file save.") # For testing purposes
+
+        # Render the current passage from the restored state and return it
+        current_passage = game_engine.game_state.get('current_passage', 'start')
+        passage_html = game_engine.render_main_passage(current_passage)
+
+        return jsonify({'status': 'success', 'message': f'{filename} saved successfully', 'passage_html': passage_html})
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -551,6 +562,15 @@ def get_game_state():
     if game_engine and hasattr(game_engine, 'game_state'):
         return jsonify(game_engine.game_state)
     return jsonify({})
+
+@app.route('/api/set-temp-game-state', methods=['POST'])
+def set_temp_game_state():
+    global _temp_game_state
+    try:
+        _temp_game_state = request.json
+        return jsonify({'status': 'success', 'message': 'Temporary game state set.'}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/debug/state')
 def debug_state():

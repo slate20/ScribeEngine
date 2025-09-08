@@ -359,6 +359,15 @@ class GameEngine:
         for key, value in data.items():
             self.set_variable(key, value)
 
+    def set_game_state(self, new_state: dict):
+        """
+        Sets the entire game state to a new state.
+        """
+        if isinstance(new_state, dict):
+            self.game_state = new_state
+        else:
+            raise TypeError("New game state must be a dictionary.")
+
     
         
 

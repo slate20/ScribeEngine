@@ -1,2 +1,2 @@
 - [ ] Replace new file prompt with modal
-- [ ] Refreshing the game window should resume from the current_passage of the game state
+- [ ] Refreshing the game window should resume from the current_passage of the game statebas
