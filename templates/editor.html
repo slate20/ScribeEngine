@@ -38,9 +38,22 @@
 						hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
 					<i data-lucide="package"></i> Build
 				</button>
-				<a href="/api/close-project" class="btn btn-icon btn-danger" title="Close Project">
-					<i data-lucide="power"></i>
-				</a>
+				<div class="action-dropdown">
+					<button id="project-actions-btn" class="btn btn-icon btn-danger" title="Project Actions">
+						<i data-lucide="power"></i>
+					</button>
+					<div id="project-actions-dropdown" class="action-dropdown-content">
+						<button hx-post="/api/reset-game-state" hx-trigger="click" hx-swap="none" hx-on:htmx:after-request="showNotification('Game state has been reset.', 'success'); refreshPreview();">
+							<i data-lucide="refresh-cw"></i>
+							Reset Game State
+						</button>
+						<div class="separator"></div>
+						<a href="/api/close-project">
+							<i data-lucide="log-out"></i>
+							Close Project
+						</a>
+					</div>
+				</div>
 			</div>
 		</div>
 

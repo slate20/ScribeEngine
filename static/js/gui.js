@@ -187,7 +187,15 @@ function refreshPreview() {
  * @param {string} type - The type of notification ('success', 'error', 'warning', 'info').
  */
 function showNotification(message, type = 'info') {
+    let container = document.getElementById('notification-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'notification-container';
+        document.body.appendChild(container);
+    }
+
 	const notification = document.createElement('div');
+    notification.className = 'notification';
 	const colors = {
 		success: 'var(--success-color)',
 		error: 'var(--danger-color)',
@@ -195,34 +203,18 @@ function showNotification(message, type = 'info') {
 		info: 'var(--accent-color)'
 	};
 
-	notification.style.cssText = `
-        position: fixed;
-        top: 80px;
-        right: 20px;
-        padding: 12px 20px;
-        background: ${colors[type] || colors.info};
-        color: white;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 500;
-        z-index: 1001;
-        opacity: 0;
-        transform: translateY(-10px);
-        transition: all 0.3s;
-        max-width: 300px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    `;
+    notification.style.background = colors[type] || colors.info;
 	notification.textContent = message;
-	document.body.appendChild(notification);
+	container.appendChild(notification);
 
 	setTimeout(() => {
 		notification.style.opacity = '1';
-		notification.style.transform = 'translateY(0)';
+		notification.style.transform = 'translateX(0)';
 	}, 10);
 
 	setTimeout(() => {
 		notification.style.opacity = '0';
-		notification.style.transform = 'translateY(-10px)';
+		notification.style.transform = 'translateX(20px)';
 		setTimeout(() => {
 			if (notification.parentNode) {
 				notification.parentNode.removeChild(notification);
@@ -431,6 +423,24 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 			clearInterval(gameStateIntervalId);
 		}
 		gameStateIntervalId = setInterval(updateGameStateDisplay, 2000); // Update every 2 seconds
+
+        // Dropdown for project actions
+        const projectActionsBtn = document.getElementById('project-actions-btn');
+        const projectActionsDropdown = document.getElementById('project-actions-dropdown');
+
+        if (projectActionsBtn && projectActionsDropdown) {
+            projectActionsBtn.addEventListener('click', (event) => {
+                event.stopPropagation();
+                projectActionsDropdown.classList.toggle('show');
+            });
+
+            // Close dropdown if clicking outside
+            window.addEventListener('click', (event) => {
+                if (!projectActionsBtn.contains(event.target)) {
+                    projectActionsDropdown.classList.remove('show');
+                }
+            });
+        }
 
         // Ensure UI state is correct after HTMX swap
         updateEditorUI();

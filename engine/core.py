@@ -368,6 +368,30 @@ class GameEngine:
         else:
             raise TypeError("New game state must be a dictionary.")
 
+    def reset_game_state(self):
+        """
+        Resets the current game state to the initial state, including project-specific state.
+        """
+        # Get the base initial state from the state manager
+        self.game_state = self.state_manager.get_initial_state()
+
+        # After resetting, re-apply any project-specific initializations, like a custom Player class.
+        # This logic is similar to what's in load_project.
+        features = self.config.get('features', {})
+        systems = self.executor.get_systems()
+        if not features.get('use_default_player', True) and 'Player' in systems:
+            PlayerClass = systems['Player']
+            if isinstance(PlayerClass, type):
+                player_instance = PlayerClass()
+                # Convert instance to a dictionary, excluding methods
+                player_dict = {k: v for k, v in vars(player_instance).items() if not k.startswith('__') and not callable(v)}
+                if 'player' not in self.game_state:
+                    self.game_state['player'] = {}
+                self.game_state['player'].update(player_dict)
+
+        if self.debug_mode:
+            print("Game state has been reset (including custom project state).")
+
     
         
 

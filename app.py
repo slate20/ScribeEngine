@@ -551,6 +551,13 @@ def close_project():
     active_project_path = None
     return redirect(url_for('gui_launcher'))
 
+@app.route('/api/reset-game-state', methods=['POST'])
+def reset_game_state_api():
+    if game_engine:
+        game_engine.reset_game_state()
+        return jsonify({'status': 'success', 'message': 'Game state reset successfully'}), 200
+    return jsonify({'status': 'error', 'message': 'Game engine not initialized'}), 500
+
 @app.route('/api/preview-panel')
 def get_preview_panel():
     return render_template('_fragments/_preview_panel.html')

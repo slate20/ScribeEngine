@@ -50,10 +50,10 @@ def run_gui_app():
     # webview.start()
 
     # Keep the main thread alive to prevent the Flask daemon from exiting
-    # try:
-    #     input("Press Enter to stop the server and exit...")
-    # except KeyboardInterrupt:
-    #     print("\nExiting...")
+    try:
+        input("Press Enter to stop the server and exit...")
+    except KeyboardInterrupt:
+        print("\nExiting...")
     
 if __name__ == '__main__':
     run_gui_app()
