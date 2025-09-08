@@ -407,6 +407,15 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 			});
 		}
 
+		const fontSizeSelector = document.getElementById('font-size-selector');
+		if (fontSizeSelector) {
+			fontSizeSelector.addEventListener('change', function() {
+				document.documentElement.style.setProperty('--editor-font-size', this.value);
+			});
+			// Set initial font size based on the selected value
+			document.documentElement.style.setProperty('--editor-font-size', fontSizeSelector.value);
+		}
+
 		const toggleDebugBtn = document.getElementById('toggle-debug-terminal-btn');
 		if (toggleDebugBtn) {
 			toggleDebugBtn.addEventListener('click', toggleDebugTerminal);

@@ -400,7 +400,7 @@ body {
 
 .editor-header {
 	background: var(--secondary-bg);
-	padding: 16px;
+	padding: 13px;
 	border-bottom: 1px solid var(--border-color);
 	display: flex;
 	align-items: center;
@@ -460,6 +460,16 @@ body {
 	color: white;
 }
 
+.editor-actions {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.editor-actions .btn {
+	margin-right: 8px;
+}
+
 .editor-content {
 	flex: 1;
 	display: flex;
@@ -483,7 +493,18 @@ body {
 #codemirror-container,
 .CodeMirror {
 	height: 100% !important;
-	font-size: 14px;
+	font-size: var(--editor-font-size, 14px);
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	border: 0;
 }
 
 /* Draggable Resizer Styles */
@@ -1142,76 +1163,76 @@ body {
 
 /* Notification Container */
 #notification-container {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 1001;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: flex-end;
+	position: fixed;
+	bottom: 20px;
+	right: 20px;
+	z-index: 1001;
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	align-items: flex-end;
 }
 
 .notification {
-    padding: 12px 20px;
-    color: white;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: 500;
-    opacity: 0;
-    transform: translateX(20px);
-    transition: all 0.3s ease-in-out;
-    max-width: 300px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+	padding: 12px 20px;
+	color: white;
+	border-radius: 6px;
+	font-size: 14px;
+	font-weight: 500;
+	opacity: 0;
+	transform: translateX(20px);
+	transition: all 0.3s ease-in-out;
+	max-width: 300px;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 /* Action Dropdown */
 .action-dropdown {
-    position: relative;
-    display: inline-block;
+	position: relative;
+	display: inline-block;
 }
 
 .action-dropdown-content {
-    display: none;
-    position: absolute;
-    right: 0;
-    background-color: var(--secondary-bg);
-    min-width: 180px;
-    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
-    z-index: 1;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-    margin-top: 8px;
+	display: none;
+	position: absolute;
+	right: 0;
+	background-color: var(--secondary-bg);
+	min-width: 180px;
+	box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+	z-index: 1;
+	border-radius: 6px;
+	border: 1px solid var(--border-color);
+	overflow: hidden;
+	margin-top: 8px;
 }
 
 .action-dropdown-content.show {
-    display: block;
+	display: block;
 }
 
 .action-dropdown-content a,
 .action-dropdown-content button {
-    color: var(--text-primary);
-    padding: 12px 16px;
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    border: none;
-    background: none;
-    text-align: left;
-    cursor: pointer;
-    font-size: 14px;
+	color: var(--text-primary);
+	padding: 12px 16px;
+	text-decoration: none;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	width: 100%;
+	border: none;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+	font-size: 14px;
 }
 
 .action-dropdown-content a:hover,
 .action-dropdown-content button:hover {
-    background-color: var(--tertiary-bg);
+	background-color: var(--tertiary-bg);
 }
 
 .action-dropdown-content .separator {
-    height: 1px;
-    background-color: var(--border-color);
-    margin: 4px 0;
+	height: 1px;
+	background-color: var(--border-color);
+	margin: 4px 0;
 }
