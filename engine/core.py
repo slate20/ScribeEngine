@@ -145,19 +145,25 @@ class GameEngine:
 
         # Handle silent passages
         if 'silent' in tags:
-            self._process_passage_content(passage_name, executor, use_raw_content=True)
+            # First, process the passage content to resolve Jinja2 conditionals.
+            # We use 'raw_content' because the parser removes links from 'content',
+            # but we need the links to be present for Jinja2 to evaluate them.
+            rendered_silent_content = self._process_passage_content(passage_name, executor, use_raw_content=True)
 
-            # After executing, find the next passage to redirect to
-            links = self.passages[passage_name].get('links', [])
-            if not links:
-                raise ValueError(f"Silent passage '{passage_name}' has no links to redirect to.")
+            # Now, find the link in the *rendered* content.
+            # This will only find the link that passed the Jinja2 condition.
+            found_links = self.parser.link_pattern.findall(rendered_silent_content)
 
-            # Render the target of the first link to handle dynamic targets like {{...}}
-            template_context = self.get_template_context()
-            env = Environment()
-            first_link_target = links[0][1] # Target is the second item in the tuple
-            target_template = env.from_string(first_link_target)
-            next_passage_name = target_template.render(**template_context)
+            if not found_links:
+                raise ValueError(f"Silent passage '{passage_name}' rendered no links to redirect to. Check your Jinja2 conditions.")
+            if len(found_links) > 1:
+                # This indicates an issue with the passage logic, as only one link
+                # should typically remain after Jinja2 evaluation in a silent passage.
+                # We'll proceed with the first one, but it's a warning sign.
+                print(f"WARNING: Silent passage '{passage_name}' rendered multiple links. Redirecting to the first one found.")
+
+            # The target is the second item in the tuple (text, target, action)
+            next_passage_name = found_links[0][1]
 
             # Recursively call render_main_passage for the next passage
             return self.render_main_passage(next_passage_name, _recursion_depth + 1)
