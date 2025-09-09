@@ -290,7 +290,7 @@ def open_editor(project_name):
     # Initialize the game engine for the selected project
     # Read project.json to get debug_mode for this project
     project_config_path = os.path.join(active_project_path, 'project.json')
-    project_debug_mode = False
+    project_debug_mode = True
     if os.path.exists(project_config_path):
         with open(project_config_path, 'r') as f:
             project_config = json.load(f)

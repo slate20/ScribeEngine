@@ -27,6 +27,7 @@ function initEditor() {
 		theme: 'material-darker',
 		lineNumbers: true,
 		readOnly: true, // Start as read-only until a file is opened
+		lineWrapping: true, // Enable word wrapping
 		extraKeys: {
 			"Ctrl-S": function (cm) {
 				saveFile();
