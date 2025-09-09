@@ -89,10 +89,22 @@ class GameEngine:
 
     def render_passage_content(self, passage_name, executor):
         """Renders a single passage, executing its Python and Jinja logic, and generating HTML with choices."""
-        rendered_content = self._process_passage_content(passage_name, executor)
+        # Always process raw_content to allow Jinja2 expressions within links
+        rendered_content = self._process_passage_content(passage_name, executor, use_raw_content=True)
+        
+        # Re-extract links from the rendered content after Jinja2 evaluation
+        # This ensures that any Jinja2 expressions that generate or modify links are processed.
+        extracted_links = self.parser.link_pattern.findall(rendered_content)
+        
+        # Remove links from the final content before passing to HTML generation
+        content_without_links = self.parser.link_pattern.sub('', rendered_content).strip()
+
         passage = self.passages[passage_name]
-        links = passage['links'] if passage_name not in ['PrePassage', 'PostPassage'] else []
-        return self.generate_passage_html(passage_name, rendered_content, links)
+        
+        # Only include links if it's not a special passage like PrePassage or PostPassage
+        links_to_use = extracted_links if passage_name not in ['PrePassage', 'PostPassage'] else []
+
+        return self.generate_passage_html(passage_name, content_without_links, links_to_use)
 
     def render_special_passage(self, passage_name, executor=None):
         """Renders a single special-purpose passage (e.g., NavMenu, PrePassage, PostPassage)."""
@@ -238,6 +250,14 @@ class GameEngine:
             'now': datetime.now, # Add datetime.now to context
         })
         return context
+
+    def sync_context_to_state(self, context: dict):
+        """Synchronizes mutable objects from a template context back to the game state."""
+        if 'player' in context:
+            player_obj = context['player']
+            # Convert the player object back to a dictionary, preserving the state
+            player_dict = {k: v for k, v in vars(player_obj).items() if not k.startswith('__') and not callable(v)}
+            self.game_state['player'] = player_dict
     
     def generate_passage_html(self, passage_name, content, links):
         html_parts = []

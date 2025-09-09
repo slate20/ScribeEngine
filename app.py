@@ -46,7 +46,7 @@ app.secret_key = 'your-secret-key-here'  # Change in production
 
 # Initialize game engine (will be done after GAME_PROJECT_PATH is set)
 game_engine = None
-_app_debug_mode = False # Default to False for production
+_app_debug_mode = True # Default to False for production
 _temp_game_state = None # New global variable to store temporary game state
 
 # Add a server object to manage the Flask server instance
@@ -205,6 +205,9 @@ def handle_action_link():
         template = env.from_string(action_string)
         template.render(**context) # This calls helpers like set_variable that modify the game_state
 
+        # Sync state changes from the context back to the game engine
+        game_engine.sync_context_to_state(context)
+
         # Render the target passage and return the HTML
         html = game_engine.render_main_passage(target_passage)
         return html
@@ -212,7 +215,7 @@ def handle_action_link():
     except Exception as e:
         if game_engine.debug_mode:
             return f'<div class="debug-error">Error executing action link: {str(e)}</div>', 500
-        return '<div class="error">An error occurred while processing the action.</div>', 500
+        return f'<div class="error">An error occurred while processing the action: {str(e)}</div>', 500
 
 @app.route('/saves')
 def list_saves():

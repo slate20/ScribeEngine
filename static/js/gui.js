@@ -434,24 +434,6 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 		}
 		gameStateIntervalId = setInterval(updateGameStateDisplay, 2000); // Update every 2 seconds
 
-        // Dropdown for project actions
-        const projectActionsBtn = document.getElementById('project-actions-btn');
-        const projectActionsDropdown = document.getElementById('project-actions-dropdown');
-
-        if (projectActionsBtn && projectActionsDropdown) {
-            projectActionsBtn.addEventListener('click', (event) => {
-                event.stopPropagation();
-                projectActionsDropdown.classList.toggle('show');
-            });
-
-            // Close dropdown if clicking outside
-            window.addEventListener('click', (event) => {
-                if (!projectActionsBtn.contains(event.target)) {
-                    projectActionsDropdown.classList.remove('show');
-                }
-            });
-        }
-
         // Ensure UI state is correct after HTMX swap
         updateEditorUI();
 	}
@@ -500,3 +482,20 @@ function switchTab(clickedTab) {
     // Add active class to the clicked tab
     clickedTab.classList.add('active');
 }
+
+// Event delegation for project actions dropdown
+document.body.addEventListener('click', function(event) {
+    const projectActionsBtn = document.getElementById('project-actions-btn');
+    const projectActionsDropdown = document.getElementById('project-actions-dropdown');
+
+    if (!projectActionsBtn || !projectActionsDropdown) return; // Elements not present
+
+    // If the clicked element is the button itself, toggle the dropdown
+    if (projectActionsBtn.contains(event.target)) {
+        event.stopPropagation(); // Prevent the click from bubbling up to the window listener
+        projectActionsDropdown.classList.toggle('show');
+    } else if (!projectActionsDropdown.contains(event.target)) {
+        // If the clicked element is not the button and not inside the dropdown, close the dropdown
+        projectActionsDropdown.classList.remove('show');
+    }
+});
