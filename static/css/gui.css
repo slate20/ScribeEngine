@@ -983,6 +983,15 @@ body {
 	font-weight: bold;
 }
 
+/* Custom Scribe Python Delimiter Highlighting */
+.cm-scribe-delimiter {
+	color: var(--syntax-action);
+	/* Using the accent color for visibility */
+	font-weight: bold;
+	background-color: transparent;
+	/* Ensure no background if it was inherited as an error */
+}
+
 /* Default grey for save button */
 #save-file-btn {
 	background-color: var(--tertiary-bg);

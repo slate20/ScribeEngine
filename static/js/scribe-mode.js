@@ -17,13 +17,28 @@ CodeMirror.defineMode("jinja2-htmlmixed", function(config) {
             close: "#}",
             mode: CodeMirror.getMode(config, "jinja2"),
             parseDelimiters: true // This is the key fix to highlight code WITHIN the block
-        }
+        // }, {
+        //     open: "{$",
+        //     close: "$}",
+        //     mode: CodeMirror.getMode(config, "python"),
+        //     parseDelimiters: true
+        // }, {
+        //     open: "{$-",
+        //     close: "-$}",
+        //     mode: CodeMirror.getMode(config, "python"),
+        //     parseDelimiters: true
+        // }
     );
 });
 
 // PART B: Define the Scribe overlay that sits on top of our new base mode.
 var scribeOverlay = {
     token: function(stream, state) {
+        //Highlight Scribe Python delimiters
+        if (stream.match("{$") || stream.match("$}") || stream.match("{$-") || stream.match("-$}")) {
+            return "scribe-delimiter";
+        }
+
         if (stream.sol() && stream.match("::")) {
             stream.eatWhile(/[\w\- ]/);
             return "keyword";

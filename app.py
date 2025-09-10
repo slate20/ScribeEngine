@@ -195,22 +195,23 @@ def handle_action_link():
 
         if not all([action_string, target_passage]):
             return "Error: 'action' and 'target_passage' are required.", 400
-        
-        # Get the current game context (state + helper functions)
-        context = game_engine.get_template_context()
-        
-        # Use Jinja to execute the action string
-        # The {% do %} extension is needed for statements that don't produce output
-        env = Environment(extensions=['jinja2.ext.do'])
-        template = env.from_string(action_string)
-        template.render(**context) # This calls helpers like set_variable that modify the game_state
 
-        # Sync state changes from the context back to the game engine
-        game_engine.sync_context_to_state(context)
+        # TEMPORARY DIAGNOSTIC: Strip delimiters here to isolate the parser issue.
+        if action_string.strip().startswith('{$') and action_string.strip().endswith('$}'):
+            action_string = action_string.strip()[2:-2].strip()
+
+        # Use the SafeExecutor to execute the action string as Python code.
+        # The executor will directly modify the game_state.
+        error = game_engine.executor.execute_code(action_string)
+        
+        # Prepend an error message to the next passage if one occurs
+        error_html = ''
+        if error and game_engine.debug_mode:
+            error_html = f'<div class="debug-error">Error in link action: {error}</div>'
 
         # Render the target passage and return the HTML
         html = game_engine.render_main_passage(target_passage)
-        return html
+        return error_html + html
 
     except Exception as e:
         if game_engine.debug_mode:
