@@ -23,14 +23,71 @@ function initEditor() {
 
 	editor = CodeMirror(container, {
 		value: "// Select a file from the list to begin editing.",
-		mode: 'jinja2',
+		mode: 'null',
 		theme: 'material-darker',
 		lineNumbers: true,
+		autoCloseBrackets: true,
 		readOnly: true, // Start as read-only until a file is opened
 		lineWrapping: true, // Enable word wrapping
 		extraKeys: {
 			"Ctrl-S": function (cm) {
 				saveFile();
+			},
+			"' '": function(cm) {
+				const pos = cm.getCursor();
+				const textBeforeBlock = cm.getRange({line: pos.line, ch: pos.ch - 3}, pos);
+				const textBeforeInline = cm.getRange({line: pos.line, ch: pos.ch - 2}, pos);
+
+				// First, check for the more specific "block" case: '{$ -'
+				if (textBeforeBlock === '{$-') {
+					// The user typed '{$ -' then space. Replace it all with a block.
+					// We replace from 4 chars back (to include '{$ -') up to the cursor (to include the space)
+					const textAfter = cm.getRange(pos, {line: pos.line, ch: pos.ch + 1});
+					const from = {line: pos.line, ch: pos.ch - 3};
+					const to = (textAfter === '}') ? {line: pos.line, ch: pos.ch + 1} : pos;
+					cm.replaceRange('{$-\n\n-$}', from, to);
+
+					// Move cursor to the new empty line
+					cm.setCursor({line: pos.line + 1, ch: 0});
+					// cm.execCommand("indentAuto");
+					return;
+				
+				// Next, check for the "inline" case: '{$'
+				} else if (textBeforeInline === '{$') {
+					// The user typed '{$' then space. Replace it all with an inline block.
+					// We replace from 3 chars back (to include '{$') up to the cursor (to include the space)
+					const textAfter = cm.getRange(pos, {line: pos.line, ch: pos.ch + 1});
+					const from = {line: pos.line, ch: pos.ch - 2};
+					const to = (textAfter === '}') ? {line: pos.line, ch: pos.ch + 1} : pos;
+					cm.replaceRange('{$  $}', from, to);
+					
+					// Move cursor into the middle
+					cm.setCursor({line: pos.line, ch: pos.ch + 1});
+					return;
+				}
+				
+				// If neither case matched, let CodeMirror insert a normal space
+				return CodeMirror.Pass;
+			},
+			"Enter": function(cm) {
+                const pos = cm.getCursor();
+                const textBeforeBlock = cm.getRange({line: pos.line, ch: pos.ch - 3}, pos);
+                if (textBeforeBlock === '{$-') {
+                    // The user typed '{$ -' then enter. Replace it with a block.
+                    // We replace from 4 chars back (to include '{$ -') up to the cursor (to include the enter)
+					const textAfter = cm.getRange(pos, {line: pos.line, ch: pos.ch + 1});
+                    const from = {line: pos.line, ch: pos.ch - 3};
+                    const to = (textAfter === '}') ? {line: pos.line, ch: pos.ch + 1} : pos;
+                    cm.replaceRange('{$-\n\n-$}', from, to);
+
+                    // Move cursor to the new empty line
+                    cm.setCursor({line: pos.line + 1, ch: 0});
+                    // cm.execCommand("indentAuto");
+                    return;
+                }
+
+                // If case did not match, let CodeMirror insert a normal enter
+                return CodeMirror.Pass;
 			}
 		}
 	});
@@ -180,6 +237,39 @@ function refreshPreview() {
 		iframe.src = `/`;
 		showNotification('Preview refreshed!', 'info');
 	}
+}
+
+/**
+ * Performs a "smart" refresh of the preview pane by fetching the current passage
+ * HTML and injecting it, avoiding a full page reload.
+ */
+function smartRefreshPreview() {
+    fetch('/api/refresh-preview', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success' && data.passage_html) {
+                const iframeDoc = document.getElementById('preview-iframe').contentWindow.document;
+                const gameContentDiv = iframeDoc.getElementById('game-content');
+                if (gameContentDiv) {
+                    gameContentDiv.innerHTML = data.passage_html;
+                    // Re-process HTMX on the newly loaded content
+                    if (iframeDoc.defaultView.htmx) {
+                        iframeDoc.defaultView.htmx.process(gameContentDiv);
+                    }
+                    showNotification('Preview refreshed.', 'success');
+                }
+            } else {
+                // Fallback to a full reload if something went wrong
+                console.error('Smart refresh failed, falling back to full reload.');
+                refreshPreview(); // The old full-reload function
+                showNotification(data.message || 'Could not refresh preview.', 'error');
+            }
+        })
+        .catch(err => {
+            console.error('Error during smart refresh:', err);
+            refreshPreview(); // Fallback to a full reload on error
+            showNotification('Error refreshing preview.', 'error');
+        });
 }
 
 /**
@@ -393,6 +483,26 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 			toggleBtn.addEventListener('click', togglePreview);
 		}
 
+		const resetBtn = document.getElementById('reset-game-state-btn');
+		if (resetBtn) {
+			resetBtn.addEventListener('click', function() {
+				fetch('/api/reset-game-state', { method: 'POST' })
+					.then(response => response.json())
+					.then(data => {
+						if (data.status === 'success') {
+							showNotification('Game state has been reset.', 'success');
+							refreshPreview();
+						} else {
+							showNotification(data.message || 'Failed to reset game state.', 'error');
+						}
+					})
+					.catch(err => {
+						console.error('Error resetting game state:', err);
+						showNotification('An error occurred while resetting the game state.', 'error');
+					});
+			});
+		}
+
 		const themeSelector = document.getElementById('theme-selector');
 		if (themeSelector) {
 			themeSelector.addEventListener('change', function() {
@@ -499,3 +609,18 @@ document.body.addEventListener('click', function(event) {
         projectActionsDropdown.classList.remove('show');
     }
 });
+
+// --- pywebview API bridge ---
+async function browseForProjectRoot() {
+    try {
+        const path = await window.pywebview.api.open_folder_dialog();
+        if (path) {
+            const pathInput = document.getElementById('project-root-path');
+            if (pathInput) {
+                pathInput.value = path;
+            }
+        }
+    } catch (e) {
+        console.error("Error calling pywebview API: ", e);
+    }
+}

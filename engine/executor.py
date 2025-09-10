@@ -2,7 +2,7 @@ import sys
 import traceback
 import inspect
 from types import SimpleNamespace, FunctionType, ModuleType
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 
 class SafeExecutor:
     def __init__(self, game_state: Dict, features: Dict = None, debug_mode: bool = False):
@@ -37,12 +37,15 @@ class SafeExecutor:
         """Load systems from a pre-existing cache."""
         self.systems = systems_cache
 
-    def create_safe_globals(self) -> Dict[str, Any]:
+    def create_safe_globals(self) -> Tuple[Dict[str, Any], set]:
         """Create the sandboxed global environment for game code execution."""
         def custom_import(name, globals=None, locals=None, fromlist=(), level=0):
             if name in self.allowed_imports:
                 return __import__(name, globals, locals, fromlist, level)
             raise ImportError(f"Module '{name}' is not allowed.")
+
+        safe_globals = {}
+        safe_globals.update(self.game_state)
 
         safe_builtins = {
             'len': len, 'str': str, 'int': int, 'float': float,
@@ -52,55 +55,45 @@ class SafeExecutor:
             'hasattr': hasattr, 'getattr': getattr, 'setattr': setattr,
             '__import__': custom_import
         }
+        safe_globals['__builtins__'] = safe_builtins
 
-        safe_globals = {
-            '__builtins__': safe_builtins,
-            'flags': self.game_state.get('flags', {}),
-            'variables': self.game_state.get('variables', {}),
-            'passage_tags': self.game_state.get('passage_tags', []), # Expose current passage tags
+        helpers = {
             'set_flag': self.set_flag,
             'get_flag': self.get_flag,
             'set_variable': self.set_variable,
             'get_variable': self.get_variable,
             'debug': self.debug_print,
         }
-
-        # Add systems
-        safe_globals.update(self.systems)
-
-        # Conditionally add player object
-        if self.features.get('use_default_player', True):
-            player_dict = self.game_state.get('player', {})
-            safe_globals['player'] = SimpleNamespace(**player_dict)
-        else:
-            # Use custom player class if provided
-            if 'Player' in self.systems and isinstance(self.systems['Player'], type):
-                # Check if a player state already exists (e.g., from a save)
-                player_data = self.game_state.get('player', {})
-                safe_globals['player'] = self.systems['Player'](**player_data)
-            else:
-                # Optionally, raise an error or default to a basic object
-                raise TypeError("Custom player class 'Player' not found in project Python files.")
-
-        # Conditionally add inventory helpers
         if self.features.get('use_default_inventory', False):
-            safe_globals.update({
+            helpers.update({
                 'add_to_inventory': self.add_to_inventory,
                 'remove_from_inventory': self.remove_from_inventory,
                 'has_item': self.has_item,
                 'get_item_count': self.get_item_count,
             })
+        safe_globals.update(helpers)
+        safe_globals.update(self.systems)
 
-        return safe_globals
+        if 'player' in self.game_state and isinstance(self.game_state['player'], dict):
+            player_data = self.game_state['player']
+            if not self.features.get('use_default_player', True) and 'Player' in self.systems and isinstance(self.systems['Player'], type):
+                safe_globals['player'] = self.systems['Player'](**player_data)
+            else:
+                safe_globals['player'] = SimpleNamespace(**player_data)
+
+        non_persistent_keys = set(helpers.keys()) | set(self.systems.keys())
+        non_persistent_keys.add('__builtins__')
+
+        return safe_globals, non_persistent_keys
 
     def execute_code(self, code: str) -> Optional[str]:
         self.debug_print(f"execute_code received: {code}")
         """Execute a block of code from a passage safely."""
         try:
-            safe_globals = self.create_safe_globals()
+            safe_globals, non_persistent_keys = self.create_safe_globals()
 
             exec(code, safe_globals)
-            self.update_game_state(safe_globals)
+            self.update_game_state(safe_globals, non_persistent_keys)
             return None
         except Exception as e:
             error_msg = f"{type(e).__name__}: {e}"
@@ -109,13 +102,19 @@ class SafeExecutor:
                 traceback.print_exc(file=sys.stdout)
             return error_msg
 
-    def update_game_state(self, safe_globals: Dict):
+    def update_game_state(self, safe_globals: Dict, non_persistent_keys: set):
         """Update the main game state from the sandbox environment after execution."""
-        if 'player' in safe_globals:
-            player_obj = safe_globals['player']
-            # Convert the player object (whether it's a SimpleNamespace or a custom class instance) to a dictionary
-            player_dict = {k: v for k, v in vars(player_obj).items() if not k.startswith('__') and not callable(v)}
-            self.game_state['player'] = player_dict
+        for key, value in safe_globals.items():
+            if key in non_persistent_keys:
+                continue
+
+            if inspect.ismodule(value) or inspect.isfunction(value) or inspect.isclass(value):
+                continue
+
+            if key == 'player' and not isinstance(value, dict):
+                self.game_state['player'] = {k: v for k, v in vars(value).items() if not k.startswith('__') and not callable(v)}
+            else:
+                self.game_state[key] = value
 
     def debug_print(self, *args):
         if self.debug_mode:
@@ -131,19 +130,19 @@ class SafeExecutor:
         return self.game_state.get('flags', {}).get(name, default)
 
     def set_variable(self, key: str, value: Any):
+        """Sets a variable in game_state using dot notation."""
         parts = key.split('.')
-        current = self.game_state.setdefault('variables', {})
-        for i, part in enumerate(parts):
-            if i == len(parts) - 1:
-                current[part] = value
-            else:
-                if not isinstance(current, dict):
-                    raise TypeError(f"Cannot set variable: '{'.'.join(parts[:i])}' is not a dictionary.")
-                current = current.setdefault(part, {})
+        current = self.game_state
+        for i, part in enumerate(parts[:-1]):
+            if part not in current or not isinstance(current.get(part), dict):
+                current[part] = {}
+            current = current[part]
+        current[parts[-1]] = value
 
     def get_variable(self, key: str, default: Any = None) -> Any:
+        """Retrieves a variable from game_state using dot notation."""
         parts = key.split('.')
-        current = self.game_state.get('variables', {})
+        current = self.game_state
         for part in parts:
             if isinstance(current, dict) and part in current:
                 current = current[part]

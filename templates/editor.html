@@ -32,10 +32,9 @@
 				<button class="btn btn-secondary" id="toggle-preview-btn" title="Toggle Preview">
 					<i data-lucide="panel-right-open"></i> Preview
 				</button>
-				<button class="btn btn-secondary" title="Build Game"
-						hx-post="/api/build-game/{{ project_name }}" hx-trigger="click"
-						hx-swap="none"
-						hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
+				<button class="btn btn-secondary" title="Build Game" hx-post="/api/build-game/{{ project_name }}"
+					hx-trigger="click" hx-swap="none"
+					hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
 					<i data-lucide="package"></i> Build
 				</button>
 				<div class="action-dropdown">
@@ -43,7 +42,8 @@
 						<i data-lucide="power"></i>
 					</button>
 					<div id="project-actions-dropdown" class="action-dropdown-content">
-						<button hx-post="/api/reset-game-state" hx-trigger="click" hx-swap="none" hx-on:htmx:after-request="showNotification('Game state has been reset.', 'success'); refreshPreview();">
+						<button hx-post="/api/reset-game-state" hx-trigger="click" hx-swap="none"
+							hx-on:htmx:after-request="refreshPreview();">
 							<i data-lucide="refresh-cw"></i>
 							Reset Game State
 						</button>

@@ -400,7 +400,9 @@ class GameEngine:
         Resets the current game state to the initial state, including project-specific state.
         """
         # Get the base initial state from the state manager
-        self.game_state = self.state_manager.get_initial_state()
+        initial_state = self.state_manager.get_initial_state()
+        self.game_state.clear()
+        self.game_state.update(initial_state)
 
         # After resetting, re-apply any project-specific initializations, like a custom Player class.
         # This logic is similar to what's in load_project.

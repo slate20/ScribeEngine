@@ -5,8 +5,11 @@
 		<div class="section-header">Engine Configuration</div>
 		<div class="form-group">
 			<label for="project-root-path">Project Root Path</label>
-			<input type="text" id="project-root-path" name="project_root" class="form-control"
-				value="{{ project_root }}">
+			<div style="display: flex; gap: 5px;">
+				<input type="text" id="project-root-path" name="project_root" class="form-control"
+					value="{{ project_root }}" style="flex-grow: 1;">
+				<button type="button" class="btn" onclick="browseForProjectRoot()">Browse</button>
+			</div>
 			<p class="input-hint">This is the base directory where all your game projects are stored.</p>
 		</div>
 	</div>

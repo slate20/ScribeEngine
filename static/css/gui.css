@@ -316,7 +316,6 @@ body {
 	display: flex;
 	align-items: center;
 	gap: 8px;
-	padding: 6px 8px;
 	cursor: pointer;
 	border-radius: 4px;
 	transition: background 0.2s;
@@ -339,6 +338,7 @@ body {
 .file-explorer-panel .file-item .file-name {
 	flex-grow: 1;
 	font-size: 14px;
+	padding: 6px 8px;
 	color: var(--text-secondary);
 	white-space: nowrap;
 	overflow: hidden;

@@ -12,7 +12,6 @@ class StateManager:
         state = {
             'current_passage': self.starting_passage,
             'flags': {},
-            'variables': {},
             'metadata': {
                 'created_date': datetime.now().isoformat(),
                 'last_played': datetime.now().isoformat()
@@ -65,11 +64,3 @@ class StateManager:
             if inv_item.get('name') == item:
                 return inv_item.get('quantity', 0)
         return 0
-    
-    def get_variable(self, state: Dict[str, Any], key: str, default: Any = None) -> Any:
-        """Get variable value"""
-        return state.get('variables', {}).get(key, default)
-    
-    def set_variable(self, state: Dict[str, Any], key: str, value: Any):
-        """Set variable value"""
-        state.setdefault('variables', {})[key] = value

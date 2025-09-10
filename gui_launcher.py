@@ -18,6 +18,20 @@ flask_thread_instance = None
 project_root_path = None
 active_project_path = None
 
+class Api:
+    """
+    API class exposed to the webview frontend.
+    """
+    def open_folder_dialog(self):
+        """
+        Opens a folder selection dialog and returns the selected path.
+        """
+        result = webview.create_file_dialog(webview.FOLDER_DIALOG)
+        if result:
+            # result is a tuple, we want the first element
+            return result[0]
+        return None
+
 def start_flask_app():
     """Starts the Flask server in a separate thread."""
     flask_app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
@@ -32,10 +46,15 @@ def run_gui_app():
     # Check for the project root and handle first-run setup
     project_root_path = config_manager.get_project_root()
     if not project_root_path or not os.path.isdir(project_root_path):
-        # In a real GUI, this would be a file dialog, but for now, we'll
-        # just assume a default path or prompt the user via console.
-        print("No project root found. Please set one.")
-        project_root_path = os.path.join(os.path.expanduser('~'), 'ScribeEngine_Games')
+        # Determine the base path for the application
+        if getattr(sys, 'frozen', False):
+            # Running as a bundled executable
+            base_path = os.path.dirname(sys.executable)
+        else:
+            # Running as a script
+            base_path = os.path.dirname(os.path.abspath(__file__))
+        
+        project_root_path = os.path.join(base_path, 'ScribeEngine_Projects')
         os.makedirs(project_root_path, exist_ok=True)
         config_manager.set_project_root(project_root_path)
 
@@ -45,11 +64,14 @@ def run_gui_app():
     flask_thread_instance.start()
     time.sleep(2) # Give Flask a moment to start up
 
+    # Create an API instance to expose to the webview
+    api = Api()
+
     # Create the webview window
-    # webview.create_window('Scribe Engine', 'http://127.0.0.1:5000/gui', width=1920, height=1080)
+    # webview.create_window('Scribe Engine', 'http://127.0.0.1:5000/gui', js_api=api, width=1920, height=1080)
     # webview.start()
 
-    # Keep the main thread alive to prevent the Flask daemon from exiting
+    # Wait for the user to close the window
     try:
         input("Press Enter to stop the server and exit...")
     except KeyboardInterrupt:
