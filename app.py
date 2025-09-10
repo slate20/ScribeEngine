@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, make_response
 import os
 import json
 import sys
@@ -559,7 +559,10 @@ def close_project():
 def reset_game_state_api():
     if game_engine:
         game_engine.reset_game_state()
-        return jsonify({'status': 'success', 'message': 'Game state reset successfully'}), 200
+        # return jsonify({'status': 'success', 'message': 'Game state reset successfully'}), 200
+        response = make_response('', 204)
+        response.headers['HX-Trigger'] = '{"showNotification": {"message": "Game state has been reset.", "type": "success"}}'
+        return response
     return jsonify({'status': 'error', 'message': 'Game engine not initialized'}), 500
 
 @app.route('/api/preview-panel')
