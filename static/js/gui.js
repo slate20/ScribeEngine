@@ -240,39 +240,6 @@ function refreshPreview() {
 }
 
 /**
- * Performs a "smart" refresh of the preview pane by fetching the current passage
- * HTML and injecting it, avoiding a full page reload.
- */
-function smartRefreshPreview() {
-    fetch('/api/refresh-preview', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success' && data.passage_html) {
-                const iframeDoc = document.getElementById('preview-iframe').contentWindow.document;
-                const gameContentDiv = iframeDoc.getElementById('game-content');
-                if (gameContentDiv) {
-                    gameContentDiv.innerHTML = data.passage_html;
-                    // Re-process HTMX on the newly loaded content
-                    if (iframeDoc.defaultView.htmx) {
-                        iframeDoc.defaultView.htmx.process(gameContentDiv);
-                    }
-                    showNotification('Preview refreshed.', 'success');
-                }
-            } else {
-                // Fallback to a full reload if something went wrong
-                console.error('Smart refresh failed, falling back to full reload.');
-                refreshPreview(); // The old full-reload function
-                showNotification(data.message || 'Could not refresh preview.', 'error');
-            }
-        })
-        .catch(err => {
-            console.error('Error during smart refresh:', err);
-            refreshPreview(); // Fallback to a full reload on error
-            showNotification('Error refreshing preview.', 'error');
-        });
-}
-
-/**
  * Displays a temporary notification on the screen.
  * @param {string} message - The message to display.
  * @param {string} type - The type of notification ('success', 'error', 'warning', 'info').
