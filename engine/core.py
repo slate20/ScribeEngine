@@ -201,21 +201,22 @@ class GameEngine:
         return "".join(html_parts)
 
     def execute_python_blocks(self, passage, executor, content_to_process=None):
+        """
+        Executes Python code found by the parser and replaces the placeholders.
+        """
         content = content_to_process if content_to_process is not None else passage['content']
         
-        def get_placeholder(i):
-            return f"__PYTHON_BLOCK_{i}__"
-
         for i, python_code in enumerate(passage['python_blocks']):
-            content = content.replace(f"{{{{ PYTHON_BLOCK_{i} }}}}", get_placeholder(i), 1)
-
-        for i, python_code in enumerate(passage['python_blocks']):
-            placeholder = get_placeholder(i)
+            placeholder = f"__PYTHON_BLOCK_{i}__"
             try:
+                # Execute the code. The executor has direct access to game_state.
                 error = executor.execute_code(python_code)
+                
+                # If in debug mode and an error occurred, display it. Otherwise, replace with nothing.
                 replacement = f'<div class="debug-error">{error}</div>' if error and self.debug_mode else ''
                 content = content.replace(placeholder, replacement, 1)
             except Exception as e:
+                # Catch exceptions during execution and display them in debug mode.
                 replacement = f'<div class="debug-error">Python Error: {str(e)}</div>' if self.debug_mode else ''
                 content = content.replace(placeholder, replacement, 1)
         
