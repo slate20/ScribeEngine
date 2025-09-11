@@ -675,3 +675,230 @@ function resetGameState() {
             showNotification('An error occurred while resetting the game state.', 'error');
         });
 }
+
+// Build Progress Modal Management
+let buildPollingInterval = null;
+let buildStartTime = null;
+let currentBuildPath = null;
+
+/**
+ * Shows the build progress modal
+ * @param {string} projectName - Name of the project being built
+ */
+function showBuildModal(projectName) {
+    const modal = document.getElementById('build-progress-modal');
+    const projectNameEl = document.getElementById('build-project-name');
+    const statusEl = document.getElementById('build-status');
+    const elapsedEl = document.getElementById('build-elapsed');
+    const spinner = modal.querySelector('.spinner');
+    
+    // Reset modal state
+    projectNameEl.textContent = projectName;
+    statusEl.textContent = 'Initializing build...';
+    statusEl.className = 'build-status';
+    elapsedEl.textContent = '0s';
+    spinner.className = 'spinner';
+    
+    // Reset footer buttons
+    document.getElementById('build-cancel-btn').style.display = 'inline-block';
+    document.getElementById('build-open-folder-btn').style.display = 'none';
+    document.getElementById('build-close-btn').style.display = 'none';
+    
+    // Show the modal with animation
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('show'), 10);
+    
+    // Record start time for elapsed calculation
+    buildStartTime = Date.now();
+    currentBuildPath = null;
+    
+    // Start polling for build status
+    startBuildPolling(projectName);
+}
+
+/**
+ * Updates the build status in the modal
+ * @param {string} status - Current build status
+ * @param {string} message - Progress message
+ * @param {number} elapsedSeconds - Elapsed time in seconds
+ */
+function updateBuildStatus(status, message, elapsedSeconds) {
+    const statusEl = document.getElementById('build-status');
+    const elapsedEl = document.getElementById('build-elapsed');
+    const spinner = document.querySelector('#build-progress-modal .spinner');
+    
+    if (statusEl) {
+        statusEl.textContent = message;
+        
+        // Update status styling based on build state
+        statusEl.className = 'build-status';
+        if (status === 'completed') {
+            statusEl.classList.add('success');
+            spinner.classList.add('success');
+        } else if (status === 'failed') {
+            statusEl.classList.add('error');
+            spinner.classList.add('error');
+        }
+    }
+    
+    if (elapsedEl && elapsedSeconds !== undefined) {
+        elapsedEl.textContent = formatElapsedTime(elapsedSeconds);
+    }
+}
+
+/**
+ * Hides the build progress modal
+ * @param {boolean} success - Whether the build was successful
+ * @param {string} message - Final message to show
+ */
+function hideBuildModal(success, message) {
+    const modal = document.getElementById('build-progress-modal');
+    
+    // Stop polling
+    if (buildPollingInterval) {
+        clearInterval(buildPollingInterval);
+        buildPollingInterval = null;
+    }
+    
+    // Hide the modal with animation
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+    
+    // Show final notification
+    if (message) {
+        showNotification(message, success ? 'success' : 'error');
+    }
+}
+
+/**
+ * Starts polling the build status API
+ * @param {string} projectName - Name of the project being built
+ */
+function startBuildPolling(projectName) {
+    buildPollingInterval = setInterval(async () => {
+        try {
+            const response = await fetch(`/api/build-status/${projectName}`);
+            
+            if (response.ok) {
+                const buildInfo = await response.json();
+                const elapsedMs = Date.now() - buildStartTime;
+                const elapsedSeconds = Math.floor(elapsedMs / 1000);
+                
+                updateBuildStatus(buildInfo.status, buildInfo.progress, elapsedSeconds);
+                
+                // Stop polling if build is complete or failed
+                if (buildInfo.status === 'completed') {
+                    // Store build path for folder opening
+                    currentBuildPath = buildInfo.executable_path;
+                    
+                    // Add completion animation
+                    const progressContainer = document.querySelector('.build-progress-container');
+                    progressContainer.classList.add('completed');
+                    
+                    // Update footer buttons for completion
+                    setTimeout(() => {
+                        document.getElementById('build-cancel-btn').style.display = 'none';
+                        document.getElementById('build-open-folder-btn').style.display = 'inline-block';
+                        document.getElementById('build-close-btn').style.display = 'inline-block';
+                        lucide.createIcons();
+                    }, 1000);
+                    
+                    // Stop polling
+                    if (buildPollingInterval) {
+                        clearInterval(buildPollingInterval);
+                        buildPollingInterval = null;
+                    }
+                } else if (buildInfo.status === 'failed') {
+                    setTimeout(() => {
+                        // Update footer for failure
+                        document.getElementById('build-cancel-btn').textContent = 'Close';
+                        document.getElementById('build-cancel-btn').onclick = () => hideBuildModal(false, buildInfo.message || 'Build failed');
+                    }, 1000);
+                    
+                    // Stop polling
+                    if (buildPollingInterval) {
+                        clearInterval(buildPollingInterval);
+                        buildPollingInterval = null;
+                    }
+                }
+            } else if (response.status === 404) {
+                // Build not found - it may have completed and been cleaned up
+                hideBuildModal(true, 'Build may have completed. Check the project dist/ folder.');
+            }
+        } catch (error) {
+            console.error('Error polling build status:', error);
+            // Continue polling - network errors are temporary
+        }
+    }, 2000); // Poll every 2 seconds
+}
+
+/**
+ * Formats elapsed time in a human-readable format
+ * @param {number} seconds - Elapsed time in seconds
+ * @returns {string} Formatted time string
+ */
+function formatElapsedTime(seconds) {
+    if (seconds < 60) {
+        return `${seconds}s`;
+    } else {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = seconds % 60;
+        return `${minutes}m ${remainingSeconds}s`;
+    }
+}
+
+/**
+ * Opens the build output folder using the system's file manager
+ */
+function openBuildFolder() {
+    if (currentBuildPath) {
+        showNotification(`Build folder: ${currentBuildPath}`, 'success');
+        // In a desktop app, we could use:
+        // window.pywebview.api.open_folder(currentBuildPath)
+        // For now, just show the path
+    } else {
+        showNotification('Build path not available', 'error');
+    }
+}
+
+/**
+ * Starts the build process and shows the progress modal
+ * @param {string} projectName - Name of the project to build
+ */
+async function startBuild(projectName) {
+    const buildBtn = document.getElementById('build-btn');
+    
+    try {
+        // Disable build button during request
+        buildBtn.disabled = true;
+        buildBtn.innerHTML = '<i data-lucide="loader-2"></i> Starting...';
+        lucide.createIcons();
+        
+        // Start the build
+        const response = await fetch(`/api/build-game/${projectName}`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok && result.status === 'success') {
+            // Show build modal and start monitoring
+            showBuildModal(projectName);
+        } else {
+            // Show error notification
+            showNotification(result.message || 'Failed to start build', 'error');
+        }
+    } catch (error) {
+        console.error('Error starting build:', error);
+        showNotification('Network error: Could not start build', 'error');
+    } finally {
+        // Re-enable build button
+        setTimeout(() => {
+            buildBtn.disabled = false;
+            buildBtn.innerHTML = '<i data-lucide="package"></i> Build';
+            lucide.createIcons();
+        }, 2000);
+    }
+}

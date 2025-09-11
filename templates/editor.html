@@ -5,6 +5,19 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Scribe Engine - {{ project_name }}</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+	<link rel="stylesheet"
+		href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/material-darker.min.css">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/default.css">
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/gui.css') }}">
+	<script src="https://unpkg.com/htmx.org@2.0.6"></script>
+	<script src="{{ url_for('static', filename='js/gui.js') }}" defer></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/multiplex.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/overlay.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/closebrackets.min.js"></script>
+	<script src="{{ url_for('static', filename='js/scribe-mode.js') }}" defer></script>
+	<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js" defer></script>
 </head>
 
 <body>
@@ -35,9 +48,7 @@
 				<button class="btn btn-secondary" id="toggle-preview-btn" title="Toggle Preview">
 					<i data-lucide="panel-right-open"></i> Preview
 				</button>
-				<button class="btn btn-secondary" title="Build Game" hx-post="/api/build-game/{{ project_name }}"
-					hx-trigger="click" hx-swap="none"
-					hx-on:htmx:after-request="showNotification('Build started for {{ project_name }}', 'info')">
+				<button class="btn btn-secondary" id="build-btn" title="Build Game" onclick="startBuild('{{ project_name }}')">
 					<i data-lucide="package"></i> Build
 				</button>
 				<div class="action-dropdown">
@@ -106,6 +117,36 @@
 
 			<div id="preview-panel-container" hx-get="/api/preview-panel" hx-trigger="load" hx-swap="outerHTML">
 				<!-- Preview panel will be loaded here via HTMX -->
+			</div>
+		</div>
+	</div>
+
+	<!-- Build Progress Modal -->
+	<div id="build-progress-modal" class="modal" style="display: none;">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h3>Building Game</h3>
+			</div>
+			<div class="modal-body">
+				<div class="build-progress-container">
+					<div class="build-spinner">
+						<div class="spinner"></div>
+					</div>
+					<div class="build-info">
+						<div class="build-project-name" id="build-project-name"></div>
+						<div class="build-status" id="build-status">Initializing build...</div>
+						<div class="build-elapsed" id="build-elapsed">0s</div>
+					</div>
+				</div>
+			</div>
+			<div class="modal-footer" id="build-modal-footer">
+				<button type="button" class="btn btn-secondary" id="build-cancel-btn" onclick="hideBuildModal(false, 'Build cancelled by user')">Cancel</button>
+				<button type="button" class="btn btn-primary" id="build-open-folder-btn" onclick="openBuildFolder()" style="display: none;">
+					<i data-lucide="folder-open"></i> Open Folder
+				</button>
+				<button type="button" class="btn btn-success" id="build-close-btn" onclick="hideBuildModal(true)" style="display: none;">
+					<i data-lucide="check"></i> Close
+				</button>
 			</div>
 		</div>
 	</div>

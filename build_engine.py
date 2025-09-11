@@ -42,8 +42,9 @@ def build_engine_executable():
     templates_dir = os.path.join(script_dir, 'templates')
     static_dir = os.path.join(script_dir, 'static')
     webview_wrapper_path = os.path.join(script_dir, 'webview_wrapper.py')
-    build_py_path = os.path.join(script_dir, 'build.py')
+    build_game_py_path = os.path.join(script_dir, 'build_game.py')
     config_manager_path = os.path.join(script_dir, 'config_manager.py')
+    loading_window_path = os.path.join(script_dir, 'loading_window.py')
 
     # PyInstaller arguments
     pyinstaller_args = [
@@ -56,9 +57,10 @@ def build_engine_executable():
         f'--add-data={main_engine_path}{os.pathsep}.',
         f'--add-data={gui_launcher_path}{os.pathsep}.',
         f'--add-data={app_path}{os.pathsep}.',
-        f'--add-data={build_py_path}{os.pathsep}.',
+        f'--add-data={build_game_py_path}{os.pathsep}.',
         f'--add-data={webview_wrapper_path}{os.pathsep}.',
         f'--add-data={config_manager_path}{os.pathsep}.',
+        f'--add-data={loading_window_path}{os.pathsep}.',
 
         # Add directories
         f'--add-data={engine_dir}{os.pathsep}engine',

@@ -1397,3 +1397,144 @@ body {
 .modal-footer .btn {
 	min-width: 80px;
 }
+
+/* Build Progress Modal Styles */
+.build-progress-container {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 20px 0;
+}
+
+.build-spinner {
+	flex-shrink: 0;
+}
+
+.spinner {
+	width: 40px;
+	height: 40px;
+	border: 3px solid var(--border-color);
+	border-top: 3px solid var(--accent-color);
+	border-radius: 50%;
+	animation: spin 1s linear infinite;
+	transition: all 0.3s ease-out;
+}
+
+@keyframes spin {
+	0% { transform: rotate(0deg); }
+	100% { transform: rotate(360deg); }
+}
+
+.build-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+}
+
+.build-project-name {
+	font-size: 18px;
+	font-weight: 600;
+	color: var(--text-primary);
+}
+
+.build-status {
+	font-size: 14px;
+	color: var(--text-secondary);
+}
+
+.build-elapsed {
+	font-size: 12px;
+	color: var(--text-muted);
+	font-family: monospace;
+}
+
+/* Build Progress Modal specific modal styles */
+#build-progress-modal .modal-content {
+	max-width: 500px;
+	width: 90%;
+}
+
+#build-progress-modal .modal-body {
+	padding: 20px;
+}
+
+/* Success and error states for build modal */
+.build-status.success {
+	color: var(--success-color);
+}
+
+.build-status.error {
+	color: var(--danger-color);
+}
+
+.spinner.success {
+	border: none;
+	background-color: var(--success-color);
+	animation: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: white;
+	font-size: 18px;
+	font-weight: bold;
+}
+
+.spinner.success::before {
+	content: "✓";
+}
+
+.spinner.error {
+	border: none;
+	background-color: var(--danger-color);
+	animation: none;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: white;
+	font-size: 18px;
+	font-weight: bold;
+}
+
+.spinner.error::before {
+	content: "✗";
+}
+
+/* Success button style */
+.btn-success {
+	background-color: var(--success-color);
+	color: white;
+	border: 1px solid var(--success-color);
+}
+
+.btn-success:hover {
+	background-color: #22c55e;
+	border-color: #22c55e;
+}
+
+/* Enhanced modal animations */
+.modal-content {
+	transform: scale(0.9);
+	opacity: 0;
+	transition: all 0.3s ease-out;
+}
+
+.modal.show .modal-content {
+	transform: scale(1);
+	opacity: 1;
+}
+
+/* Build completion success styling */
+.build-status.success {
+	font-weight: 600;
+}
+
+.build-progress-container.completed {
+	animation: completedPulse 2s ease-out;
+}
+
+@keyframes completedPulse {
+	0% { transform: scale(1); }
+	50% { transform: scale(1.02); }
+	100% { transform: scale(1); }
+}

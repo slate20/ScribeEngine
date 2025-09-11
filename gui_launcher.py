@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from app import app as flask_app
 from app import set_game_project_path, set_debug_mode, reset_game_engine, set_gui_mode
 import config_manager
+from loading_window import LoadingWindow
 
 # Global variables for server management
 flask_thread_instance = None
@@ -40,34 +41,60 @@ def run_gui_app():
     """Main function to launch the GUI and the Flask server."""
     global project_root_path, flask_thread_instance
     
-    # Set the application to run in GUI mode
-    set_gui_mode(True)
-
-    # Check for the project root and handle first-run setup
-    project_root_path = config_manager.get_project_root()
-    if not project_root_path or not os.path.isdir(project_root_path):
-        # Determine the base path for the application
-        if getattr(sys, 'frozen', False):
-            # Running as a bundled executable
-            base_path = os.path.dirname(sys.executable)
-        else:
-            # Running as a script
-            base_path = os.path.dirname(os.path.abspath(__file__))
+    # Determine icon path for the loading window
+    if getattr(sys, 'frozen', False):
+        # Running as a bundled executable
+        base_path = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+    else:
+        # Running as a script
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    
+    icon_path = os.path.join(base_path, 'SE_icon.png')
+    
+    # Create loading window
+    loading_window = LoadingWindow(
+        title="Scribe Engine",
+        subtitle="Starting integrated development environment...",
+        icon_path=icon_path if os.path.exists(icon_path) else None
+    )
+    
+    def flask_startup_sequence():
+        """The Flask startup sequence that runs behind the loading window."""
+        global project_root_path, flask_thread_instance
         
-        project_root_path = os.path.join(base_path, 'ScribeEngine_Projects')
-        os.makedirs(project_root_path, exist_ok=True)
-        config_manager.set_project_root(project_root_path)
+        # Set the application to run in GUI mode
+        set_gui_mode(True)
 
-    # Start Flask in a separate thread
-    flask_thread_instance = threading.Thread(target=start_flask_app)
-    flask_thread_instance.daemon = True
-    flask_thread_instance.start()
-    time.sleep(2) # Give Flask a moment to start up
+        # Check for the project root and handle first-run setup
+        project_root_path = config_manager.get_project_root()
+        if not project_root_path or not os.path.isdir(project_root_path):
+            # Determine the base path for the application
+            if getattr(sys, 'frozen', False):
+                # Running as a bundled executable
+                base_path = os.path.dirname(sys.executable)
+            else:
+                # Running as a script
+                base_path = os.path.dirname(os.path.abspath(__file__))
+            
+            project_root_path = os.path.join(base_path, 'ScribeEngine_Projects')
+            os.makedirs(project_root_path, exist_ok=True)
+            config_manager.set_project_root(project_root_path)
 
+        # Start Flask in a separate thread
+        flask_thread_instance = threading.Thread(target=start_flask_app)
+        flask_thread_instance.daemon = True
+        flask_thread_instance.start()
+        time.sleep(2) # Give Flask a moment to start up
+        
+        return True  # Signal that Flask startup is complete
+    
+    # Run the Flask startup sequence with the loading window
+    loading_window.run_with_loading(flask_startup_sequence)
+    
     # Create an API instance to expose to the webview
     api = Api()
 
-    # Create the webview window
+    # Create the webview window (this must run on main thread after loading window closes)
     webview.create_window('Scribe Engine', 'http://127.0.0.1:5000/gui', js_api=api, width=1920, height=1080)
     webview.start()
 

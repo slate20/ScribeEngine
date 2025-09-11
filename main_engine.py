@@ -21,7 +21,7 @@ from watchdog.events import FileSystemEventHandler
 import config_manager
 import app
 from app import reset_game_engine
-import build
+import build_game
 import webview_wrapper
 
 def clear_screen():
@@ -368,8 +368,8 @@ def project_menu(project_root):
                 stop_watcher()
                 flask_server_running = False
                 time.sleep(2) # Give server time to shut down
-            build.build_standalone_game(project_name, project_root)
-            print(f"Build process for {project_name} completed. Executable can be found in the 'dist' directory.")
+            build_game.build_standalone_game(project_name, project_root)
+            print(f"Build process for {project_name} completed. Check your project directory for the executable.")
             # Stay in project menu
         elif choice == '3':
             if flask_server_running:

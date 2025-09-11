@@ -23,6 +23,13 @@ class GameEngine:
         
         self.load_project()
 
+    def update_debug_mode(self, debug_mode):
+        """Update the debug mode setting and reinitialize executor if needed."""
+        self.debug_mode = debug_mode
+        # Update the existing executor's debug mode if it exists
+        if hasattr(self, 'executor') and self.executor:
+            self.executor.debug_mode = debug_mode
+
     def load_project(self):
         """Load and parse a game project."""
         config_path = os.path.join(self.project_path, 'project.json')
@@ -33,6 +40,9 @@ class GameEngine:
 
         # Store theme config for later use
         self.theme_config = self.config.get('theme', {})
+        
+        # Update debug mode from project configuration
+        self.debug_mode = self.config.get('debug_mode', False)
 
         features = self.config.get('features', {})
         self.state_manager = StateManager(features, starting_passage=self.config.get('starting_passage', 'start'))
