@@ -175,7 +175,31 @@ def submit_input():
         if not variable_name:
             return "Error: variable_name is required.", 400
         
-        game_engine.set_variable(variable_name, input_value)
+        # Handle dot notation for object attributes (e.g., 'player.name')
+        if '.' in variable_name:
+            parts = variable_name.split('.')
+            current = game_engine.game_state
+            
+            # Navigate to the parent object
+            for part in parts[:-1]:
+                if part in current:
+                    current = current[part]
+                else:
+                    # Create nested dict if it doesn't exist
+                    current[part] = {}
+                    current = current[part]
+            
+            # Set the final attribute/key
+            final_key = parts[-1]
+            if hasattr(current, final_key):
+                # It's an object attribute
+                setattr(current, final_key, input_value)
+            else:
+                # It's a dictionary key
+                current[final_key] = input_value
+        else:
+            # Simple top-level assignment
+            game_engine.game_state[variable_name] = input_value
         
         # Render the specified next_passage or the current one
         passage_to_render = next_passage if next_passage else game_engine.game_state.get('current_passage', 'start')
@@ -408,7 +432,7 @@ def save_file_content(project_name, filename):
 
         # Restore game state if available
         if _temp_game_state:
-            game_engine.set_game_state(_temp_game_state)
+            game_engine.restore_state_from_dict(_temp_game_state)
             _temp_game_state = None # Clear the temporary state after use
             print("Game state restored after file save.") # For testing purposes
 
@@ -519,7 +543,6 @@ def save_project_settings(project_name):
 
     # Features
     update_nested(config, ['features', 'use_default_player'], 'features.use_default_player' in request.form)
-    update_nested(config, ['features', 'use_default_inventory'], 'features.use_default_inventory' in request.form)
 
     # Navigation
     update_nested(config, ['nav', 'enabled'], 'nav.enabled' in request.form)
@@ -574,7 +597,7 @@ def get_preview_panel():
 @app.route('/api/game-state')
 def get_game_state():
     if game_engine and hasattr(game_engine, 'game_state'):
-        return jsonify(game_engine.game_state)
+        return jsonify(game_engine.get_serializable_state())
     return jsonify({})
 
 @app.route('/api/set-temp-game-state', methods=['POST'])
@@ -590,7 +613,7 @@ def set_temp_game_state():
 def debug_state():
     if not game_engine.debug_mode:
         return jsonify({'error': 'Debug mode disabled'}), 403
-    return jsonify(game_engine.game_state)
+    return jsonify(game_engine.get_serializable_state())
 
 @app.route('/debug/passages')
 def debug_passages():

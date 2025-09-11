@@ -47,8 +47,7 @@ def create_new_project(project_name: str, project_root_dir: str):
         "author": "Anonymous",
         "starting_passage": "start",
         "features": {
-            "use_default_player": True,
-            "use_default_inventory": True
+            "use_default_player": True
         },
         "nav": {
             "enabled": True,

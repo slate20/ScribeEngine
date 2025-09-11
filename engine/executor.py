@@ -45,7 +45,7 @@ class SafeExecutor:
             raise ImportError(f"Module '{name}' is not allowed.")
 
         safe_globals = {}
-        safe_globals.update(self.game_state)
+        safe_globals.update(self.game_state)  # Direct references to game state objects
 
         safe_builtins = {
             'len': len, 'str': str, 'int': int, 'float': float,
@@ -58,28 +58,11 @@ class SafeExecutor:
         safe_globals['__builtins__'] = safe_builtins
 
         helpers = {
-            'set_flag': self.set_flag,
-            'get_flag': self.get_flag,
-            'set_variable': self.set_variable,
-            'get_variable': self.get_variable,
             'debug': self.debug_print,
         }
-        if self.features.get('use_default_inventory', False):
-            helpers.update({
-                'add_to_inventory': self.add_to_inventory,
-                'remove_from_inventory': self.remove_from_inventory,
-                'has_item': self.has_item,
-                'get_item_count': self.get_item_count,
-            })
         safe_globals.update(helpers)
         safe_globals.update(self.systems)
 
-        if 'player' in self.game_state and isinstance(self.game_state['player'], dict):
-            player_data = self.game_state['player']
-            if not self.features.get('use_default_player', True) and 'Player' in self.systems and isinstance(self.systems['Player'], type):
-                safe_globals['player'] = self.systems['Player'](**player_data)
-            else:
-                safe_globals['player'] = SimpleNamespace(**player_data)
 
         non_persistent_keys = set(helpers.keys()) | set(self.systems.keys())
         non_persistent_keys.add('__builtins__')
@@ -104,6 +87,8 @@ class SafeExecutor:
 
     def update_game_state(self, safe_globals: Dict, non_persistent_keys: set):
         """Update the main game state from the sandbox environment after execution."""
+        # Since we're working with direct references, most updates should already be applied
+        # We only need to sync back any newly created variables
         for key, value in safe_globals.items():
             if key in non_persistent_keys:
                 continue
@@ -111,9 +96,8 @@ class SafeExecutor:
             if inspect.ismodule(value) or inspect.isfunction(value) or inspect.isclass(value):
                 continue
 
-            if key == 'player' and not isinstance(value, dict):
-                self.game_state['player'] = {k: v for k, v in vars(value).items() if not k.startswith('__') and not callable(v)}
-            else:
+            # Only update if this is a new key or the reference changed
+            if key not in self.game_state or self.game_state[key] is not value:
                 self.game_state[key] = value
 
     def debug_print(self, *args):
@@ -123,59 +107,4 @@ class SafeExecutor:
 
     # --- Helper Functions --- #
 
-    def set_flag(self, name: str, value: bool = True):
-        self.game_state.setdefault('flags', {})[name] = value
 
-    def get_flag(self, name: str, default: bool = False) -> bool:
-        return self.game_state.get('flags', {}).get(name, default)
-
-    def set_variable(self, key: str, value: Any):
-        """Sets a variable in game_state using dot notation."""
-        parts = key.split('.')
-        current = self.game_state
-        for i, part in enumerate(parts[:-1]):
-            if part not in current or not isinstance(current.get(part), dict):
-                current[part] = {}
-            current = current[part]
-        current[parts[-1]] = value
-
-    def get_variable(self, key: str, default: Any = None) -> Any:
-        """Retrieves a variable from game_state using dot notation."""
-        parts = key.split('.')
-        current = self.game_state
-        for part in parts:
-            if isinstance(current, dict) and part in current:
-                current = current[part]
-            else:
-                return default
-        return current
-
-    def add_to_inventory(self, item: str, quantity: int = 1):
-        inventory = self.game_state.get('player', {}).setdefault('inventory', [])
-        existing = next((i for i in inventory if i.get('name') == item), None)
-        if existing:
-            existing['quantity'] = existing.get('quantity', 1) + quantity
-        else:
-            inventory.append({'name': item, 'quantity': quantity})
-
-    def remove_from_inventory(self, item: str, quantity: int = 1):
-        inventory = self.game_state.get('player', {}).get('inventory', [])
-        for i, inv_item in enumerate(inventory):
-            if inv_item.get('name') == item:
-                current_qty = inv_item.get('quantity', 1)
-                if current_qty <= quantity:
-                    inventory.pop(i)
-                else:
-                    inv_item['quantity'] -= quantity
-                break
-
-    def has_item(self, item: str) -> bool:
-        inventory = self.game_state.get('player', {}).get('inventory', [])
-        return any(i.get('name') == item for i in inventory)
-
-    def get_item_count(self, item: str) -> int:
-        inventory = self.game_state.get('player', {}).get('inventory', [])
-        for inv_item in inventory:
-            if inv_item.get('name') == item:
-                return inv_item.get('quantity', 0)
-        return 0

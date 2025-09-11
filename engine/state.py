@@ -1,6 +1,34 @@
 from typing import Dict, Any, List
 from datetime import datetime
 
+class DefaultPlayer:
+    """Default Player class for quickstart projects"""
+    def __init__(self):
+        self.name = ''
+        self.health = 100
+        self.energy = 100
+        self.inventory = []
+    
+    def to_dict(self):
+        """Convert to dictionary for JSON serialization"""
+        return {
+            'name': self.name,
+            'health': self.health,
+            'energy': self.energy,
+            'inventory': self.inventory,
+            '__class_name__': 'DefaultPlayer'
+        }
+    
+    @classmethod
+    def from_dict(cls, data):
+        """Create instance from dictionary"""
+        player = cls()
+        player.name = data.get('name', '')
+        player.health = data.get('health', 100)
+        player.energy = data.get('energy', 100)
+        player.inventory = data.get('inventory', [])
+        return player
+
 class StateManager:
     def __init__(self, features: Dict = None, starting_passage: str = 'start'):
         self.features = features if features is not None else {}
@@ -11,7 +39,6 @@ class StateManager:
         """Create initial game state based on features."""
         state = {
             'current_passage': self.starting_passage,
-            'flags': {},
             'metadata': {
                 'created_date': datetime.now().isoformat(),
                 'last_played': datetime.now().isoformat()
@@ -19,15 +46,7 @@ class StateManager:
         }
 
         if self.features.get('use_default_player', False):
-            state['player'] = {
-                'name': '',
-                'health': 100,
-                'score': 0,
-                'experience': 0,
-                'level': 1
-            }
-            if self.features.get('use_default_inventory', False):
-                state['player']['inventory'] = []
+            state['player'] = DefaultPlayer()
         
         return state
     
@@ -40,27 +59,3 @@ class StateManager:
         """Reset to initial state"""
         return self.create_initial_state()
 
-    # The validation and helper methods remain largely the same,
-    # but they should be robust enough to handle the absence of 'player'
-    # or 'inventory' if the features are disabled.
-
-    def get_flag(self, state: Dict[str, Any], name: str, default: bool = False) -> bool:
-        """Get flag value"""
-        return state.get('flags', {}).get(name, default)
-    
-    def set_flag(self, state: Dict[str, Any], name: str, value: bool = True):
-        """Set flag value"""
-        state.setdefault('flags', {})[name] = value
-    
-    def has_item(self, state: Dict[str, Any], item: str) -> bool:
-        """Check if player has item. Returns False if inventory system is disabled."""
-        inventory = state.get('player', {}).get('inventory', [])
-        return any(i.get('name') == item for i in inventory)
-    
-    def get_item_count(self, state: Dict[str, Any], item: str) -> int:
-        """Get item count. Returns 0 if inventory system is disabled."""
-        inventory = state.get('player', {}).get('inventory', [])
-        for inv_item in inventory:
-            if inv_item.get('name') == item:
-                return inv_item.get('quantity', 0)
-        return 0
