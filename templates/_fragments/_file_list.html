@@ -4,9 +4,7 @@
             <span>Story Files (.tgame)</span>
             <div class="header-actions">
                 <button class="btn-icon" title="New Story File" 
-                        hx-post="/api/create-item/{{ project_name }}"
-                        hx-vals='js:{"path": prompt("Enter new story file path:", "story/new_scene.tgame"), "type": "file"}'
-                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                        onclick="openNewFileModal('file', 'New Story File', 'story/new_scene.tgame', 'Example: story/new_scene.tgame')">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
@@ -34,9 +32,7 @@
             <span>Game Logic (.py)</span>
             <div class="header-actions">
                 <button class="btn-icon" title="New Logic File" 
-                        hx-post="/api/create-item/{{ project_name }}"
-                        hx-vals='js:{"path": prompt("Enter new logic file path:", "systems/new_logic.py"), "type": "file"}'
-                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                        onclick="openNewFileModal('file', 'New Logic File', 'systems/new_logic.py', 'Example: systems/new_logic.py')">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
@@ -64,9 +60,7 @@
             <span>Styling (.css)</span>
             <div class="header-actions">
                 <button class="btn-icon" title="New CSS File" 
-                        hx-post="/api/create-item/{{ project_name }}"
-                        hx-vals='js:{"path": prompt("Enter new CSS file path:", "custom.css"), "type": "file"}'
-                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                        onclick="openNewFileModal('file', 'New CSS File', 'custom.css', 'Example: custom.css')">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
@@ -94,9 +88,7 @@
             <span>Assets</span>
             <div class="header-actions">
                 <button class="btn-icon" title="New Folder" 
-                        hx-post="/api/create-item/{{ project_name }}"
-                        hx-vals='js:{"path": prompt("Enter new folder path inside assets:", "assets/images/"), "type": "folder"}'
-                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                        onclick="openNewFolderModal()">
                     <i data-lucide="folder-plus"></i>
                 </button>
             </div>
@@ -104,7 +96,7 @@
         <ul class="file-tree">
             {% for file in asset_files %}
             <li class="file-item" data-filepath="{{ file }}">
-                <span class="file-name" onclick="alert('Asset file selected: {{ file }}. Editing not supported yet.')">{{ file }}</span>
+                <span class="file-name" onclick="openInfoModal('Asset File', 'Asset file editing is not yet supported. File: {{ file }}')">{{ file }}</span>
                 <button class="delete-btn" title="Delete File" 
                         hx-post="/api/delete-item/{{ project_name }}"
                         hx-vals='{"path": "{{ file }}"}' 
@@ -119,3 +111,5 @@
         </ul>
     </div>
 </div>
+
+{% include '_fragments/_file_modals.html' %}

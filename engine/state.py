@@ -52,8 +52,8 @@ class StateManager:
     
     def get_initial_state(self) -> Dict[str, Any]:
         """Get a copy of initial state"""
-        # Return a deep copy to prevent modification of the template
-        return {k: v.copy() if isinstance(v, dict) else v for k, v in self.initial_state.items()}
+        # Create fresh initial state to ensure objects are not shared
+        return self.create_initial_state()
     
     def reset_state(self) -> Dict[str, Any]:
         """Reset to initial state"""

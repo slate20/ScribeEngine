@@ -26,6 +26,9 @@
 				</center>
 			</div>
 			<div class="header-actions">
+				<button class="btn btn-icon btn-secondary" id="theme-toggle-btn" title="Toggle Dark/Light Mode">
+					<i data-lucide="moon" id="theme-icon"></i>
+				</button>
 				<a href="/" target="_blank" class="btn btn-secondary" title="Open in Browser">
 					<i data-lucide="external-link"></i> Open
 				</a>
@@ -42,8 +45,7 @@
 						<i data-lucide="power"></i>
 					</button>
 					<div id="project-actions-dropdown" class="action-dropdown-content">
-						<button hx-post="/api/reset-game-state" hx-trigger="click" hx-swap="none"
-							hx-on:htmx:after-request="refreshPreview();">
+						<button onclick="resetGameState()">
 							<i data-lucide="refresh-cw"></i>
 							Reset Game State
 						</button>

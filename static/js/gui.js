@@ -64,9 +64,21 @@ function initEditor() {
 					// Move cursor into the middle
 					cm.setCursor({line: pos.line, ch: pos.ch + 1});
 					return;
+
+				} else if (textBeforeInline === '{%') {
+                    // The user typed '{%' then space. Replace it all with an inline block.
+                    // We replace from 3 chars back (to include '{%') up to the cursor (to include the space)
+                    const textAfter = cm.getRange(pos, {line: pos.line, ch: pos.ch + 1});
+                    const from = {line: pos.line, ch: pos.ch - 2};
+                    const to = (textAfter === '}') ? {line: pos.line, ch: pos.ch + 1} : pos;
+                    cm.replaceRange('{%  %}', from, to);
+                    
+                    // Move cursor into the middle
+                    cm.setCursor({line: pos.line, ch: pos.ch + 1});
+                    return;
 				}
 				
-				// If neither case matched, let CodeMirror insert a normal space
+				// If no case is matched, let CodeMirror insert a normal space
 				return CodeMirror.Pass;
 			},
 			"Enter": function(cm) {
@@ -228,14 +240,51 @@ async function saveFile() {
 }
 
 /**
- * Reloads the content of the preview iframe.
+ * Reloads the content of the preview iframe, preserving the current passage.
  */
-function refreshPreview() {
+async function refreshPreview() {
 	const iframe = document.getElementById('preview-iframe');
-	if (iframe) {
-		// Appending ?t=${new Date().getTime()} is a common trick to bypass browser caching
+	if (!iframe) {
+		showNotification('Preview iframe not found.', 'error');
+		return;
+	}
+
+	try {
+		// Fetch current game state to get the current passage
+		const gameStateResponse = await fetch('/api/game-state');
+		const gameState = await gameStateResponse.json();
+		const currentPassage = gameState.current_passage || 'start';
+
+		// Reload iframe with full context
 		iframe.src = `/`;
+		
+		// Wait for iframe to load, then navigate to current passage
+		iframe.onload = function() {
+			try {
+				const iframeDoc = iframe.contentWindow.document;
+				const gameContentDiv = iframeDoc.getElementById('game-content');
+				
+				if (gameContentDiv && iframe.contentWindow.htmx) {
+					// Use HTMX to load the current passage into the game-content div
+					iframe.contentWindow.htmx.ajax('GET', `/passage/${currentPassage}`, {
+						target: '#game-content',
+						swap: 'innerHTML'
+					});
+				} else {
+					console.warn('HTMX or game-content div not found in iframe');
+				}
+			} catch (error) {
+				console.error('Error navigating to current passage in iframe:', error);
+			}
+		};
+
 		showNotification('Preview refreshed!', 'info');
+
+	} catch (error) {
+		console.error('Error fetching game state for refresh:', error);
+		// Fallback to simple reload
+		iframe.src = `/`;
+		showNotification('Preview refreshed (fallback to start)!', 'warning');
 	}
 }
 
@@ -450,24 +499,35 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 			toggleBtn.addEventListener('click', togglePreview);
 		}
 
-		const resetBtn = document.getElementById('reset-game-state-btn');
-		if (resetBtn) {
-			resetBtn.addEventListener('click', function() {
-				fetch('/api/reset-game-state', { method: 'POST' })
-					.then(response => response.json())
-					.then(data => {
-						if (data.status === 'success') {
-							showNotification('Game state has been reset.', 'success');
-							refreshPreview();
-						} else {
-							showNotification(data.message || 'Failed to reset game state.', 'error');
-						}
-					})
-					.catch(err => {
-						console.error('Error resetting game state:', err);
-						showNotification('An error occurred while resetting the game state.', 'error');
-					});
-			});
+
+		// Theme toggle functionality
+		function toggleTheme() {
+			const currentTheme = editor.getOption("theme");
+			const isLight = currentTheme === 'default';
+			const newTheme = isLight ? 'material-darker' : 'default';
+			const themeIcon = document.getElementById('theme-icon');
+			
+			// Set CodeMirror theme
+			editor.setOption("theme", newTheme);
+			
+			// Set body class for UI theme
+			if (newTheme === 'default') {
+				document.body.classList.add('theme-light');
+				themeIcon.setAttribute('data-lucide', 'sun');
+			} else {
+				document.body.classList.remove('theme-light');
+				themeIcon.setAttribute('data-lucide', 'moon');
+			}
+			
+			// Refresh lucide icons
+			if (typeof lucide !== 'undefined') {
+				lucide.createIcons();
+			}
+		}
+
+		const themeToggleBtn = document.getElementById('theme-toggle-btn');
+		if (themeToggleBtn) {
+			themeToggleBtn.addEventListener('click', toggleTheme);
 		}
 
 		const themeSelector = document.getElementById('theme-selector');
@@ -509,7 +569,7 @@ document.body.addEventListener('htmx:afterSwap', function (event) {
 		if (gameStateIntervalId) {
 			clearInterval(gameStateIntervalId);
 		}
-		gameStateIntervalId = setInterval(updateGameStateDisplay, 2000); // Update every 2 seconds
+		gameStateIntervalId = setInterval(updateGameStateDisplay, 500); // Update every 500ms
 
         // Ensure UI state is correct after HTMX swap
         updateEditorUI();
@@ -590,4 +650,28 @@ async function browseForProjectRoot() {
     } catch (e) {
         console.error("Error calling pywebview API: ", e);
     }
+}
+
+function resetGameState() {
+    // Close the dropdown menu
+    const projectActionsDropdown = document.getElementById('project-actions-dropdown');
+    if (projectActionsDropdown) {
+        projectActionsDropdown.classList.remove('show');
+    }
+    
+    fetch('/api/reset-game-state', { method: 'POST' })
+        .then(response => {
+            showNotification('Game state has been reset.', 'success');
+            // Simplified approach: just reload preview iframe to '/'
+            const iframe = document.getElementById('preview-iframe');
+            if (iframe) {
+                iframe.src = '/';
+            }
+            // Force an immediate update of the debug display
+            updateGameStateDisplay();
+        })
+        .catch(err => {
+            console.error('Error resetting game state:', err);
+            showNotification('An error occurred while resetting the game state.', 'error');
+        });
 }

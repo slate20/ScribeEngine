@@ -1,0 +1,174 @@
+<!-- New File Modal -->
+<div id="new-file-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title">New File</h3>
+            <button class="modal-close" onclick="closeModal('new-file-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="new-file-form">
+                <div class="form-group">
+                    <label for="file-path">File Path:</label>
+                    <input type="text" id="file-path" name="path" class="form-control" placeholder="Enter file path" required>
+                    <small class="form-hint" id="path-hint">Example: story/new_scene.tgame</small>
+                </div>
+                <input type="hidden" id="file-type" name="type" value="file">
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('new-file-modal')">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitNewFile()">Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- New Folder Modal -->
+<div id="new-folder-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>New Folder</h3>
+            <button class="modal-close" onclick="closeModal('new-folder-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="new-folder-form">
+                <div class="form-group">
+                    <label for="folder-path">Folder Path:</label>
+                    <input type="text" id="folder-path" name="path" class="form-control" placeholder="Enter folder path" required>
+                    <small class="form-hint">Example: assets/images/</small>
+                </div>
+                <input type="hidden" name="type" value="folder">
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('new-folder-modal')">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitNewFolder()">Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- Info Modal -->
+<div id="info-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="info-modal-title">Information</h3>
+            <button class="modal-close" onclick="closeModal('info-modal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p id="info-modal-message">Information message here</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-primary" onclick="closeModal('info-modal')">OK</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function openNewFileModal(type, title, placeholder, hint) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('file-path').placeholder = placeholder;
+    document.getElementById('file-path').value = '';
+    document.getElementById('path-hint').textContent = hint;
+    document.getElementById('file-type').value = type;
+    document.getElementById('new-file-modal').style.display = 'flex';
+    document.getElementById('file-path').focus();
+}
+
+function openNewFolderModal() {
+    document.getElementById('folder-path').value = '';
+    document.getElementById('new-folder-modal').style.display = 'flex';
+    document.getElementById('folder-path').focus();
+}
+
+function openInfoModal(title, message) {
+    document.getElementById('info-modal-title').textContent = title;
+    document.getElementById('info-modal-message').textContent = message;
+    document.getElementById('info-modal').style.display = 'flex';
+}
+
+function closeModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+}
+
+function submitNewFile() {
+    const form = document.getElementById('new-file-form');
+    const formData = new FormData(form);
+    const path = formData.get('path');
+    const type = formData.get('type');
+    
+    if (!path.trim()) {
+        alert('Please enter a file path');
+        return;
+    }
+    
+    htmx.ajax('POST', '/api/create-item/{{ project_name }}', {
+        values: { path: path, type: type },
+        target: '#sidebar-content',
+        swap: 'innerHTML'
+    }).then(() => {
+        closeModal('new-file-modal');
+        showNotification('File created successfully', 'success');
+    }).catch(() => {
+        showNotification('Failed to create file', 'error');
+    });
+}
+
+function submitNewFolder() {
+    const form = document.getElementById('new-folder-form');
+    const formData = new FormData(form);
+    const path = formData.get('path');
+    
+    if (!path.trim()) {
+        alert('Please enter a folder path');
+        return;
+    }
+    
+    htmx.ajax('POST', '/api/create-item/{{ project_name }}', {
+        values: { path: path, type: 'folder' },
+        target: '#sidebar-content',
+        swap: 'innerHTML'
+    }).then(() => {
+        closeModal('new-folder-modal');
+        showNotification('Folder created successfully', 'success');
+    }).catch(() => {
+        showNotification('Failed to create folder', 'error');
+    });
+}
+
+// Close modal when clicking outside
+window.onclick = function(event) {
+    const newFileModal = document.getElementById('new-file-modal');
+    const newFolderModal = document.getElementById('new-folder-modal');
+    const infoModal = document.getElementById('info-modal');
+    
+    if (event.target === newFileModal) {
+        closeModal('new-file-modal');
+    }
+    if (event.target === newFolderModal) {
+        closeModal('new-folder-modal');
+    }
+    if (event.target === infoModal) {
+        closeModal('info-modal');
+    }
+}
+
+// Handle Enter key in forms
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        const activeModal = document.querySelector('.modal[style*="flex"]');
+        if (activeModal) {
+            event.preventDefault();
+            if (activeModal.id === 'new-file-modal') {
+                submitNewFile();
+            } else if (activeModal.id === 'new-folder-modal') {
+                submitNewFolder();
+            }
+        }
+    }
+    if (event.key === 'Escape') {
+        const activeModal = document.querySelector('.modal[style*="flex"]');
+        if (activeModal) {
+            closeModal(activeModal.id);
+        }
+    }
+});
+</script>
