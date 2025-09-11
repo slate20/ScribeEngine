@@ -1,3 +1,0 @@
-- [ ] Replace new file prompt with modal
-- [x] Refreshing the game window should resume from the current_passage of the game state
-- [ ] CodeMirror font-size control
