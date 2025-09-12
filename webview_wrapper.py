@@ -84,6 +84,30 @@ if __name__ == "__main__":
     import os
     import sys
     
+    # Prevent execution during PyInstaller analysis phase
+    # PyInstaller may run this script to analyze dependencies
+    if hasattr(sys, '_called_from_test') or 'pytest' in sys.modules:
+        # Skip execution during testing
+        sys.exit(0)
+    
+    # Check if this is being run by PyInstaller's analysis
+    # Look for PyInstaller-specific markers in the environment
+    if (os.environ.get('_PYINSTALLER_POPEN') or 
+        'PyInstaller' in ''.join(sys.argv) or
+        any('pyi-' in arg or 'pyinstaller' in arg.lower() for arg in sys.argv)):
+        print("Detected PyInstaller analysis - skipping webview execution")
+        sys.exit(0)
+    
+    # Additional check: if we're not frozen but don't have the expected game_data structure,
+    # this might be a build/analysis environment
+    if not getattr(sys, 'frozen', False):
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        game_data_path = os.path.join(base_path, 'game_data')
+        if not os.path.exists(game_data_path):
+            # We're probably being run during analysis, not as a finished game
+            print("No game_data directory found - likely running during build analysis")
+            sys.exit(0)
+    
     # Get the base path (either _MEIPASS for bundled apps or current directory)
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
         base_path = sys._MEIPASS

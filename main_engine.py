@@ -88,7 +88,7 @@ def create_new_project(project_name: str, project_root_dir: str):
 :: PostPassage
 <hr>
 <div class="footer">
-    <p>Copyright 2025 • {{{{ game_title }}}}</p>
+    <p>Copyright 2025 | {{{{ game_title }}}}</p>
 </div>
 
 :: start
