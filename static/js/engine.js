@@ -27,35 +27,5 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    const saveBtn = document.getElementById('save-btn');
-    if (saveBtn) {
-        saveBtn.addEventListener('click', function () {
-            fetch('/save', { method: 'POST', body: JSON.stringify({ slot: 1 }), headers: { 'Content-Type': 'application/json' } })
-                .then(response => response.json())
-                .then(data => {
-                    console.log('Game saved:', data);
-                    alert('Game saved!');
-                });
-        });
-    }
-
-    const loadBtn = document.getElementById('load-btn');
-    if (loadBtn) {
-        loadBtn.addEventListener('click', function () {
-            fetch('/load', { method: 'POST', body: JSON.stringify({ slot: 1 }), headers: { 'Content-Type': 'application/json' } })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        console.log('Game loaded:', data);
-                        if (data.passage_html) {
-                            document.getElementById('game-content').innerHTML = data.passage_html;
-                        }
-                        alert('Game loaded!');
-                        htmx.process(document.getElementById('game-content'));
-                    } else {
-                        alert('Error loading game: ' + data.message);
-                    }
-                });
-        });
-    }
+    // Save/Load button handlers are now in the modal template to ensure proper loading order
 });

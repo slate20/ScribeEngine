@@ -313,15 +313,56 @@ class GameEngine:
         """
         return Markup(html)
     
-    def save_game(self, slot):
-        self.storage.save_game(slot, self.game_state)
+    def save_game(self, slot, description=None):
+        current_passage = self.game_state.get('current_passage', 'Unknown')
+        serializable_state = self.get_serializable_state()
+        self.storage.save_game(slot, serializable_state, description, current_passage)
     
     def load_game(self, slot):
         saved_state = self.storage.load_game(slot)
         if saved_state:
-            self.game_state = saved_state['game_state']
+            # Use the proper restoration method instead of custom object restoration
+            self.restore_state_from_dict(saved_state['game_state'])
             return True
         return False
+    
+    def _restore_custom_objects(self, obj, systems, path=""):
+        """
+        Recursively restore custom class instances from dictionaries in the game state.
+        Uses pattern matching to identify likely class instances.
+        """
+        if isinstance(obj, dict):
+            # For each key in game_state, check if there's a matching class
+            # This handles common patterns like 'player' -> Player class
+            for state_key, state_value in list(obj.items()):
+                if isinstance(state_value, dict):
+                    # Try to find a matching class (case-insensitive)
+                    potential_class_name = state_key.capitalize()
+                    if potential_class_name in systems and isinstance(systems[potential_class_name], type):
+                        # This looks like a class instance that was serialized
+                        class_type = systems[potential_class_name]
+                        try:
+                            # Create new instance and restore attributes
+                            new_instance = class_type()
+                            for key, value in state_value.items():
+                                # Recursively restore nested objects
+                                restored_value = self._restore_custom_objects(value, systems, f"{path}.{key}")
+                                setattr(new_instance, key, restored_value)
+                            obj[state_key] = new_instance
+                            if self.debug_mode:
+                                print(f"Restored {potential_class_name} object from save data")
+                        except Exception as e:
+                            if self.debug_mode:
+                                print(f"Failed to restore {potential_class_name}: {e}")
+                    else:
+                        # Regular nested dict - recurse into it
+                        self._restore_custom_objects(state_value, systems, f"{path}.{state_key}")
+        elif isinstance(obj, list):
+            # Handle lists that might contain custom objects
+            for i, item in enumerate(obj):
+                self._restore_custom_objects(item, systems, f"{path}[{i}]")
+        
+        return obj
     
     def list_saves(self):
         return self.storage.list_saves()

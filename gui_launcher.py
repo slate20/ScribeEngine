@@ -95,14 +95,14 @@ def run_gui_app():
     api = Api()
 
     # Create the webview window (this must run on main thread after loading window closes)
-    webview.create_window('Scribe Engine', 'http://127.0.0.1:5000/gui', js_api=api, width=1920, height=1080)
-    webview.start()
+    # webview.create_window('Scribe Engine', 'http://127.0.0.1:5000/gui', js_api=api, width=1920, height=1080)
+    # webview.start()
 
     # Wait for the user to close the window
-    # try:
-    #     input("Press Enter to stop the server and exit...")
-    # except KeyboardInterrupt:
-    #     print("\nExiting...")
+    try:
+        input("Press Enter to stop the server and exit...")
+    except KeyboardInterrupt:
+        print("\nExiting...")
     
 if __name__ == '__main__':
     run_gui_app()

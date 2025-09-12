@@ -44,6 +44,30 @@ log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 app.secret_key = 'your-secret-key-here'  # Change in production
 
+# Template filters for formatting
+@app.template_filter('format_timestamp')
+def format_timestamp(timestamp):
+    """Format ISO timestamp for display."""
+    if not timestamp:
+        return 'Unknown'
+    try:
+        from datetime import datetime
+        dt = datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        return dt.strftime('%Y-%m-%d %H:%M')
+    except:
+        return str(timestamp)
+
+@app.template_filter('format_playtime')  
+def format_playtime(seconds):
+    """Format playtime seconds into readable format."""
+    if not seconds:
+        return '0m'
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    if hours > 0:
+        return f'{hours}h {minutes}m'
+    return f'{minutes}m'
+
 # Initialize game engine (will be done after GAME_PROJECT_PATH is set)
 game_engine = None
 _app_debug_mode = True # Default to False for production
@@ -129,7 +153,8 @@ def render_passage(passage_name):
 def save_game():
     try:
         slot = request.json.get('slot', 1)
-        game_engine.save_game(slot)
+        description = request.json.get('description', '')
+        game_engine.save_game(slot, description)
         return jsonify({'status': 'success', 'message': 'Game saved'}), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
@@ -251,6 +276,208 @@ def handle_action_link():
 def list_saves():
     saves = game_engine.list_saves()
     return jsonify({'saves': saves})
+
+@app.route('/saves/metadata')
+def get_saves_metadata():
+    """Get all saves with their metadata for the save/load modals."""
+    try:
+        if game_engine is None:
+            return jsonify({'status': 'error', 'message': 'No game project loaded'}), 400
+        
+        saves = game_engine.storage.list_saves_with_metadata()
+        return jsonify({'status': 'success', 'saves': saves}), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/saves/<int:slot>/delete', methods=['POST'])
+def delete_save(slot):
+    """Delete a specific save slot."""
+    try:
+        success = game_engine.storage.delete_save(slot)
+        if success:
+            return jsonify({'status': 'success', 'message': 'Save deleted'}), 200
+        else:
+            return jsonify({'status': 'error', 'message': 'Save not found or could not be deleted'}), 404
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/saves/<int:slot>/export')
+def export_save(slot):
+    """Export a save file for download."""
+    try:
+        save_data = game_engine.storage.export_save(slot)
+        if save_data:
+            from flask import Response
+            response_data = json.dumps(save_data, indent=2, default=str)
+            response = Response(
+                response_data,
+                mimetype='application/json',
+                headers={
+                    'Content-Disposition': f'attachment; filename=save_slot_{slot}.json'
+                }
+            )
+            return response
+        else:
+            return jsonify({'status': 'error', 'message': 'Save not found'}), 404
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/saves/<int:slot>/import', methods=['POST'])
+def import_save(slot):
+    """Import a save file."""
+    try:
+        if 'file' not in request.files:
+            return jsonify({'status': 'error', 'message': 'No file provided'}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+        
+        if not file.filename.endswith('.json'):
+            return jsonify({'status': 'error', 'message': 'Invalid file type. Please upload a JSON file'}), 400
+        
+        save_data = json.loads(file.read().decode('utf-8'))
+        success = game_engine.storage.import_save(slot, save_data)
+        
+        if success:
+            return jsonify({'status': 'success', 'message': 'Save imported successfully'}), 200
+        else:
+            return jsonify({'status': 'error', 'message': 'Invalid save file format'}), 400
+            
+    except json.JSONDecodeError:
+        return jsonify({'status': 'error', 'message': 'Invalid JSON file'}), 400
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/saves/<int:slot>/validate')
+def validate_save(slot):
+    """Validate a save file's integrity."""
+    try:
+        is_valid, message = game_engine.storage.validate_save(slot)
+        return jsonify({
+            'status': 'success' if is_valid else 'error',
+            'valid': is_valid,
+            'message': message
+        }), 200
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+# HTMX Modal Routes
+@app.route('/modal/save')
+def get_save_modal():
+    """Get the save modal with current save data."""
+    try:
+        if game_engine is None:
+            return '<div class="error">No game project loaded</div>', 400
+        
+        saves = game_engine.storage.list_saves_with_metadata()
+        return render_template('_fragments/_htmx_save_modal.html', saves=saves)
+    except Exception as e:
+        return f'<div class="error">Error loading save modal: {str(e)}</div>', 500
+
+@app.route('/modal/load')
+def get_load_modal():
+    """Get the load modal with available saves."""
+    try:
+        if game_engine is None:
+            return '<div class="error">No game project loaded</div>', 400
+        
+        saves = game_engine.storage.list_saves_with_metadata()
+        # Filter to only populated saves for loading
+        populated_saves = {slot: info for slot, info in saves.items() if info}
+        
+        return render_template('_fragments/_htmx_load_modal.html', 
+                             saves=saves, populated_saves=populated_saves)
+    except Exception as e:
+        return f'<div class="error">Error loading load modal: {str(e)}</div>', 500
+
+@app.route('/modal/save/select', methods=['POST'])
+def select_save_slot():
+    """Handle save slot selection."""
+    try:
+        if game_engine is None:
+            return '<div class="error">No game project loaded</div>', 400
+            
+        slot = int(request.form.get('slot', 1))
+        current_passage = game_engine.game_state.get('current_passage', 'Unknown')
+        
+        # Get existing save info if any
+        existing_save = game_engine.storage.get_save_metadata(slot)
+        existing_description = existing_save.get('description', '') if existing_save else ''
+        
+        return render_template('_fragments/_save_details.html',
+                             slot=slot,
+                             current_passage=current_passage,
+                             existing_save=existing_save,
+                             existing_description=existing_description)
+    except Exception as e:
+        return f'<div class="error">Error selecting save slot: {str(e)}</div>', 500
+
+@app.route('/modal/load/select', methods=['POST'])
+def select_load_slot():
+    """Handle load slot selection."""
+    try:
+        if game_engine is None:
+            return '<div class="error">No game project loaded</div>', 400
+            
+        slot = int(request.form.get('slot', 1))
+        save_info = game_engine.storage.get_save_metadata(slot)
+        
+        if not save_info:
+            return '<div class="error">Save not found</div>', 404
+            
+        return render_template('_fragments/_load_details.html',
+                             slot=slot, save_info=save_info)
+    except Exception as e:
+        return f'<div class="error">Error selecting load slot: {str(e)}</div>', 500
+
+@app.route('/modal/save/confirm', methods=['POST'])
+def confirm_save():
+    """Handle save confirmation."""
+    try:
+        if game_engine is None:
+            return '<div class="error">No game project loaded</div>', 400
+            
+        slot = int(request.form.get('slot', 1))
+        description = request.form.get('save-description', '').strip()
+        
+        game_engine.save_game(slot, description)
+        
+        # Return success message and close modal
+        return '''
+        <div class="success-message">Game saved successfully!</div>
+        <script>
+            setTimeout(() => {
+                document.getElementById('modal-container').innerHTML = '';
+            }, 1500);
+        </script>
+        '''
+    except Exception as e:
+        return f'<div class="error">Error saving game: {str(e)}</div>', 500
+
+@app.route('/modal/load/confirm', methods=['POST'])
+def confirm_load():
+    """Handle load confirmation - returns the loaded game content."""
+    try:
+        if game_engine is None:
+            return '<div class="error">No game project loaded</div>', 400
+            
+        slot = int(request.form.get('slot', 1))
+        success = game_engine.load_game(slot)
+        
+        if success:
+            current_passage = game_engine.game_state.get('current_passage', 'start')
+            passage_html = game_engine.render_main_passage(current_passage)
+            return passage_html
+        else:
+            return '<div class="error">Failed to load game</div>', 500
+    except Exception as e:
+        return f'<div class="error">Error loading game: {str(e)}</div>', 500
+
+@app.route('/modal/close', methods=['POST'])
+def close_modal():
+    """Close any open modal."""
+    return ''  # Return empty content to clear modal container
 
 @app.route('/custom.css')
 def serve_custom_css():
