@@ -78,25 +78,25 @@ def create_new_project(project_name: str, project_root_dir: str):
 [[Home->start]]
 
 :: PrePassage
-{{$- # Python code runs before Jinja2 templating -$}}
+<!-- Python code runs before Jinja2 templating -->
 <div class="hud">
-    <span>Health: {{ player.health }}</span>
-    <span>Energy: {{ player.energy }}</span>
+    <span>Health: {{{{ player.health }}}}</span> |
+    <span>Energy: {{{{ player.energy }}}}</span>
 </div>
 <hr>
 
 :: PostPassage
 <hr>
 <div class="footer">
-    <p>Copyright {{datetime.now().year}} • {{ game_title }}</p>
+    <p>Copyright 2025 • {{{{ game_title }}}}</p>
 </div>
 
 :: start
 {{$ player.name = player.name or "Adventurer" $}}
 
-# Welcome to {{ game_title }}
+<h2>Welcome to Scribe Engine!</h2>
 
-Hello, **{{ player.name }}**! This is your starting passage.
+Hello, {{{{ player.name }}}}! This is your starting passage.
 
 Edit this file (story.tgame) to begin writing your story.
 
@@ -111,19 +111,19 @@ found_item = "Magic Stone"
 player.inventory.append(found_item)
 -$}}
 
-You venture forth and discover a **{{ found_item }}**!
+You venture forth and discover a {{{{ found_item }}}}!
 
-*Energy: {{ player.energy }}/100*
+*Energy: {{{{ player.energy }}}}/100*
 
 [[Continue->start]]
 
 :: status
-# Character Status
+<h2> Character Status</h2>
 
-**Name:** {{ player.name }}  
-**Health:** {{ player.health }}/100  
-**Energy:** {{ player.energy }}/100  
-**Inventory:** {{ player.inventory|length }} items
+<b>Name:</b> {{{{ player.name }}}} <br>
+<b>Health:</b> {{{{ player.health }}}}/100 <br>
+<b>Energy:</b> {{{{ player.energy }}}}/100 <br>
+<b>Inventory:</b> {{{{ player.inventory|length }}}} items
 
 [[Back->start]]
 """
