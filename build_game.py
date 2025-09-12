@@ -180,8 +180,8 @@ def build_standalone_game(project_name: str, project_root_dir: str):
         templates_path = os.path.join(bundle_base_dir, 'templates')
         static_path = os.path.join(bundle_base_dir, 'static')
         config_manager_path = os.path.join(bundle_base_dir, 'config_manager.py')
-        app_path = os.path.join(bundle_base_dir, 'app.py')
-        webview_wrapper_path = os.path.join(bundle_base_dir, 'webview_wrapper.py')
+        game_server_path = os.path.join(bundle_base_dir, 'game_server.py')
+        game_server_wrapper_path = os.path.join(bundle_base_dir, 'game_server_wrapper.py')
         loading_window_path = os.path.join(bundle_base_dir, 'loading_window.py')
         
         # Check for custom icon in project configuration
@@ -226,9 +226,9 @@ def build_standalone_game(project_name: str, project_root_dir: str):
         # For example, if you add 'templates' folder, it will be accessible as 'templates' in the bundle
 
         pyinstaller_args = [
-            webview_wrapper_path,  # Main script to execute
-            '--noconsole',         # For GUI application
-            '--onefile',           # Create a single executable file
+            game_server_wrapper_path,  # Main script to execute (NEW: game server wrapper)
+            '--noconsole',             # For GUI application
+            '--onefile',               # Create a single executable file
             f'--name={project_name}_game', # Name of the executable
             
             # Add data files/folders
@@ -236,7 +236,7 @@ def build_standalone_game(project_name: str, project_root_dir: str):
             f'--add-data={templates_path}{os.pathsep}templates',
             f'--add-data={static_path}{os.pathsep}static',
             f'--add-data={config_manager_path}{os.pathsep}.',
-            f'--add-data={app_path}{os.pathsep}.',
+            f'--add-data={game_server_path}{os.pathsep}.',  # NEW: game server instead of full app.py
             f'--add-data={loading_window_path}{os.pathsep}.',
             
             # Add the specific game project being built

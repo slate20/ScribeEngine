@@ -723,6 +723,13 @@ def get_build_status(project_name):
 
 @app.route('/api/build-game/<project_name>', methods=['POST'])
 def build_game_api(project_name):
+    # Prevent building from standalone executables to avoid PyInstaller conflicts
+    if getattr(sys, 'frozen', False):
+        return jsonify({
+            'status': 'error', 
+            'message': 'Game building is not supported from standalone engine executables. Please use the source version of Scribe Engine for building games.'
+        }), 400
+    
     from build_game import build_standalone_game
     import threading
     

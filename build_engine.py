@@ -41,7 +41,8 @@ def build_engine_executable():
     engine_dir = os.path.join(script_dir, 'engine')
     templates_dir = os.path.join(script_dir, 'templates')
     static_dir = os.path.join(script_dir, 'static')
-    webview_wrapper_path = os.path.join(script_dir, 'webview_wrapper.py')
+    game_server_path = os.path.join(script_dir, 'game_server.py')
+    game_server_wrapper_path = os.path.join(script_dir, 'game_server_wrapper.py')
     build_game_py_path = os.path.join(script_dir, 'build_game.py')
     config_manager_path = os.path.join(script_dir, 'config_manager.py')
     loading_window_path = os.path.join(script_dir, 'loading_window.py')
@@ -58,7 +59,8 @@ def build_engine_executable():
         f'--add-data={gui_launcher_path}{os.pathsep}.',
         f'--add-data={app_path}{os.pathsep}.',
         f'--add-data={build_game_py_path}{os.pathsep}.',
-        f'--add-data={webview_wrapper_path}{os.pathsep}.',
+        f'--add-data={game_server_path}{os.pathsep}.',
+        f'--add-data={game_server_wrapper_path}{os.pathsep}.',
         f'--add-data={config_manager_path}{os.pathsep}.',
         f'--add-data={loading_window_path}{os.pathsep}.',
 
