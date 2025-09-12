@@ -20,8 +20,23 @@ class GameParser:
     
     def parse_file(self, filename: str) -> Dict:
         """Parse a .tgame file into passage data"""
-        with open(filename, 'r', encoding='utf-8') as f:
-            content = f.read()
+        # Try different encodings to handle Windows compatibility
+        encodings = ['utf-8', 'utf-8-sig', 'cp1252', 'iso-8859-1']
+        content = None
+        
+        for encoding in encodings:
+            try:
+                with open(filename, 'r', encoding=encoding) as f:
+                    content = f.read()
+                break
+            except UnicodeDecodeError:
+                continue
+        
+        if content is None:
+            # Fallback: read as binary and decode with error handling
+            with open(filename, 'rb') as f:
+                raw_content = f.read()
+            content = raw_content.decode('utf-8', errors='replace')
         
         return self.parse_content(content)
     
