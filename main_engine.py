@@ -46,6 +46,7 @@ def create_new_project(project_name: str, project_root_dir: str):
         "title": project_name.replace('_', ' ').title(),
         "author": "Anonymous",
         "starting_passage": "start",
+        "icon_path": "",
         "features": {
             "use_default_player": True
         },
@@ -56,8 +57,17 @@ def create_new_project(project_name: str, project_root_dir: str):
         "theme": {
             "enabled": True,
             "use_engine_defaults": True,
-            "colors": {},
-            "fonts": {}
+            "colors": {
+                "primary_color": "",
+                "background_color": "",
+                "text_color": "",
+                "link_color": "",
+                "border_color": ""
+            },
+            "fonts": {
+                "body_font": "",
+                "heading_font": ""
+            }
         },
         "debug_mode": False
     }
@@ -68,29 +78,54 @@ def create_new_project(project_name: str, project_root_dir: str):
 [[Home->start]]
 
 :: PrePassage
+{{$- # Python code runs before Jinja2 templating -$}}
 <div class="hud">
     <span>Health: {{ player.health }}</span>
-    <span>Score: {{ player.score }}</span>
+    <span>Energy: {{ player.energy }}</span>
 </div>
 <hr>
 
 :: PostPassage
 <hr>
 <div class="footer">
-    <p>Copyright {datetime.now().year}, {{ game_title }}</p>
+    <p>Copyright {{datetime.now().year}} • {{ game_title }}</p>
 </div>
 
 :: start
-Welcome to your new adventure, {{ player.name }}!
+{{$ player.name = player.name or "Adventurer" $}}
 
-This is your first passage. You can edit this file (story.tgame) to begin writing your story.
+# Welcome to {{ game_title }}
 
-[[Start the adventure!->first_step]]
+Hello, **{{ player.name }}**! This is your starting passage.
 
-:: first_step
-You have taken your first step into a larger world.
+Edit this file (story.tgame) to begin writing your story.
 
-[[Go back->start]]
+[[Start exploring->explore]]
+[[Check status->status]]
+
+:: explore
+{{$- 
+# Example: Python logic affecting story
+player.energy -= 5
+found_item = "Magic Stone"
+player.inventory.append(found_item)
+-$}}
+
+You venture forth and discover a **{{ found_item }}**!
+
+*Energy: {{ player.energy }}/100*
+
+[[Continue->start]]
+
+:: status
+# Character Status
+
+**Name:** {{ player.name }}  
+**Health:** {{ player.health }}/100  
+**Energy:** {{ player.energy }}/100  
+**Inventory:** {{ player.inventory|length }} items
+
+[[Back->start]]
 """
 
     # Write project.json
@@ -101,11 +136,11 @@ You have taken your first step into a larger world.
     with open(os.path.join(project_path, 'story.tgame'), 'w') as f:
         f.write(default_story_tgame)
 
-    # Optional: Create placeholder systems.py and custom.css
-    with open(os.path.join(project_path, 'systems.py'), 'w') as f:
-        f.write("# Your custom Python logic goes here.\n# You can create multiple .py files in your project to organize your code.\n")
+    # Optional: Create placeholder custom_logic.py and custom.css
+    with open(os.path.join(project_path, 'custom_logic.py'), 'w') as f:
+        f.write("# Custom Python classes and functions for your game\n# Example: Create custom Player class, helper functions, etc.\n")
     with open(os.path.join(project_path, 'custom.css'), 'w') as f:
-        f.write("/* Your custom CSS goes here */\n")
+        f.write("/* Custom styles for your game */\n/* Example: .special-text { color: gold; font-weight: bold; } */\n")
 
     print(f"Project '{project_name}' created successfully.")
 
