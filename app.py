@@ -703,8 +703,41 @@ def delete_item(project_name):
     # After action, return the updated file list fragment
     return list_files(project_name)
 
-# Build functionality moved to external build_tool_standalone.py
-# Use: python3 build_tool_standalone.py /path/to/project
+# Integrated Nuitka-based build functionality (restored from external tool approach)
+import build_nuitka
+
+@app.route('/api/build-game/<project_name>', methods=['POST'])
+def build_game_api(project_name):
+    """Start building a game project with Nuitka."""
+    try:
+        project_root = config_manager.get_project_root()
+        if not project_root:
+            return jsonify({'status': 'error', 'message': 'No project root configured'}), 400
+
+        project_path = os.path.join(project_root, project_name)
+        if not os.path.exists(project_path):
+            return jsonify({'status': 'error', 'message': f'Project {project_name} not found'}), 404
+
+        # Start build asynchronously
+        build_nuitka.build_game_async(project_name, project_root)
+
+        return jsonify({
+            'status': 'success',
+            'message': f'Build started for {project_name}',
+            'project_name': project_name
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/api/build-status/<project_name>')
+def build_status_api(project_name):
+    """Get the current build status for a project."""
+    try:
+        status = build_nuitka.get_build_status(project_name)
+        return jsonify(status)
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/settings-panel')
 def settings_panel():
