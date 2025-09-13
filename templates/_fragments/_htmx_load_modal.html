@@ -1,0 +1,64 @@
+<!-- HTMX Load Modal -->
+<div id="load-modal" class="modal show" style="display: flex !important;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Load Game</h3>
+            <button class="modal-close" hx-post="/modal/close" hx-target="#modal-container">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="save-slots-grid">
+                {% if populated_saves %}
+                    {% for slot, save_info in populated_saves.items() %}
+                        <div class="save-slot populated" 
+                             hx-post="/modal/load/select" 
+                             hx-vals='{"slot": {{ slot }}}' 
+                             hx-target="#load-details"
+                             onclick="selectSlot(this)">
+                            <div class="slot-number">Slot {{ slot }}</div>
+                            <div class="slot-content">
+                                <div class="slot-description">{{ save_info.description or 'Untitled Save' }}</div>
+                                <div class="slot-meta">
+                                    <div class="slot-passage">{{ save_info.passage_name or 'Unknown' }}</div>
+                                    <div class="slot-date">{{ save_info.timestamp|format_timestamp }}</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="no-saves">No saves found. Save your game first!</div>
+                {% endif %}
+            </div>
+            <div id="load-details">
+                <!-- Load details will be loaded here via HTMX -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" hx-post="/modal/close" hx-target="#modal-container">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirm-load-btn" disabled
+                    hx-post="/modal/load/confirm"
+                    hx-include="#load-details form"
+                    hx-target="#game-content"
+                    hx-swap="innerHTML">Load Game</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectSlot(element) {
+    // Remove selection from all slots
+    document.querySelectorAll('.save-slot').forEach(slot => slot.classList.remove('selected'));
+    // Add selection to clicked slot
+    element.classList.add('selected');
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('load-modal');
+    if (event.target === modal) {
+        htmx.ajax('POST', '/modal/close', {target: '#modal-container'});
+    }
+});
+
+// Process HTMX on the entire modal
+htmx.process(document.getElementById('load-modal'));
+</script>

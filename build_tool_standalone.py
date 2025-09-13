@@ -1,0 +1,281 @@
+#!/usr/bin/env python3
+"""
+Scribe Engine Standalone Game Builder
+External tool for building self-contained game executables using PyInstaller.
+This tool operates independently of the main engine to avoid PyInstaller conflicts.
+"""
+
+import os
+import sys
+import json
+import shutil
+import subprocess
+import argparse
+from datetime import datetime
+
+def build_game(project_path, output_dir=None):
+    """Build a self-contained game executable from a Scribe Engine project."""
+    
+    if not os.path.exists(project_path):
+        print(f"Error: Project path does not exist: {project_path}")
+        return False
+    
+    # Validate project structure
+    project_json_path = os.path.join(project_path, 'project.json')
+    if not os.path.exists(project_json_path):
+        print(f"Error: No project.json found in {project_path}")
+        return False
+    
+    # Load project configuration
+    try:
+        with open(project_json_path, 'r') as f:
+            project_config = json.load(f)
+        
+        # Sanitize project name for use as executable name (remove/replace problematic characters)
+        raw_title = project_config.get('title', 'Game')
+        project_name = (raw_title
+                       .replace(' ', '_')           # Spaces to underscores
+                       .replace("'", '')            # Remove apostrophes 
+                       .replace('"', '')            # Remove quotes
+                       .replace('&', 'and')         # Ampersand to 'and'
+                       .replace('/', '_')           # Slashes to underscores
+                       .replace('\\', '_')          # Backslashes to underscores
+                       .replace(':', '_')           # Colons to underscores
+                       .replace('*', '_')           # Asterisks to underscores
+                       .replace('?', '_')           # Question marks to underscores
+                       .replace('<', '_')           # Less than to underscores
+                       .replace('>', '_')           # Greater than to underscores
+                       .replace('|', '_'))          # Pipes to underscores
+        
+        print(f"Building project: {raw_title}")
+        print(f"Executable name: {project_name}")
+    except Exception as e:
+        print(f"Error reading project configuration: {e}")
+        return False
+    
+    # Set up output directory
+    if output_dir is None:
+        output_dir = os.path.join(project_path, 'dist')
+    
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Create temporary build directory
+    build_dir = os.path.join(project_path, 'temp_build')
+    if os.path.exists(build_dir):
+        shutil.rmtree(build_dir)
+    os.makedirs(build_dir)
+    
+    try:
+        print("Setting up build environment...")
+        
+        # Find Scribe Engine installation
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        
+        # Copy game server files (only game_server.py for distribution)
+        game_server_files = ['game_server.py']
+        for server_file in game_server_files:
+            src_path = os.path.join(script_dir, server_file)
+            if os.path.exists(src_path):
+                dst_path = os.path.join(build_dir, server_file)
+                shutil.copy2(src_path, dst_path)
+            else:
+                print(f"Warning: {server_file} not found in engine directory")
+        
+        # Copy engine directory
+        engine_src = os.path.join(script_dir, 'engine')
+        engine_dst = os.path.join(build_dir, 'engine')
+        if os.path.exists(engine_src):
+            shutil.copytree(engine_src, engine_dst)
+        else:
+            print("Error: Engine directory not found")
+            return False
+        
+        # Copy templates and static directories
+        for asset_dir in ['templates', 'static']:
+            src_dir = os.path.join(script_dir, asset_dir)
+            if os.path.exists(src_dir):
+                dst_dir = os.path.join(build_dir, asset_dir)
+                shutil.copytree(src_dir, dst_dir)
+        
+        # Copy game project files (excluding build artifacts)
+        game_dst = os.path.join(build_dir, 'game_project')
+        os.makedirs(game_dst)
+        
+        # Define files/directories to exclude from copying
+        exclude_patterns = {
+            'temp_build', 'build', 'dist', 'spec', '__pycache__', 
+            '.git', '.vscode', '.idea', 'venv', 'env'
+        }
+        
+        # Copy project files selectively
+        for item in os.listdir(project_path):
+            if item not in exclude_patterns:
+                src_item = os.path.join(project_path, item)
+                dst_item = os.path.join(game_dst, item)
+                if os.path.isdir(src_item):
+                    shutil.copytree(src_item, dst_item)
+                else:
+                    shutil.copy2(src_item, dst_item)
+        
+        # Create game launcher script
+        launcher_content = f'''#!/usr/bin/env python3
+"""
+Game launcher for {project_config.get('title', 'Game')}
+Generated by Scribe Engine Standalone Builder
+"""
+
+import webview
+import threading
+import time
+import os
+import sys
+
+# Get the directory where this executable is located
+if getattr(sys, 'frozen', False):
+    # Running from PyInstaller bundle
+    base_dir = sys._MEIPASS
+    executable_dir = os.path.dirname(sys.executable)
+else:
+    # Running from source
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    executable_dir = base_dir
+
+# Add the base directory to Python path
+sys.path.insert(0, base_dir)
+
+def start_game_server():
+    """Start the game server."""
+    try:
+        from game_server import app as game_app, set_game_project_path
+        game_project_path = os.path.join(base_dir, 'game_project')
+        set_game_project_path(game_project_path)
+        game_app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
+    except Exception as e:
+        print(f"Error starting game server: {{e}}")
+        sys.exit(1)
+
+def main():
+    """Main entry point for the game."""
+    print("Starting {project_config.get('title', 'Game')}...")
+    
+    # Start the game server in a separate thread
+    server_thread = threading.Thread(target=start_game_server, daemon=True)
+    server_thread.start()
+    
+    # Give the server a moment to start
+    time.sleep(2)
+    
+    # Create and start the webview window
+    try:
+        webview.create_window(
+            "{project_config.get('title', 'Game')}", 
+            'http://127.0.0.1:5001', 
+            width=1024, 
+            height=768,
+            resizable=True
+        )
+        webview.start()
+    except Exception as e:
+        print(f"Error starting game window: {{e}}")
+        print("You can play the game by opening http://127.0.0.1:5001 in your web browser")
+        input("Press Enter to exit...")
+
+if __name__ == "__main__":
+    main()
+'''
+        
+        launcher_path = os.path.join(build_dir, 'game_launcher.py')
+        with open(launcher_path, 'w') as f:
+            f.write(launcher_content)
+        
+        print("Running PyInstaller...")
+        
+        # Build executable name
+        executable_name = project_name
+        if sys.platform.startswith('win'):
+            executable_name += '.exe'
+        
+        # Run PyInstaller (use python3 explicitly for standalone builds)
+        python_exe = 'python3' if getattr(sys, 'frozen', False) else sys.executable
+        pyinstaller_cmd = [
+            python_exe, '-m', 'PyInstaller',
+            '--onefile',
+            '--name', project_name,
+            '--distpath', output_dir,
+            '--workpath', os.path.join(build_dir, 'work'),
+            '--specpath', os.path.join(build_dir, 'spec'),
+            '--clean',
+            '--noconfirm',
+            '--add-data', f'{engine_dst}{os.pathsep}engine',
+            '--add-data', f'{os.path.join(build_dir, "templates")}{os.pathsep}templates',
+            '--add-data', f'{os.path.join(build_dir, "static")}{os.pathsep}static',
+            '--add-data', f'{game_dst}{os.pathsep}game_project',
+            launcher_path
+        ]
+        
+        # Add game server file to bundle
+        for server_file in game_server_files:
+            server_path = os.path.join(build_dir, server_file)
+            if os.path.exists(server_path):
+                pyinstaller_cmd.extend(['--add-data', f'{server_path}{os.pathsep}.'])
+        
+        result = subprocess.run(pyinstaller_cmd, capture_output=True, text=True, cwd=build_dir)
+        
+        if result.returncode == 0:
+            print(f"✓ Build completed successfully!")
+            print(f"  Executable: {os.path.join(output_dir, executable_name)}")
+            print(f"  Size: {os.path.getsize(os.path.join(output_dir, executable_name)) // (1024*1024)} MB")
+            return True
+        else:
+            print("✗ Build failed!")
+            print("STDERR:", result.stderr)
+            if result.stdout:
+                print("STDOUT:", result.stdout)
+            return False
+    
+    except Exception as e:
+        print(f"Build error: {e}")
+        return False
+    
+    finally:
+        # Clean up temporary build directory
+        if os.path.exists(build_dir):
+            shutil.rmtree(build_dir, ignore_errors=True)
+
+def main():
+    """Main entry point for the standalone builder."""
+    parser = argparse.ArgumentParser(description='Build self-contained Scribe Engine games')
+    parser.add_argument('project_path', help='Path to the game project directory')
+    parser.add_argument('-o', '--output', help='Output directory for the built executable')
+    parser.add_argument('--version', action='version', version='Scribe Engine Builder 1.0')
+    
+    args = parser.parse_args()
+    
+    project_path = os.path.abspath(args.project_path)
+    output_dir = os.path.abspath(args.output) if args.output else None
+    
+    print("=" * 60)
+    print("Scribe Engine Standalone Game Builder")
+    print("=" * 60)
+    print(f"Project: {project_path}")
+    print(f"Output:  {output_dir or 'project/dist/'}")
+    print(f"Time:    {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    print("=" * 60)
+    
+    success = build_game(project_path, output_dir)
+    
+    if success:
+        print("=" * 60)
+        print("✓ Build completed successfully!")
+        print("Your game is ready for distribution.")
+        print("=" * 60)
+        sys.exit(0)
+    else:
+        print("=" * 60)
+        print("✗ Build failed!")
+        print("Check the error messages above for details.")
+        print("=" * 60)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()

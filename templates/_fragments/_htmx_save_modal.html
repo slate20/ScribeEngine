@@ -1,0 +1,64 @@
+<!-- HTMX Save Modal -->
+<div id="save-modal" class="modal show" style="display: flex !important;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Save Game</h3>
+            <button class="modal-close" hx-post="/modal/close" hx-target="#modal-container">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="save-slots-grid">
+                {% for slot in range(1, 7) %}
+                    {% set save_info = saves.get(slot) %}
+                    <div class="save-slot {{ 'populated' if save_info else 'empty' }}" 
+                         hx-post="/modal/save/select" 
+                         hx-vals='{"slot": {{ slot }}}' 
+                         hx-target="#save-details"
+                         onclick="selectSlot(this)">
+                        <div class="slot-number">Slot {{ slot }}</div>
+                        <div class="slot-content">
+                            {% if save_info %}
+                                <div class="slot-description">{{ save_info.description or 'Untitled Save' }}</div>
+                                <div class="slot-meta">
+                                    <div class="slot-passage">{{ save_info.passage_name or 'Unknown' }}</div>
+                                    <div class="slot-date">{{ save_info.timestamp|format_timestamp }}</div>
+                                </div>
+                            {% else %}
+                                <div class="empty-slot">Empty</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <div id="save-details">
+                <!-- Save details will be loaded here via HTMX -->
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" hx-post="/modal/close" hx-target="#modal-container">Cancel</button>
+            <button type="button" class="btn btn-primary" id="confirm-save-btn" disabled
+                    hx-post="/modal/save/confirm"
+                    hx-include="#save-details form"
+                    hx-target="#modal-container">Save Game</button>
+        </div>
+    </div>
+</div>
+
+<script>
+function selectSlot(element) {
+    // Remove selection from all slots
+    document.querySelectorAll('.save-slot').forEach(slot => slot.classList.remove('selected'));
+    // Add selection to clicked slot
+    element.classList.add('selected');
+}
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('save-modal');
+    if (event.target === modal) {
+        htmx.ajax('POST', '/modal/close', {target: '#modal-container'});
+    }
+});
+
+// Process HTMX on the entire modal
+htmx.process(document.getElementById('save-modal'));
+</script>

@@ -1,0 +1,46 @@
+<!-- Load Details Fragment -->
+<div class="load-details">
+    <div class="save-preview">
+        <h4>{{ save_info.description or 'Untitled Save' }}</h4>
+        <div class="save-metadata">
+            <p><strong>Location:</strong> {{ save_info.passage_name or 'Unknown' }}</p>
+            <p><strong>Saved:</strong> {{ save_info.timestamp|format_timestamp }}</p>
+            <p><strong>Play Time:</strong> {{ save_info.playtime|format_playtime }}</p>
+            {% if save_info.created_timestamp != save_info.timestamp %}
+                <p><strong>Created:</strong> {{ save_info.created_timestamp|format_timestamp }}</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="load-actions">
+        <button type="button" class="btn btn-outline btn-sm" 
+                hx-post="/saves/{{ slot }}/delete" 
+                hx-confirm="Are you sure you want to delete this save?"
+                hx-target="#modal-container">
+            Delete Save
+        </button>
+        <a href="/saves/{{ slot }}/export" class="btn btn-outline btn-sm" download>
+            Export Save
+        </a>
+    </div>
+</div>
+
+<form id="load-form" style="display: none;">
+    <input type="hidden" name="slot" value="{{ slot }}">
+</form>
+
+<script>
+// Simply enable the load button - HTMX attributes are already set
+const loadBtn = document.getElementById('confirm-load-btn');
+if (loadBtn) {
+    loadBtn.disabled = false;
+    
+    // Close modal after successful load
+    loadBtn.addEventListener('htmx:afterRequest', function(event) {
+        if (event.detail.successful) {
+            setTimeout(() => {
+                htmx.ajax('POST', '/modal/close', {target: '#modal-container'});
+            }, 100);
+        }
+    });
+}
+</script>

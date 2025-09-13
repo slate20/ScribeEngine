@@ -76,10 +76,7 @@ _temp_game_state = None # New global variable to store temporary game state
 # Add a server object to manage the Flask server instance
 server = None
 
-# Global build status storage - Thread-safe dictionary to track active builds
-import threading
-build_status_lock = threading.Lock()
-active_builds = {}  # Format: {project_name: {"status": "building", "progress": "Analyzing modules...", "start_time": datetime}}
+# Build functionality has been moved to external build_tool_standalone.py
 
 def set_debug_mode(mode: bool):
     global _app_debug_mode
@@ -706,130 +703,8 @@ def delete_item(project_name):
     # After action, return the updated file list fragment
     return list_files(project_name)
 
-# API endpoint to check current build status
-@app.route('/api/build-status/<project_name>')
-def get_build_status(project_name):
-    with build_status_lock:
-        if project_name in active_builds:
-            build_info = active_builds[project_name].copy()
-            # Add elapsed time
-            if 'start_time' in build_info:
-                elapsed = datetime.now() - build_info['start_time']
-                build_info['elapsed_seconds'] = int(elapsed.total_seconds())
-                build_info['start_time'] = build_info['start_time'].isoformat()
-            return jsonify(build_info)
-        else:
-            return jsonify({'status': 'none', 'message': 'No active build for this project'}), 404
-
-@app.route('/api/build-game/<project_name>', methods=['POST'])
-def build_game_api(project_name):
-    # Prevent building from standalone executables to avoid PyInstaller conflicts
-    if getattr(sys, 'frozen', False):
-        return jsonify({
-            'status': 'error', 
-            'message': 'Game building is not supported from standalone engine executables. Please use the source version of Scribe Engine for building games.'
-        }), 400
-    
-    from build_game import build_standalone_game
-    import threading
-    
-    project_root = config_manager.get_project_root()
-    
-    # Validate that the project exists
-    project_path = os.path.join(project_root, project_name)
-    if not os.path.exists(project_path):
-        return jsonify({'status': 'error', 'message': f'Project "{project_name}" not found'}), 404
-    
-    # Check if build is already running
-    with build_status_lock:
-        if project_name in active_builds:
-            current_status = active_builds[project_name]['status']
-            if current_status in ['started', 'building']:
-                return jsonify({
-                    'status': 'error', 
-                    'message': f'Build already in progress for {project_name}. Please wait for it to complete.'
-                }), 409
-    
-    def build_thread():
-        """Enhanced background thread for building with progress tracking."""
-        try:
-            # Initialize build status
-            with build_status_lock:
-                active_builds[project_name] = {
-                    'status': 'started',
-                    'progress': 'Initializing build process...',
-                    'start_time': datetime.now()
-                }
-            
-            print(f"Starting build for {project_name} at {project_root}")
-            
-            # Update status to building
-            with build_status_lock:
-                active_builds[project_name].update({
-                    'status': 'building',
-                    'progress': 'Analyzing modules and dependencies...'
-                })
-            
-            # Set up progress tracking in build_game module
-            from build_game import set_build_status_globals
-            set_build_status_globals(active_builds, build_status_lock)
-            
-            # Run the actual build
-            build_standalone_game(project_name, project_root)
-            
-            # Build completed successfully
-            with build_status_lock:
-                active_builds[project_name].update({
-                    'status': 'completed',
-                    'progress': 'Build completed successfully!',
-                    'message': f'Executable created in dist/ directory',
-                    'executable_path': os.path.join(project_path, 'dist')
-                })
-            
-            print(f"Build completed successfully for {project_name}")
-            
-            # Clean up build status after 5 minutes
-            def cleanup_build_status():
-                time.sleep(300)  # 5 minutes
-                with build_status_lock:
-                    if project_name in active_builds:
-                        del active_builds[project_name]
-                        
-            cleanup_thread = threading.Thread(target=cleanup_build_status, daemon=True)
-            cleanup_thread.start()
-            
-        except Exception as e:
-            # Build failed
-            with build_status_lock:
-                active_builds[project_name].update({
-                    'status': 'failed',
-                    'progress': 'Build failed',
-                    'error': str(e),
-                    'message': f'Build failed: {str(e)}'
-                })
-            print(f"Build failed for {project_name}: {str(e)}")
-            
-            # Clean up build status after 2 minutes for failures
-            def cleanup_build_status():
-                time.sleep(120)  # 2 minutes  
-                with build_status_lock:
-                    if project_name in active_builds:
-                        del active_builds[project_name]
-                        
-            cleanup_thread = threading.Thread(target=cleanup_build_status, daemon=True)
-            cleanup_thread.start()
-    
-    # Start build in background thread
-    thread = threading.Thread(target=build_thread, daemon=True)
-    thread.start()
-    
-    # Return immediate response
-    dist_path = os.path.join(project_path, 'dist')
-    return jsonify({
-        'status': 'success', 
-        'message': f'Build started for {project_name}. Monitor progress using the build status API.',
-        'build_location': dist_path
-    }), 200
+# Build functionality moved to external build_tool_standalone.py
+# Use: python3 build_tool_standalone.py /path/to/project
 
 @app.route('/api/settings-panel')
 def settings_panel():
