@@ -292,9 +292,9 @@ def run_nuitka_build(launcher_path: str, build_dir: str, output_dir: str,
                      executable_name: str, project_config: Dict[str, Any]) -> str:
     """Run the Nuitka compilation process."""
 
-    # Nuitka command arguments
+    # Nuitka command arguments (use current Python interpreter)
     nuitka_args = [
-        'python', '-m', 'nuitka',
+        sys.executable, '-m', 'nuitka',
         launcher_path,
         '--standalone',
         '--onefile',

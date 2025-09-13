@@ -33,7 +33,8 @@ def build_engine_executable():
         build_type = 'gui'
         main_script = 'gui_launcher.py'
         executable_name = f'scribe-engine-v{version}-{platform_suffix}'
-        nuitka_options = ['--disable-console']  # No console window for GUI
+        # Only disable console on Windows
+        nuitka_options = ['--disable-console'] if sys.platform.startswith('win') else []
     else:
         print("Building CLI Scribe Engine executable with Nuitka...")
         build_type = 'cli'
@@ -54,9 +55,9 @@ def build_engine_executable():
     templates_dir = os.path.join(script_dir, 'templates')
     static_dir = os.path.join(script_dir, 'static')
 
-    # Nuitka command arguments
+    # Nuitka command arguments (use current Python interpreter)
     nuitka_args = [
-        'python', '-m', 'nuitka',
+        sys.executable, '-m', 'nuitka',
         main_script_path,
         '--standalone',
         '--onefile',
