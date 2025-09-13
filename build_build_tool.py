@@ -69,7 +69,7 @@ def build_build_tool():
         executable_path = os.path.join(output_dir, executable_name)
         size_mb = os.path.getsize(executable_path) // (1024 * 1024)
         
-        print("✓ Build completed successfully!")
+        print("[SUCCESS] Build completed successfully!")
         print(f"  Executable: {executable_path}")
         print(f"  Size: {size_mb} MB")
         print("=" * 60)
@@ -79,7 +79,7 @@ def build_build_tool():
         print("=" * 60)
         return True
     else:
-        print("✗ Build failed!")
+        print("[ERROR] Build failed!")
         print("STDERR:", result.stderr)
         if result.stdout:
             print("STDOUT:", result.stdout)

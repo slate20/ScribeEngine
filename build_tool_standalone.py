@@ -239,12 +239,12 @@ if __name__ == "__main__":
         result = subprocess.run(pyinstaller_cmd, capture_output=True, text=True, cwd=build_dir)
         
         if result.returncode == 0:
-            print(f"✓ Build completed successfully!")
+            print(f"[SUCCESS] Build completed successfully!")
             print(f"  Executable: {os.path.join(output_dir, executable_name)}")
             print(f"  Size: {os.path.getsize(os.path.join(output_dir, executable_name)) // (1024*1024)} MB")
             return True
         else:
-            print("✗ Build failed!")
+            print("[ERROR] Build failed!")
             print("STDERR:", result.stderr)
             if result.stdout:
                 print("STDOUT:", result.stdout)
@@ -283,13 +283,13 @@ def main():
     
     if success:
         print("=" * 60)
-        print("✓ Build completed successfully!")
+        print("[SUCCESS] Build completed successfully!")
         print("Your game is ready for distribution.")
         print("=" * 60)
         sys.exit(0)
     else:
         print("=" * 60)
-        print("✗ Build failed!")
+        print("[ERROR] Build failed!")
         print("Check the error messages above for details.")
         print("=" * 60)
         sys.exit(1)
