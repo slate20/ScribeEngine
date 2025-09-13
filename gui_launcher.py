@@ -12,7 +12,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from app import app as flask_app
 from app import set_game_project_path, set_debug_mode, reset_game_engine, set_gui_mode
 import config_manager
-from loading_window import LoadingWindow
+# from loading_window import LoadingWindow  # Temporarily disabled for Nuitka build
 
 # Global variables for server management
 flask_thread_instance = None
@@ -51,12 +51,12 @@ def run_gui_app():
     
     icon_path = os.path.join(base_path, 'SE_icon.png')
     
-    # Create loading window
-    loading_window = LoadingWindow(
-        title="Scribe Engine",
-        subtitle="Starting integrated development environment...",
-        icon_path=icon_path if os.path.exists(icon_path) else None
-    )
+    # Create loading window (temporarily disabled for Nuitka build)
+    # loading_window = LoadingWindow(
+    #     title="Scribe Engine",
+    #     subtitle="Starting integrated development environment...",
+    #     icon_path=icon_path if os.path.exists(icon_path) else None
+    # )
     
     def flask_startup_sequence():
         """The Flask startup sequence that runs behind the loading window."""
@@ -88,8 +88,10 @@ def run_gui_app():
         
         return True  # Signal that Flask startup is complete
     
-    # Run the Flask startup sequence with the loading window
-    loading_window.run_with_loading(flask_startup_sequence)
+    # Run the Flask startup sequence with the loading window (temporarily disabled)
+    # loading_window.run_with_loading(flask_startup_sequence)
+    # Instead, run startup sequence directly
+    flask_startup_sequence()
     
     # Create an API instance to expose to the webview
     api = Api()

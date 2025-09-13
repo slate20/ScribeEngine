@@ -76,7 +76,7 @@ def build_engine_executable():
         # Include additional Python files needed by the engine
         f'--include-module=app',
         f'--include-module=config_manager',
-        f'--include-module=loading_window',
+        # f'--include-module=loading_window',  # Temporarily disabled
 
         # Performance optimizations
         '--lto=yes',  # Link Time Optimization for better performance
