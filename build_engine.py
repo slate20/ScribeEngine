@@ -45,6 +45,26 @@ def build_engine_executable():
     game_server_wrapper_path = os.path.join(script_dir, 'game_server_wrapper.py')
     config_manager_path = os.path.join(script_dir, 'config_manager.py')
     loading_window_path = os.path.join(script_dir, 'loading_window.py')
+    build_standalone_path = os.path.join(script_dir, 'build_standalone.py')
+
+    # Standalone builder executable path (platform-specific)
+    if sys.platform.startswith('linux'):
+        builder_name = 'ScribeBuilder-linux'
+    elif sys.platform.startswith('win'):
+        builder_name = 'ScribeBuilder-windows.exe'
+    elif sys.platform.startswith('darwin'):
+        builder_name = 'ScribeBuilder-macos'
+    else:
+        builder_name = 'ScribeBuilder-unknown'
+
+    standalone_builder_path = os.path.join(script_dir, 'dist_tools', builder_name)
+
+    # Check if standalone builder exists
+    if not os.path.exists(standalone_builder_path):
+        print(f"Warning: Standalone builder not found at {standalone_builder_path}")
+        print(f"Run 'python build_build_tool.py' to create the standalone builder first.")
+        print("Continuing without bundled builder...")
+        standalone_builder_path = None
 
     # PyInstaller arguments
     pyinstaller_args = [
@@ -61,6 +81,7 @@ def build_engine_executable():
         f'--add-data={game_server_wrapper_path}{os.pathsep}.',
         f'--add-data={config_manager_path}{os.pathsep}.',
         f'--add-data={loading_window_path}{os.pathsep}.',
+        f'--add-data={build_standalone_path}{os.pathsep}.',
 
         # Add directories
         f'--add-data={engine_dir}{os.pathsep}engine',
@@ -83,6 +104,11 @@ def build_engine_executable():
         '--workpath=./build_engine',
         '--specpath=./spec_engine',
     ]
+
+    # Add standalone builder if it exists
+    if standalone_builder_path and os.path.exists(standalone_builder_path):
+        pyinstaller_args.append(f'--add-data={standalone_builder_path}{os.pathsep}tools')
+        print(f"Including standalone builder: {builder_name}")
 
     # Add conditional options (like --noconsole for GUI)
     pyinstaller_args.extend(pyinstaller_options)

@@ -703,12 +703,12 @@ def delete_item(project_name):
     # After action, return the updated file list fragment
     return list_files(project_name)
 
-# Integrated Nuitka-based build functionality (restored from external tool approach)
-import build_nuitka
+# Integrated standalone build functionality using pre-built ScribeBuilder executable
+import build_standalone
 
 @app.route('/api/build-game/<project_name>', methods=['POST'])
 def build_game_api(project_name):
-    """Start building a game project with Nuitka."""
+    """Start building a game project with standalone builder."""
     try:
         project_root = config_manager.get_project_root()
         if not project_root:
@@ -719,7 +719,7 @@ def build_game_api(project_name):
             return jsonify({'status': 'error', 'message': f'Project {project_name} not found'}), 404
 
         # Start build asynchronously
-        build_nuitka.build_game_async(project_name, project_root)
+        build_standalone.build_game_async(project_name, project_root)
 
         return jsonify({
             'status': 'success',
@@ -734,7 +734,7 @@ def build_game_api(project_name):
 def build_status_api(project_name):
     """Get the current build status for a project."""
     try:
-        status = build_nuitka.get_build_status(project_name)
+        status = build_standalone.get_build_status(project_name)
         return jsonify(status)
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

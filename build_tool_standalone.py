@@ -206,10 +206,27 @@ if __name__ == "__main__":
             '--specpath', os.path.join(build_dir, 'spec'),
             '--clean',
             '--noconfirm',
+
+            # Add data directories
             '--add-data', f'{engine_dst}{os.pathsep}engine',
             '--add-data', f'{os.path.join(build_dir, "templates")}{os.pathsep}templates',
             '--add-data', f'{os.path.join(build_dir, "static")}{os.pathsep}static',
             '--add-data', f'{game_dst}{os.pathsep}game_project',
+
+            # Hidden imports for PyWebview and Flask
+            '--hidden-import=flask',
+            '--hidden-import=jinja2',
+            '--hidden-import=werkzeug',
+            '--hidden-import=pywebview',
+            '--hidden-import=pywebview.platforms.qt',
+            '--hidden-import=qtpy',
+            '--hidden-import=qtpy.QtCore',
+            '--hidden-import=qtpy.QtGui',
+            '--hidden-import=qtpy.QtWidgets',
+            '--hidden-import=PyQt6.QtCore',
+            '--hidden-import=PyQt6.QtGui',
+            '--hidden-import=PyQt6.QtWidgets',
+
             launcher_path
         ]
         
