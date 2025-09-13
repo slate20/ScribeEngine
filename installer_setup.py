@@ -72,6 +72,15 @@ def download_python_installer():
         urllib.request.urlretrieve(python_url, temp_file.name)
         return temp_file.name
 
+def check_pip_installed(python_exe):
+    """Check if pip is available."""
+    try:
+        result = subprocess.run([python_exe, '-m', 'pip', '--version'],
+                              capture_output=True, text=True, timeout=5)
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
 def install_python(installer_path):
     """Install Python using the downloaded installer."""
     print("Installing Python...")
@@ -82,6 +91,7 @@ def install_python(installer_path):
         '/quiet',           # Silent install
         'InstallAllUsers=1', # Install for all users
         'PrependPath=1',    # Add to PATH
+        'Include_pip=1',    # Ensure pip is installed
         'Include_test=0',   # Don't install test suite
         'Include_doc=0',    # Don't install documentation
     ]
@@ -90,10 +100,10 @@ def install_python(installer_path):
     return result.returncode == 0
 
 def install_pyinstaller(python_exe):
-    """Install PyInstaller with Qt support using pip."""
-    print("Installing PyInstaller with Qt support...")
+    """Install PyInstaller using pip."""
+    print("Installing PyInstaller...")
 
-    result = subprocess.run([python_exe, '-m', 'pip', 'install', 'pyinstaller[qt]'],
+    result = subprocess.run([python_exe, '-m', 'pip', 'install', 'pyinstaller'],
                           capture_output=True, text=True)
     return result.returncode == 0
 
@@ -141,14 +151,20 @@ def main():
         print("✗ Python not found")
         needs_python = True
 
-    # If we have Python, check PyInstaller
+    # If we have Python, check pip and PyInstaller
     if python_exe:
-        pyinstaller_available, pyinstaller_version = check_pyinstaller_installed(python_exe)
-        if pyinstaller_available:
-            print(f"✓ PyInstaller found: {pyinstaller_version}")
+        if not check_pip_installed(python_exe):
+            print("✗ pip not available")
+            needs_python = True  # Need to reinstall Python with pip
         else:
-            print("✗ PyInstaller not found")
-            needs_pyinstaller = True
+            print("✓ pip available")
+
+            pyinstaller_available, pyinstaller_version = check_pyinstaller_installed(python_exe)
+            if pyinstaller_available:
+                print(f"✓ PyInstaller found: {pyinstaller_version}")
+            else:
+                print("✗ PyInstaller not found")
+                needs_pyinstaller = True
 
     # Summary of what we found
     print("=" * 60)
@@ -201,7 +217,7 @@ def main():
             print("✓ PyInstaller installed successfully!")
         else:
             print("✗ PyInstaller installation failed.")
-            print("You may need to install it manually: pip install pyinstaller[qt]")
+            print("You may need to install it manually: pip install pyinstaller")
             input("Press Enter to exit...")
             return False
 
