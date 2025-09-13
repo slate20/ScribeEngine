@@ -90,10 +90,10 @@ def install_python(installer_path):
     return result.returncode == 0
 
 def install_pyinstaller(python_exe):
-    """Install PyInstaller using pip."""
-    print("Installing PyInstaller...")
+    """Install PyInstaller with Qt support using pip."""
+    print("Installing PyInstaller with Qt support...")
 
-    result = subprocess.run([python_exe, '-m', 'pip', 'install', 'pyinstaller'],
+    result = subprocess.run([python_exe, '-m', 'pip', 'install', 'pyinstaller[qt]'],
                           capture_output=True, text=True)
     return result.returncode == 0
 
@@ -201,7 +201,7 @@ def main():
             print("✓ PyInstaller installed successfully!")
         else:
             print("✗ PyInstaller installation failed.")
-            print("You may need to install it manually: pip install pyinstaller")
+            print("You may need to install it manually: pip install pyinstaller[qt]")
             input("Press Enter to exit...")
             return False
 

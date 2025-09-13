@@ -100,13 +100,13 @@ def install_python_linux():
         return False
 
 def install_pyinstaller(python_exe):
-    """Install PyInstaller using pip."""
-    print("Installing PyInstaller...")
+    """Install PyInstaller with Qt support using pip."""
+    print("Installing PyInstaller with Qt support...")
 
     # Try user install first, then system-wide
     commands_to_try = [
-        [python_exe, '-m', 'pip', 'install', '--user', 'pyinstaller'],
-        [python_exe, '-m', 'pip', 'install', 'pyinstaller'],
+        [python_exe, '-m', 'pip', 'install', '--user', 'pyinstaller[qt]'],
+        [python_exe, '-m', 'pip', 'install', 'pyinstaller[qt]'],
     ]
 
     for cmd in commands_to_try:
@@ -221,7 +221,7 @@ def main():
         else:
             print("✗ PyInstaller installation failed.")
             print("You may need to install it manually:")
-            print(f"  {python_exe} -m pip install --user pyinstaller")
+            print(f"  {python_exe} -m pip install --user pyinstaller[qt]")
             input("Press Enter to exit...")
             return False
 
