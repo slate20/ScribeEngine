@@ -81,6 +81,53 @@ def check_pip_installed(python_exe):
     except (subprocess.TimeoutExpired, FileNotFoundError):
         return False
 
+def install_pip(python_exe):
+    """Install pip using ensurepip or get-pip.py."""
+    print("Installing pip...")
+
+    # Method 1: Try ensurepip (built into Python 3.4+)
+    try:
+        result = subprocess.run([python_exe, '-m', 'ensurepip', '--upgrade'],
+                              capture_output=True, text=True, timeout=30)
+        if result.returncode == 0:
+            print("✓ pip installed via ensurepip")
+            return True
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        pass
+
+    # Method 2: Download and run get-pip.py
+    try:
+        import tempfile
+        import urllib.request
+
+        print("Downloading get-pip.py...")
+        get_pip_url = "https://bootstrap.pypa.io/get-pip.py"
+
+        with tempfile.NamedTemporaryFile(suffix='.py', delete=False) as temp_file:
+            urllib.request.urlretrieve(get_pip_url, temp_file.name)
+            get_pip_path = temp_file.name
+
+        print("Running get-pip.py...")
+        result = subprocess.run([python_exe, get_pip_path],
+                              capture_output=True, text=True, timeout=60)
+
+        # Clean up
+        try:
+            os.unlink(get_pip_path)
+        except:
+            pass
+
+        if result.returncode == 0:
+            print("✓ pip installed via get-pip.py")
+            return True
+        else:
+            print(f"get-pip.py failed: {result.stderr}")
+            return False
+
+    except Exception as e:
+        print(f"Error installing pip: {e}")
+        return False
+
 def install_python(installer_path):
     """Install Python using the downloaded installer."""
     print("Installing Python...")
@@ -153,23 +200,32 @@ def main():
 
     # If we have Python, check pip and PyInstaller
     if python_exe:
-        if not check_pip_installed(python_exe):
-            print("✗ pip not available")
-            needs_python = True  # Need to reinstall Python with pip
-        else:
+        pip_available = check_pip_installed(python_exe)
+        if pip_available:
             print("✓ pip available")
+        else:
+            print("✗ pip not available")
 
+        # Check PyInstaller (even if pip is missing, we can install pip first)
+        if pip_available:
             pyinstaller_available, pyinstaller_version = check_pyinstaller_installed(python_exe)
             if pyinstaller_available:
                 print(f"✓ PyInstaller found: {pyinstaller_version}")
             else:
                 print("✗ PyInstaller not found")
                 needs_pyinstaller = True
+        else:
+            # Can't check PyInstaller without pip, but we'll need it after installing pip
+            print("✗ PyInstaller check skipped (pip required)")
+            needs_pyinstaller = True
 
     # Summary of what we found
     print("=" * 60)
 
-    if not needs_python and not needs_pyinstaller:
+    # Check if pip needs to be installed separately
+    needs_pip = python_exe and not check_pip_installed(python_exe)
+
+    if not needs_python and not needs_pip and not needs_pyinstaller:
         print("[SUCCESS] Great! You already have everything you need:")
         print(f"   • Python: {python_version}")
         print(f"   • PyInstaller: {pyinstaller_version}")
@@ -210,6 +266,17 @@ def main():
                 os.unlink(installer_path)
             except:
                 pass
+
+    # Install pip if needed
+    if needs_pip:
+        print("Installing pip...")
+        if install_pip(python_exe):
+            print("✓ pip installed successfully!")
+        else:
+            print("✗ pip installation failed.")
+            print("You may need to install pip manually or reinstall Python.")
+            input("Press Enter to exit...")
+            return False
 
     if needs_pyinstaller:
         print("Installing PyInstaller...")
