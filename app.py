@@ -76,7 +76,8 @@ _temp_game_state = None # New global variable to store temporary game state
 # Add a server object to manage the Flask server instance
 server = None
 
-# Build functionality has been moved to external build_tool_standalone.py
+# Asset packing functionality (replaces old external build system)
+build_status = {}  # Global build status tracking
 
 def set_debug_mode(mode: bool):
     global _app_debug_mode
@@ -703,8 +704,8 @@ def delete_item(project_name):
     # After action, return the updated file list fragment
     return list_files(project_name)
 
-# Build functionality moved to external build_tool_standalone.py
-# Use: python3 build_tool_standalone.py /path/to/project
+# Legacy build functionality moved to cleanup/build_tool_standalone_old.py
+# Now using integrated AssetPacker system (see /api/build-game routes above)
 
 @app.route('/api/settings-panel')
 def settings_panel():
@@ -796,6 +797,86 @@ def save_project_settings(project_name):
         game_engine.load_project()
 
     return jsonify({'status': 'success', 'message': 'Settings saved successfully'})
+
+# Asset Packer Build API Routes
+
+@app.route('/api/build-game/<project_name>', methods=['POST'])
+def build_game_api(project_name):
+    """Start building a game using the new asset packer system."""
+    import threading
+    from datetime import datetime
+    from engine.asset_packer import AssetPacker
+
+    project_root = config_manager.get_project_root()
+    project_path = os.path.join(project_root, project_name)
+
+    # Validate project exists
+    if not os.path.exists(project_path):
+        return jsonify({'status': 'error', 'message': 'Project not found'}), 404
+
+    # Check if build is already in progress
+    if project_name in build_status and build_status[project_name]['status'] == 'building':
+        return jsonify({'status': 'error', 'message': 'Build already in progress'}), 409
+
+    # Initialize build status
+    build_status[project_name] = {
+        'status': 'building',
+        'progress': 'Initializing build...',
+        'start_time': datetime.now(),
+        'executable_path': None,
+        'error': None
+    }
+
+    def build_thread():
+        """Background thread for building the game."""
+        try:
+            build_status[project_name]['progress'] = 'Scanning project files...'
+
+            # Create asset packer
+            packer = AssetPacker()
+
+            build_status[project_name]['progress'] = 'Packing game assets...'
+
+            # Create distribution inside the project directory
+            builds_dir = os.path.join(project_path, 'builds')
+            info = packer.create_distribution(project_path, builds_dir)
+
+            build_status[project_name].update({
+                'status': 'completed',
+                'progress': f'Build completed! Distribution: {info["clean_title"]}_Distribution',
+                'executable_path': info['distribution_dir'],
+                'build_info': info
+            })
+
+        except Exception as e:
+            build_status[project_name].update({
+                'status': 'failed',
+                'progress': f'Build failed: {str(e)}',
+                'error': str(e)
+            })
+
+    # Start build in background thread
+    threading.Thread(target=build_thread, daemon=True).start()
+
+    return jsonify({'status': 'success', 'message': 'Build started successfully'})
+
+@app.route('/api/build-status/<project_name>')
+def get_build_status(project_name):
+    """Get current build status for a project."""
+    if project_name not in build_status:
+        return jsonify({'status': 'error', 'message': 'No build found for project'}), 404
+
+    status = build_status[project_name].copy()
+
+    # Add elapsed time
+    if 'start_time' in status:
+        elapsed = datetime.now() - status['start_time']
+        status['elapsed_seconds'] = int(elapsed.total_seconds())
+
+    # Remove internal fields
+    status.pop('start_time', None)
+
+    return jsonify(status)
 
 @app.route('/api/close-project')
 def close_project():

@@ -58,9 +58,21 @@ def set_game_project_path(path):
     """Set the game project path and initialize the engine."""
     global GAME_PROJECT_PATH, game_engine
     GAME_PROJECT_PATH = path
+
     if path and os.path.exists(path):
-        game_engine = GameEngine(path, debug_mode=False)  # Always disable debug in games
-        
+        # Check if this is an archive-based game or directory-based game
+        game_dat_path = os.path.join(path, 'game.dat')
+        is_archive_game = os.path.exists(game_dat_path)
+
+        if is_archive_game:
+            print(f"Loading game from archive: {game_dat_path}")
+            # For archive games, we need to extract to a temporary location
+            # This will be handled by the ScribePlayer launcher
+            game_engine = GameEngine(path, debug_mode=False)
+        else:
+            # Traditional directory-based game
+            game_engine = GameEngine(path, debug_mode=False)
+
         # For distributed games, save files should go next to the executable, not in the bundled project
         if getattr(sys, 'frozen', False):
             # Running from executable - save next to the executable
@@ -69,10 +81,10 @@ def set_game_project_path(path):
         else:
             # Running from source - save in current working directory
             save_dir = os.path.join(os.getcwd(), 'saves')
-        
+
         # Create save directory if it doesn't exist
         os.makedirs(save_dir, exist_ok=True)
-        
+
         # Replace the storage with one that uses the correct save directory
         from engine.storage import JSONStorage
         game_engine.storage = JSONStorage(save_dir=save_dir)

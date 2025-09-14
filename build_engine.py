@@ -1,10 +1,51 @@
 import PyInstaller.__main__
 import os
 import sys
+import subprocess
 
 version = '1.0'
 
+def ensure_scribe_player_exists():
+    """Ensure ScribePlayer exists before building the engine."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Check for ScribePlayer with correct platform extension
+    if sys.platform.startswith('win'):
+        player_name = 'ScribePlayer.exe'
+    else:
+        player_name = 'ScribePlayer'
+
+    player_path = os.path.join(script_dir, 'dist_tools', player_name)
+
+    if not os.path.exists(player_path):
+        print(f"{player_name} not found. Building it first...")
+        build_player_script = os.path.join(script_dir, 'build_player.py')
+
+        if os.path.exists(build_player_script):
+            try:
+                result = subprocess.run([sys.executable, build_player_script],
+                                      capture_output=True, text=True, cwd=script_dir)
+                if result.returncode != 0:
+                    print(f"Failed to build {player_name}: {result.stderr}")
+                    return False
+                print(f"{player_name} built successfully!")
+            except Exception as e:
+                print(f"Error building {player_name}: {e}")
+                return False
+        else:
+            print(f"Error: build_player.py not found at {build_player_script}")
+            return False
+    else:
+        print(f"{player_name} found, proceeding with engine build...")
+
+    return True
+
 def build_engine_executable():
+    # Ensure ScribePlayer.exe exists first
+    if not ensure_scribe_player_exists():
+        print("Cannot proceed with engine build without ScribePlayer.exe")
+        return False
+
     # Determine platform for naming
     if sys.platform.startswith('linux'):
         platform_suffix = 'linux'
@@ -46,6 +87,13 @@ def build_engine_executable():
     config_manager_path = os.path.join(script_dir, 'config_manager.py')
     loading_window_path = os.path.join(script_dir, 'loading_window.py')
 
+    # ScribePlayer path (to embed as resource)
+    if sys.platform.startswith('win'):
+        player_name = 'ScribePlayer.exe'
+    else:
+        player_name = 'ScribePlayer'
+    scribe_player_path = os.path.join(script_dir, 'dist_tools', player_name)
+
     # PyInstaller arguments
     pyinstaller_args = [
         main_script_path,
@@ -66,6 +114,9 @@ def build_engine_executable():
         f'--add-data={engine_dir}{os.pathsep}engine',
         f'--add-data={templates_dir}{os.pathsep}templates',
         f'--add-data={static_dir}{os.pathsep}static',
+
+        # Embed ScribePlayer.exe as resource
+        f'--add-data={scribe_player_path}{os.pathsep}resources',
 
         # Hidden imports for modules that PyInstaller might miss
         '--hidden-import=flask',
