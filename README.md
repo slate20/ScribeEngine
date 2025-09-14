@@ -1,6 +1,8 @@
 # Scribe Engine - A Robust Text-Based Game Engine
 
-<img width="1204" height="649" alt="Screenshot from 2025-09-05 13-54-54" src="https://github.com/user-attachments/assets/33785820-f0ba-4f94-851c-bcc802082469" />
+<img width="1921" height="1080" alt="Screenshot from 2025-09-11 01-33-33" src="https://github.com/user-attachments/assets/db2c82bc-33c4-48e6-9bb1-fcd6f27dba3b" />
+
+
 
 
 Scribe Engine is a powerful and versatile text-based game engine designed for creating rich, interactive experiences. While perfectly capable of building simpler visual novels and interactive fiction, its core strength lies in empowering developers to craft more complex and dynamic games, overcoming the limitations often found in traditional story-authoring tools.

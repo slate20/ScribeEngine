@@ -23,6 +23,13 @@ class GameEngine:
         
         self.load_project()
 
+    def update_debug_mode(self, debug_mode):
+        """Update the debug mode setting and reinitialize executor if needed."""
+        self.debug_mode = debug_mode
+        # Update the existing executor's debug mode if it exists
+        if hasattr(self, 'executor') and self.executor:
+            self.executor.debug_mode = debug_mode
+
     def load_project(self):
         """Load and parse a game project."""
         config_path = os.path.join(self.project_path, 'project.json')
@@ -33,6 +40,9 @@ class GameEngine:
 
         # Store theme config for later use
         self.theme_config = self.config.get('theme', {})
+        
+        # Update debug mode from project configuration
+        self.debug_mode = self.config.get('debug_mode', False)
 
         features = self.config.get('features', {})
         self.state_manager = StateManager(features, starting_passage=self.config.get('starting_passage', 'start'))
@@ -54,17 +64,10 @@ class GameEngine:
             passages_from_file = self.parser.parse_file(passage_file)
             self.passages.update(passages_from_file)
 
-        # After loading systems, check for custom player class
+        # Auto-instantiate Player class if found
         systems = self.executor.get_systems()
-        if not features.get('use_default_player', True) and 'Player' in systems:
-            PlayerClass = systems['Player']
-            if isinstance(PlayerClass, type):
-                player_instance = PlayerClass()
-                # Convert instance to a dictionary, excluding methods
-                player_dict = {k: v for k, v in vars(player_instance).items() if not k.startswith('__') and not callable(v)}
-                if 'player' not in self.game_state:
-                    self.game_state['player'] = {}
-                self.game_state['player'].update(player_dict)
+        if 'Player' in systems and isinstance(systems['Player'], type):
+            self.game_state['player'] = systems['Player']()
 
         if self.debug_mode:
             print(f"Loaded project '{self.config.get('title', 'Untitled')}'")
@@ -83,16 +86,30 @@ class GameEngine:
         
         env = Environment(extensions=['jinja2.ext.do'])
         template = env.from_string(processed_content)
-        rendered_content = template.render(**self.get_template_context())
+        context = self.get_template_context()
+        rendered_content = template.render(**context)
+        self.sync_context_to_state(context)
         
         return rendered_content
 
     def render_passage_content(self, passage_name, executor):
         """Renders a single passage, executing its Python and Jinja logic, and generating HTML with choices."""
-        rendered_content = self._process_passage_content(passage_name, executor)
+        # Always process raw_content to allow Jinja2 expressions within links
+        rendered_content = self._process_passage_content(passage_name, executor, use_raw_content=True)
+        
+        # Re-extract links from the rendered content after Jinja2 evaluation
+        # This ensures that any Jinja2 expressions that generate or modify links are processed.
+        extracted_links = self.parser.link_pattern.findall(rendered_content)
+        
+        # Remove links from the final content before passing to HTML generation
+        content_without_links = self.parser.link_pattern.sub('', rendered_content).strip()
+
         passage = self.passages[passage_name]
-        links = passage['links'] if passage_name not in ['PrePassage', 'PostPassage'] else []
-        return self.generate_passage_html(passage_name, rendered_content, links)
+        
+        # Only include links if it's not a special passage like PrePassage or PostPassage
+        links_to_use = extracted_links if passage_name not in ['PrePassage', 'PostPassage'] else []
+
+        return self.generate_passage_html(passage_name, content_without_links, links_to_use)
 
     def render_special_passage(self, passage_name, executor=None):
         """Renders a single special-purpose passage (e.g., NavMenu, PrePassage, PostPassage)."""
@@ -145,19 +162,25 @@ class GameEngine:
 
         # Handle silent passages
         if 'silent' in tags:
-            self._process_passage_content(passage_name, executor, use_raw_content=True)
+            # First, process the passage content to resolve Jinja2 conditionals.
+            # We use 'raw_content' because the parser removes links from 'content',
+            # but we need the links to be present for Jinja2 to evaluate them.
+            rendered_silent_content = self._process_passage_content(passage_name, executor, use_raw_content=True)
 
-            # After executing, find the next passage to redirect to
-            links = self.passages[passage_name].get('links', [])
-            if not links:
-                raise ValueError(f"Silent passage '{passage_name}' has no links to redirect to.")
+            # Now, find the link in the *rendered* content.
+            # This will only find the link that passed the Jinja2 condition.
+            found_links = self.parser.link_pattern.findall(rendered_silent_content)
 
-            # Render the target of the first link to handle dynamic targets like {{...}}
-            template_context = self.get_template_context()
-            env = Environment()
-            first_link_target = links[0][1] # Target is the second item in the tuple
-            target_template = env.from_string(first_link_target)
-            next_passage_name = target_template.render(**template_context)
+            if not found_links:
+                raise ValueError(f"Silent passage '{passage_name}' rendered no links to redirect to. Check your Jinja2 conditions.")
+            if len(found_links) > 1:
+                # This indicates an issue with the passage logic, as only one link
+                # should typically remain after Jinja2 evaluation in a silent passage.
+                # We'll proceed with the first one, but it's a warning sign.
+                print(f"WARNING: Silent passage '{passage_name}' rendered multiple links. Redirecting to the first one found.")
+
+            # The target is the second item in the tuple (text, target, action)
+            next_passage_name = found_links[0][1]
 
             # Recursively call render_main_passage for the next passage
             return self.render_main_passage(next_passage_name, _recursion_depth + 1)
@@ -183,55 +206,47 @@ class GameEngine:
         return "".join(html_parts)
 
     def execute_python_blocks(self, passage, executor, content_to_process=None):
+        """
+        Executes Python code found by the parser and replaces the placeholders.
+        """
         content = content_to_process if content_to_process is not None else passage['content']
         
-        def get_placeholder(i):
-            return f"__PYTHON_BLOCK_{i}__"
-
         for i, python_code in enumerate(passage['python_blocks']):
-            content = content.replace(f"{{{{ PYTHON_BLOCK_{i} }}}}", get_placeholder(i), 1)
-
-        for i, python_code in enumerate(passage['python_blocks']):
-            placeholder = get_placeholder(i)
+            placeholder = f"__PYTHON_BLOCK_{i}__"
             try:
+                # Execute the code. The executor has direct access to game_state.
                 error = executor.execute_code(python_code)
+                
+                # If in debug mode and an error occurred, display it. Otherwise, replace with nothing.
                 replacement = f'<div class="debug-error">{error}</div>' if error and self.debug_mode else ''
                 content = content.replace(placeholder, replacement, 1)
             except Exception as e:
+                # Catch exceptions during execution and display them in debug mode.
                 replacement = f'<div class="debug-error">Python Error: {str(e)}</div>' if self.debug_mode else ''
                 content = content.replace(placeholder, replacement, 1)
         
         return content
     
     def get_template_context(self):
-        context = self.game_state.copy()
+        # Create context that directly references game_state variables
+        context = {}
+        context.update(self.game_state)  # This creates references to mutable objects
         context.update(self.executor.get_systems())
-
-        # Create a player object for the template context
-        if 'player' in self.game_state:
-            player_data = self.game_state['player'].copy() # Create a copy to avoid modifying the original
-            features = self.config.get('features', {})
-            systems = self.executor.get_systems()
-
-            if not features.get('use_default_player', True) and 'Player' in systems and isinstance(systems['Player'], type):
-                # Remove any keys that are not valid arguments for the Player constructor
-                player_data.pop('class_name', None)
-                context['player'] = systems['Player'](**player_data)
-            else:
-                from types import SimpleNamespace
-                context['player'] = SimpleNamespace(**player_data)
-
         context.update({
-            'get_flag': lambda name, default=False: self.state_manager.get_flag(self.game_state, name, default),
-            'set_flag': lambda name, value=True: self.state_manager.set_flag(self.game_state, name, value),
-            'has_item': lambda item: self.state_manager.has_item(self.game_state, item),
-            'get_item_count': lambda item: self.state_manager.get_item_count(self.game_state, item),
-            'get_variable': self.get_variable, # Expose new get_variable
-            'set_variable': self.set_variable, # Expose new set_variable
             'input_field': self.generate_input_html, # Expose input_field macro
             'now': datetime.now, # Add datetime.now to context
         })
         return context
+
+    def sync_context_to_state(self, context: dict):
+        """Synchronizes any changes from template context back to the game state."""
+        # Sync back any variables that could have been modified during template rendering
+        # Skip systems functions and helper functions
+        skip_keys = {'input_field', 'now'} | set(self.executor.get_systems().keys())
+        
+        for key, value in context.items():
+            if key not in skip_keys:
+                self.game_state[key] = value
     
     def generate_passage_html(self, passage_name, content, links):
         html_parts = []
@@ -298,15 +313,56 @@ class GameEngine:
         """
         return Markup(html)
     
-    def save_game(self, slot):
-        self.storage.save_game(slot, self.game_state)
+    def save_game(self, slot, description=None):
+        current_passage = self.game_state.get('current_passage', 'Unknown')
+        serializable_state = self.get_serializable_state()
+        self.storage.save_game(slot, serializable_state, description, current_passage)
     
     def load_game(self, slot):
         saved_state = self.storage.load_game(slot)
         if saved_state:
-            self.game_state = saved_state['game_state']
+            # Use the proper restoration method instead of custom object restoration
+            self.restore_state_from_dict(saved_state['game_state'])
             return True
         return False
+    
+    def _restore_custom_objects(self, obj, systems, path=""):
+        """
+        Recursively restore custom class instances from dictionaries in the game state.
+        Uses pattern matching to identify likely class instances.
+        """
+        if isinstance(obj, dict):
+            # For each key in game_state, check if there's a matching class
+            # This handles common patterns like 'player' -> Player class
+            for state_key, state_value in list(obj.items()):
+                if isinstance(state_value, dict):
+                    # Try to find a matching class (case-insensitive)
+                    potential_class_name = state_key.capitalize()
+                    if potential_class_name in systems and isinstance(systems[potential_class_name], type):
+                        # This looks like a class instance that was serialized
+                        class_type = systems[potential_class_name]
+                        try:
+                            # Create new instance and restore attributes
+                            new_instance = class_type()
+                            for key, value in state_value.items():
+                                # Recursively restore nested objects
+                                restored_value = self._restore_custom_objects(value, systems, f"{path}.{key}")
+                                setattr(new_instance, key, restored_value)
+                            obj[state_key] = new_instance
+                            if self.debug_mode:
+                                print(f"Restored {potential_class_name} object from save data")
+                        except Exception as e:
+                            if self.debug_mode:
+                                print(f"Failed to restore {potential_class_name}: {e}")
+                    else:
+                        # Regular nested dict - recurse into it
+                        self._restore_custom_objects(state_value, systems, f"{path}.{state_key}")
+        elif isinstance(obj, list):
+            # Handle lists that might contain custom objects
+            for i, item in enumerate(obj):
+                self._restore_custom_objects(item, systems, f"{path}[{i}]")
+        
+        return obj
     
     def list_saves(self):
         return self.storage.list_saves()
@@ -314,50 +370,112 @@ class GameEngine:
     def get_title(self):
         return self.config.get('title', 'Text Adventure')
 
-    def get_variable(self, key: str, default=None):
-        """
-        Retrieves a variable from game_state using dot notation (e.g., 'player.name').
-        """
-        parts = key.split('.')
-        current = self.game_state
-        for part in parts:
-            if isinstance(current, dict) and part in current:
-                current = current[part]
-            else:
-                return default
-        return current
-
-    def set_variable(self, key: str, value):
-        """
-        Sets a variable in game_state using dot notation (e.g., 'player.name').
-        Creates nested dictionaries if they don't exist.
-        """
-        parts = key.split('.')
-        current = self.game_state
-        for i, part in enumerate(parts):
-            if i == len(parts) - 1:
-                # Last part, set the value
-                if isinstance(current, dict):
-                    current[part] = value
-                else:
-                    # Handle cases where an intermediate part is not a dict
-                    raise TypeError(f"Cannot set value for '{key}': '{'.'.join(parts[:i])}' is not a dictionary.")
-            else:
-                # Not the last part, ensure it's a dictionary
-                if isinstance(current, dict):
-                    if part not in current or not isinstance(current[part], dict):
-                        current[part] = {} # Create if not exists or not a dict
-                    current = current[part]
-                else:
-                    raise TypeError(f"Cannot traverse path for '{key}': '{'.'.join(parts[:i])}' is not a dictionary.")
-
     def update_state_from_json(self, data: dict):
         """
         Updates game_state with key-value pairs from a dictionary.
-        Handles dot notation for nested keys.
+        Handles dot notation for object attributes.
         """
         for key, value in data.items():
-            self.set_variable(key, value)
+            if '.' in key:
+                # Handle dot notation (e.g., 'player.name')
+                parts = key.split('.')
+                current = self.game_state
+                
+                # Navigate to the parent object
+                for part in parts[:-1]:
+                    if part in current:
+                        current = current[part]
+                    else:
+                        # Create nested dict if it doesn't exist
+                        current[part] = {}
+                        current = current[part]
+                
+                # Set the final attribute/key
+                final_key = parts[-1]
+                if hasattr(current, final_key):
+                    # It's an object attribute
+                    setattr(current, final_key, value)
+                else:
+                    # It's a dictionary key
+                    current[final_key] = value
+            else:
+                # Simple top-level assignment
+                self.game_state[key] = value
+
+    def set_game_state(self, new_state: dict):
+        """
+        Sets the entire game state to a new state.
+        """
+        if isinstance(new_state, dict):
+            self.game_state = new_state
+        else:
+            raise TypeError("New game state must be a dictionary.")
+    
+    def get_serializable_state(self):
+        """
+        Get game state in JSON-serializable format
+        """
+        serializable_state = {}
+        for key, value in self.game_state.items():
+            if hasattr(value, 'to_dict'):
+                # Handle Player objects with to_dict method (DefaultPlayer)
+                serializable_state[key] = value.to_dict()
+            elif hasattr(value, '__dict__'):
+                # Handle custom Player classes and other objects
+                obj_dict = {k: v for k, v in vars(value).items() if not k.startswith('__') and not callable(v)}
+                obj_dict['__class_name__'] = type(value).__name__
+                serializable_state[key] = obj_dict
+            else:
+                # Handle primitives and basic types
+                serializable_state[key] = value
+        return serializable_state
+    
+    def restore_state_from_dict(self, state_dict: dict):
+        """
+        Restore game state from serialized dictionary
+        """
+        self.game_state.clear()
+        
+        for key, value in state_dict.items():
+            if isinstance(value, dict) and '__class_name__' in value:
+                # Restore Player objects
+                class_name = value['__class_name__']
+                if class_name == 'DefaultPlayer':
+                    from .state import DefaultPlayer
+                    self.game_state[key] = DefaultPlayer.from_dict(value)
+                else:
+                    # Handle custom Player classes
+                    systems = self.executor.get_systems()
+                    if class_name in systems and isinstance(systems[class_name], type):
+                        # Create instance and set attributes
+                        player_instance = systems[class_name]()
+                        for attr_name, attr_value in value.items():
+                            if not attr_name.startswith('__'):
+                                setattr(player_instance, attr_name, attr_value)
+                        self.game_state[key] = player_instance
+                    else:
+                        # Fallback to dictionary if class not found
+                        self.game_state[key] = value
+            else:
+                # Regular values
+                self.game_state[key] = value
+
+    def reset_game_state(self):
+        """
+        Resets the current game state to the initial state, including project-specific state.
+        """
+        # Get the base initial state from the state manager
+        initial_state = self.state_manager.get_initial_state()
+        self.game_state.clear()
+        self.game_state.update(initial_state)
+
+        # Re-instantiate Player class if found
+        systems = self.executor.get_systems()
+        if 'Player' in systems and isinstance(systems['Player'], type):
+            self.game_state['player'] = systems['Player']()
+
+        if self.debug_mode:
+            print("Game state has been reset (including custom project state).")
 
     
         

@@ -13,6 +13,7 @@
     {% if use_engine_defaults %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     {% endif %}
+    <link rel="stylesheet" href="{{ url_for('serve_custom_css') }}">
     <script src="https://unpkg.com/htmx.org@2.0.6"></script>
 </head>
 <body id="main-body" class="{% if use_engine_defaults %}engine-themed{% endif %}">
@@ -27,8 +28,8 @@
                 {{ nav_content | safe }}
             </div>
             <div class="nav-section game-controls">
-                <button id="save-btn">Save</button>
-                <button id="load-btn">Load</button>
+                <button hx-get="/modal/save" hx-target="#modal-container" hx-trigger="click">Save</button>
+                <button hx-get="/modal/load" hx-target="#modal-container" hx-trigger="click">Load</button>
                 {% if debug_mode %}
                 <button id="debug-btn">Debug</button>
                 {% endif %}
@@ -52,6 +53,9 @@
             {% endif %}
         </div>
     </div>
+    
+    <!-- HTMX Modal Container -->
+    <div id="modal-container"></div>
     
     <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
 </body>

@@ -1,0 +1,3 @@
+<div id="game-state-content" class="debug-tab-content active" style="overflow-y: auto;" hx-get="/api/game-state-content" hx-trigger="load, every 2s" hx-swap="innerHTML">
+    <pre>{{ state | tojson(indent=2) }}</pre>
+</div>
