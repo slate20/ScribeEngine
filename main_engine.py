@@ -21,7 +21,7 @@ from watchdog.events import FileSystemEventHandler
 import config_manager
 import app
 from app import reset_game_engine
-# import build_game
+from engine.asset_packer import AssetPacker
 # import webview_wrapper
 
 def clear_screen():
@@ -402,9 +402,30 @@ def project_menu(project_root):
                 stop_flask_server()
                 stop_watcher()
                 flask_server_running = False
-                time.sleep(2) # Give server time to shut down
-            build_game.build_standalone_game(project_name, project_root)
-            print(f"Build process for {project_name} completed. Check your project directory for the executable.")
+                time.sleep(2)  # Give server time to shut down
+
+            try:
+                print("Initializing Asset Packer...")
+                packer = AssetPacker()
+
+                builds_dir = os.path.join(active_project_path, 'builds')
+                print(f"Output directory will be: {builds_dir}")
+
+                print("\nCreating distribution... (This may take a few moments)")
+                info = packer.create_distribution(active_project_path, builds_dir)
+
+                print("\n" + "=" * 50)
+                print("✓ Build completed successfully!")
+                print(f"  Distribution created at: {info['distribution_dir']}")
+                print("=" * 50)
+
+            except Exception as e:
+                print("\n" + "!" * 50)
+                print(f"✗ Build Failed: An error occurred.")
+                print(f"  Reason: {e}")
+                print("!" * 50)
+
+            input("\nPress Enter to return to the project menu...")
             # Stay in project menu
         elif choice == '3':
             if flask_server_running:
