@@ -14,6 +14,16 @@ from datetime import datetime
 from typing import Dict, List, Tuple, BinaryIO
 
 
+def clean_project_title(project_title: str) -> str:
+    """Clean project title for use as executable name and encryption key.
+
+    This function must produce identical results to ensure proper decryption.
+    """
+    clean_title = ''.join(c for c in project_title if c.isalnum() or c in (' ', '-', '_')).strip()
+    clean_title = clean_title.replace(' ', '_')
+    return clean_title
+
+
 class ObfuscationUtils:
     """Utilities for simple file obfuscation."""
 
@@ -109,11 +119,15 @@ class GameArchive:
                 except Exception as e:
                     print(f"Warning: Could not add file {file_path}: {e}")
 
-    def save(self, output_path: str, project_name: str):
+    def save(self, output_path: str, project_name: str, clean_title: str = None):
         """Save archive with obfuscation."""
+        # Use clean_title if provided, otherwise clean the project_name
+        if clean_title is None:
+            clean_title = clean_project_title(project_name)
+
         # Generate seed for this archive
-        seed = hash(project_name + datetime.now().isoformat()) & 0x7FFFFFFF
-        key = ObfuscationUtils.generate_key(project_name + str(seed))
+        seed = hash(clean_title + datetime.now().isoformat()) & 0x7FFFFFFF
+        key = ObfuscationUtils.generate_key(clean_title + str(seed))
 
         # Create in-memory ZIP
         zip_buffer = io.BytesIO()
@@ -138,9 +152,15 @@ class GameArchive:
 
         # Write obfuscated archive
         with open(output_path, 'wb') as f:
-            # Write fake header to mask ZIP signature
+            # Write header with clean_title for decryption
             f.write(self.MAGIC_HEADER)
             f.write(struct.pack('<I', self.VERSION))
+
+            # Write clean_title as length-prefixed string
+            clean_title_bytes = clean_title.encode('utf-8')
+            f.write(struct.pack('<I', len(clean_title_bytes)))
+            f.write(clean_title_bytes)
+
             f.write(struct.pack('<I', seed))
             f.write(struct.pack('<I', len(zip_data)))
 
@@ -148,7 +168,7 @@ class GameArchive:
             obfuscated_zip = ObfuscationUtils.xor_data(zip_data, key)
             f.write(obfuscated_zip)
 
-    def load(self, archive_path: str, project_name: str) -> Dict[str, bytes]:
+    def load(self, archive_path: str, project_name: str = None) -> Dict[str, bytes]:
         """Load and deobfuscate archive."""
         with open(archive_path, 'rb') as f:
             # Read header
@@ -157,11 +177,30 @@ class GameArchive:
                 raise ValueError("Invalid archive format")
 
             version = struct.unpack('<I', f.read(4))[0]
+
+            # Try to read clean_title from header (new format)
+            clean_title = None
+            if version >= 1:
+                try:
+                    title_length = struct.unpack('<I', f.read(4))[0]
+                    if title_length > 0 and title_length < 1000:  # Sanity check
+                        clean_title = f.read(title_length).decode('utf-8')
+                except (struct.error, UnicodeDecodeError):
+                    # Fall back to old format or use provided project_name
+                    f.seek(12)  # Reset to after version
+                    clean_title = clean_project_title(project_name) if project_name else None
+
+            # If no clean_title found, use provided project_name
+            if not clean_title:
+                if not project_name:
+                    raise ValueError("Cannot read archive: no project name available")
+                clean_title = clean_project_title(project_name)
+
             seed = struct.unpack('<I', f.read(4))[0]
             zip_size = struct.unpack('<I', f.read(4))[0]
 
             # Read and deobfuscate ZIP data
-            key = ObfuscationUtils.generate_key(project_name + str(seed))
+            key = ObfuscationUtils.generate_key(clean_title + str(seed))
             obfuscated_zip = f.read(zip_size)
             zip_data = ObfuscationUtils.xor_data(obfuscated_zip, key)
 
@@ -244,8 +283,7 @@ class AssetPacker:
                 project_name = os.path.basename(project_path)
 
         # Clean project name for filename
-        clean_name = ''.join(c for c in project_name if c.isalnum() or c in (' ', '-', '_')).strip()
-        clean_name = clean_name.replace(' ', '_')
+        clean_name = clean_project_title(project_name)
 
         # Scan and add files
         files_to_pack = self.scan_project(project_path)
@@ -264,7 +302,7 @@ class AssetPacker:
 
         # Save archive
         archive_path = os.path.join(output_dir, 'game.dat')
-        self.archive.save(archive_path, clean_name)
+        self.archive.save(archive_path, project_name, clean_name)
 
         return archive_path
 
@@ -346,8 +384,7 @@ class AssetPacker:
             config = json.load(f)
 
         project_title = config.get('title', 'Game')
-        clean_title = ''.join(c for c in project_title if c.isalnum() or c in (' ', '-', '_')).strip()
-        clean_title = clean_title.replace(' ', '_')
+        clean_title = clean_project_title(project_title)
 
         # Create distribution directory
         dist_dir = os.path.join(output_dir, f"{clean_title}_Distribution")
@@ -363,7 +400,7 @@ class AssetPacker:
             player_exe = clean_title
         player_path = self.extract_embedded_player(dist_dir, player_exe)
 
-        # Create distribution info
+        # Return distribution info (without exposing file paths)
         info = {
             'project_title': project_title,
             'clean_title': clean_title,
@@ -373,11 +410,6 @@ class AssetPacker:
             'total_size': self._calculate_total_size(dist_dir),
             'created': datetime.now().isoformat()
         }
-
-        # Save distribution info
-        info_path = os.path.join(dist_dir, 'distribution_info.json')
-        with open(info_path, 'w') as f:
-            json.dump(info, f, indent=2)
 
         return info
 
@@ -395,7 +427,7 @@ class AssetPacker:
 
 
 # Utility functions for archive handling
-def load_game_archive(archive_path: str, project_name: str) -> Dict[str, bytes]:
+def load_game_archive(archive_path: str, project_name: str = None) -> Dict[str, bytes]:
     """Load a game archive and return file contents."""
     archive = GameArchive()
     return archive.load(archive_path, project_name)

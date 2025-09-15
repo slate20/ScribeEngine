@@ -114,27 +114,9 @@ def extract_game_to_temp():
     temp_dir = tempfile.mkdtemp(prefix='scribe_game_')
 
     try:
-        # Try to read the project name from distribution_info.json first
-        project_name = None
-        info_path = os.path.join(executable_dir, 'distribution_info.json')
-
-        if os.path.exists(info_path):
-            try:
-                with open(info_path, 'r') as f:
-                    info = json.load(f)
-                    project_name = info.get('clean_title')  # Use the same name that was used for packing
-                    print(f"Using project name from distribution info: {project_name}")
-            except Exception as e:
-                print(f"Warning: Could not read distribution_info.json: {e}")
-
-        # Fallback: determine project name from executable name
-        if not project_name:
-            exe_name = os.path.splitext(os.path.basename(sys.executable))[0]
-            project_name = exe_name.replace('_', ' ').title()
-            print(f"Using fallback project name: {project_name}")
-
-        # Load archive contents
-        files = load_game_archive(archive_path, project_name)
+        # Load archive contents - clean_title is now embedded in the archive header
+        print("Loading game archive...")
+        files = load_game_archive(archive_path)
 
         # Extract files to temp directory
         for file_path, file_data in files.items():

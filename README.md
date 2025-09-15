@@ -5,19 +5,19 @@
 
 
 
-Scribe Engine is a powerful and versatile text-based game engine designed for creating rich, interactive experiences. Featuring an integrated IDE with syntax highlighting, live preview, and one-click builds, it empowers developers to craft complex visual novels and interactive fiction without external tools or setup complexity.
+Scribe Engine is a powerful text-based game engine that makes creating interactive stories and visual novels effortless. With an integrated IDE featuring syntax highlighting, live preview, and lightning-fast builds, you can craft complex narratives without wrestling with external tools or complicated setup processes.
 
-Leveraging Python for deep game logic, Jinja2 for flexible content rendering, and modern web technologies for smooth gameplay, Scribe Engine allows you to build intricate systems and responsive narratives with professional development tools built right in. It's designed for creators who demand both powerful functionality and an intuitive development experience.
+Built on Python for deep game logic, Jinja2 for dynamic content, and modern web technologies for smooth gameplay, Scribe Engine gives you professional development tools and the flexibility to create everything from simple interactive fiction to sophisticated narrative systems.
 
 ## Quick Start
 
-**Get the Engine:** Download the latest `scribe-engine` executable from [Releases](https://github.com/your-github-username/scribe-engine/releases) - no installation required.
+Download the `scribe-engine` executable from [Releases](https://github.com/slate20/scribeengine/releases) and you're ready to go - no installation needed.
 
 **Create Your First Game:**
-1. Launch the engine and set your project directory
+1. Launch the engine and choose your project directory
 2. Click "Create New Project" and name your game
-3. Start writing in the integrated editor with live preview
-4. Click "Build" for instant distribution (5-15 seconds)
+3. Write your story in the integrated editor with live preview
+4. Click "Build" for instant packaging for distribution (5-15 seconds)
 
 **Basic Story Format:**
 ```
@@ -36,29 +36,22 @@ Hello, {{player_name}}! Your journey begins...
 You venture into the dark forest...
 ```
 
-## Get Started
+## Development Experience
 
-To begin creating your game, you'll need the Scribe Engine executable. This single, self-contained file includes an integrated development environment with everything you need to create and build your games.
+The Scribe Engine comes as a single executable that includes everything you need to create games. Most users will want the **GUI version** with the integrated development environment, though a **CLI version** is also available for developers who prefer working with external editors.
 
-### 1. Download & Launch
+### Integrated Development Environment
 
-Download the `scribe-engine` executable for your platform and run it directly. The engine will guide you through setting up your project directory on first run.
-
-### 2. Create Your Project
-
-Use the integrated interface to create a new project or load an existing one. The engine provides starter templates and handles all project structure setup automatically.
-
-### 3. Develop with Integrated IDE
-
-Write your story using the built-in editor featuring:
+The built-in IDE provides a complete development experience:
 - **Syntax highlighting** for `.tgame` story files
-- **Live preview** panel showing your game in real-time
+- **Live preview** panel showing your game in real-time as you write
 - **Debug terminal** displaying current game state and variables
-- **Project management** with visual file organization
+- **Visual project management** with intuitive file organization
+- **One-click builds** that package your game in seconds
 
-### 4. Build & Distribute
+### Lightning-Fast Distribution
 
-Click the **"Build"** button to instantly package your game (5-15 seconds). The engine creates a standalone distribution in your project's `builds/` folder that players can run without any additional setup.
+Hit the "Build" button and your game is packaged into a standalone distribution in under 15 seconds. Players can run your games immediately without installing anything - just download and play.
 
 ## Documentation
 
