@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="{{ url_for('serve_custom_css') }}">
     <script src="https://unpkg.com/htmx.org@2.0.6"></script>
 </head>
-<body id="main-body" class="{% if use_engine_defaults %}engine-themed{% endif %}">
+<body id="main-body" class="{% if use_engine_defaults %}engine-themed{% endif %}{% if debug_mode %} debug-mode{% endif %}">
     <div id="game-container" class="layout-{{ nav_config.position or 'horizontal' }}">
         
         {% if nav_config.enabled %}
@@ -28,11 +28,11 @@
                 {{ nav_content | safe }}
             </div>
             <div class="nav-section game-controls">
+                {% if features.get('last_passage_enabled', False) %}
+                <button id="nav-back-btn" class="nav-link back-btn" disabled>← Last Passage</button>
+                {% endif %}
                 <button hx-get="/modal/save" hx-target="#modal-container" hx-trigger="click">Save</button>
                 <button hx-get="/modal/load" hx-target="#modal-container" hx-trigger="click">Load</button>
-                {% if debug_mode %}
-                <button id="debug-btn">Debug</button>
-                {% endif %}
             </div>
         </nav>
         {% endif %}
@@ -56,7 +56,38 @@
     
     <!-- HTMX Modal Container -->
     <div id="modal-container"></div>
-    
+
+    <!-- Passage Search Modal -->
+    <div id="passage-search-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Jump to Passage</h3>
+                <button class="modal-close" onclick="closePassageSearchModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="search-container">
+                    <input type="text" id="passage-search-input" placeholder="Type passage name..." autocomplete="off">
+                    <div id="passage-search-results" class="search-results"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if debug_mode %}
+    <!-- Debug Footer Bar -->
+    <div id="debug-footer" class="debug-footer">
+        <div class="debug-footer-content">
+            <div class="debug-tools">
+                <button id="passage-search-btn" class="debug-btn">Jump to Passage</button>
+                <button id="debug-btn" class="debug-btn">Debug Panel</button>
+            </div>
+            <div class="debug-indicator">
+                <span class="debug-label">DEBUG MODE</span>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
 </body>
 </html>

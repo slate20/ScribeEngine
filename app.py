@@ -135,7 +135,8 @@ def index():
                          nav_config=nav_config,
                          nav_content=nav_content,
                          theme_css=theme_css,
-                         use_engine_defaults=use_engine_defaults)
+                         use_engine_defaults=use_engine_defaults,
+                         features=game_engine.config.get('features', {}))
 
 @app.route('/passage/<passage_name>')
 def render_passage(passage_name):
@@ -766,6 +767,7 @@ def save_project_settings(project_name):
 
     # Features
     update_nested(config, ['features', 'use_default_player'], 'features.use_default_player' in request.form)
+    update_nested(config, ['features', 'last_passage_enabled'], 'features.last_passage_enabled' in request.form)
 
     # Navigation
     update_nested(config, ['nav', 'enabled'], 'nav.enabled' in request.form)

@@ -530,3 +530,169 @@ body {
         grid-template-columns: 1fr;
     }
 }
+
+/* Passage Search Modal Styles */
+.search-container {
+    width: 100%;
+}
+
+#passage-search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid var(--save-slot-border);
+    border-radius: 8px;
+    font-size: 16px;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+}
+
+#passage-search-input:focus {
+    outline: none;
+    border-color: var(--save-slot-selected);
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+}
+
+.search-results {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid var(--save-slot-border);
+    border-radius: 6px;
+    background: white;
+}
+
+.passage-result {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--save-slot-border);
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+}
+
+.passage-result:last-child {
+    border-bottom: none;
+}
+
+.passage-result:hover {
+    background-color: var(--save-slot-hover);
+}
+
+.passage-result:active {
+    background-color: var(--save-slot-selected-bg);
+}
+
+.passage-name {
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 14px;
+    color: #333;
+}
+
+.no-results {
+    padding: 20px;
+    text-align: center;
+    color: var(--save-meta-text);
+    font-style: italic;
+}
+
+.result-limit {
+    padding: 8px 16px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--save-meta-text);
+    background-color: var(--save-slot-bg);
+    border-top: 1px solid var(--save-slot-border);
+    font-style: italic;
+}
+
+/* Passage search modal sizing */
+#passage-search-modal .modal-content {
+    width: 600px;
+    max-width: 90vw;
+}
+
+/* Debug Footer Bar Styles */
+.debug-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 50px;
+    background-color: var(--debug-bg);
+    border-top: 2px solid #007bff;
+    z-index: 999;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.debug-footer-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 100%;
+    padding: 0 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.debug-tools {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+}
+
+.debug-btn {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.debug-btn:hover {
+    background-color: #0056b3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.debug-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.debug-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.debug-label {
+    color: var(--debug-text);
+    font-family: 'Fira Code', 'Consolas', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 1px;
+    opacity: 0.8;
+}
+
+/* Adjust main content area when debug footer is present */
+body:has(.debug-footer) #main-content-area {
+    padding-bottom: 60px; /* Account for debug footer height + some spacing */
+}
+
+body:has(.debug-footer) #game-content {
+    margin-bottom: 20px; /* Extra spacing from bottom */
+}
+
+/* Fallback for browsers that don't support :has() */
+.debug-mode #main-content-area {
+    padding-bottom: 60px;
+}
+
+.debug-mode #game-content {
+    margin-bottom: 20px;
+}
