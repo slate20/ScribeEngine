@@ -767,7 +767,7 @@ def save_project_settings(project_name):
 
     # Features
     update_nested(config, ['features', 'use_default_player'], 'features.use_default_player' in request.form)
-    update_nested(config, ['features', 'last_passage_enabled'], 'features.last_passage_enabled' in request.form)
+    # update_nested(config, ['features', 'last_passage_enabled'], 'features.last_passage_enabled' in request.form)
 
     # Navigation
     update_nested(config, ['nav', 'enabled'], 'nav.enabled' in request.form)

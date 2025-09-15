@@ -28,9 +28,6 @@
                 {{ nav_content | safe }}
             </div>
             <div class="nav-section game-controls">
-                {% if features.get('last_passage_enabled', False) %}
-                <button id="nav-back-btn" class="nav-link back-btn" disabled>← Last Passage</button>
-                {% endif %}
                 <button hx-get="/modal/save" hx-target="#modal-container" hx-trigger="click">Save</button>
                 <button hx-get="/modal/load" hx-target="#modal-container" hx-trigger="click">Load</button>
             </div>
