@@ -1,0 +1,18 @@
+<div class="project-list-container new-project-form">
+    <h2>Create New Project</h2>
+    <form hx-post="/api/new-project" hx-swap="none" hx-on::after-request="if(event.detail.successful) { htmx.ajax('GET', '/api/open-editor/' + JSON.parse(event.detail.xhr.response).message, {target: 'body', swap: 'innerHTML'}) } else { alert(event.detail.xhr.responseText); }">
+        <div class="form-group">
+            <label for="project_name">Project Name:</label>
+            <input type="text" id="project_name" name="project_name" class="form-control" required
+                   pattern="^[-a-zA-Z0-9_]+$" 
+                   title="Only alphanumeric characters, underscores, and hyphens are allowed.">
+            <p class="input-hint">Use a simple, URL-friendly name (e.g., "my-awesome-game").</p>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" hx-get="/api/startup-screen" hx-target="#startup-actions" hx-swap="innerHTML">
+                Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">Create Project</button>
+        </div>
+    </form>
+</div>

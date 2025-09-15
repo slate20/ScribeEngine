@@ -1,50 +1,58 @@
 # Scribe Engine - A Robust Text-Based Game Engine
 
-<img width="1204" height="649" alt="Screenshot from 2025-09-05 13-54-54" src="https://github.com/user-attachments/assets/33785820-f0ba-4f94-851c-bcc802082469" />
+<img width="1921" height="1080" alt="Screenshot from 2025-09-11 01-33-33" src="https://github.com/user-attachments/assets/db2c82bc-33c4-48e6-9bb1-fcd6f27dba3b" />
 
 
-Scribe Engine is a powerful and versatile text-based game engine designed for creating rich, interactive experiences. While perfectly capable of building simpler visual novels and interactive fiction, its core strength lies in empowering developers to craft more complex and dynamic games, overcoming the limitations often found in traditional story-authoring tools.
 
-Leveraging Python for deep game logic, Jinja2 for flexible content rendering, and modern web technologies for a smooth player experience, Scribe Engine allows you to build intricate systems and responsive narratives without the constraints of page reloads or fragmented logic. It's built for creators who demand refined control over game mechanics, state management, and narrative flow, delivering a seamless and engaging experience for players.
 
-## Get Started
+Scribe Engine is a powerful text-based game engine that makes creating interactive stories and visual novels effortless. With an integrated IDE featuring syntax highlighting, live preview, and lightning-fast builds, you can craft complex narratives without wrestling with external tools or complicated setup processes.
 
-To begin creating your visual novel, you'll need the Scribe Engine executable. This single, self-contained file contains everything you need to run the engine and build your games.
+Built on Python for deep game logic, Jinja2 for dynamic content, and modern web technologies for smooth gameplay, Scribe Engine gives you professional development tools and the flexibility to create everything from simple interactive fiction to sophisticated narrative systems.
 
-### 1. Download the Executable
+## Quick Start
 
-Obtain the latest `scribe-engine` executable for your operating system (Windows or Linux) from the [Releases](https://github.com/your-github-username/scribe-engine/releases) page.
+Download the `scribe-engine` executable from [Releases](https://github.com/slate20/scribeengine/releases) and you're ready to go - no installation needed.
 
-### 2. Run the Engine
+**Create Your First Game:**
+1. Launch the engine and choose your project directory
+2. Click "Create New Project" and name your game
+3. Write your story in the integrated editor with live preview
+4. Click "Build" for instant packaging for distribution (5-15 seconds)
 
-Simply run the `scribe-engine` executable from your terminal or command line:
+**Basic Story Format:**
+```
+:: Start
+Welcome to your adventure! What's your name?
 
-*   **Windows:** Double-click `scribe-engine.exe`.
-*   **Linux:** Make the executable runnable (`chmod +x scribe-engine`) and then run `./scribe-engine`.
+{$ player_name = "Hero" $}
 
-On the first run, the engine will prompt you to set a **Project Root** directory where all your game projects will be stored. This directory will be remembered for future sessions.
+Hello, {{player_name}}! Your journey begins...
 
-### 3. Create or Load a Project
+[[Enter the forest->Forest]]
+[[Visit the town->Town]]
 
-Once the engine is running, you'll be presented with a menu. You can:
+:: Forest
+{$ player.health = 100 $}
+You venture into the dark forest...
+```
 
-*   **Create New Project:** Set up a new game project with a basic structure. The engine will guide you through naming your project.
-*   **Load Existing Project:** Select an existing game project from your Project Root to work on.
+## Development Experience
 
-Once a project is created or loaded, you can begin developing your game using your preferred Integrated Development Environment (IDE) to edit the game files within the project directory.
+The Scribe Engine comes as a single executable that includes everything you need to create games. Most users will want the **GUI version** with the integrated development environment, though a **CLI version** is also available for developers who prefer working with external editors.
 
-### 4. Start Development Server
+### Integrated Development Environment
 
-After creating or loading a project, you'll enter the **Project Menu**. Choose **"Start Development Server"** to launch your game in a web browser (typically at `http://127.0.0.1:5000`). The engine features **live-reloading**, so changes to your game files will automatically update in your browser.
+The built-in IDE provides a complete development experience:
+- **Syntax highlighting** for `.tgame` story files
+- **Live preview** panel showing your game in real-time as you write
+- **Debug terminal** displaying current game state and variables
+- **Visual project management** with intuitive file organization
+- **One-click builds** that package your game in seconds
 
-### 5. Build Your Game
+### Lightning-Fast Distribution
 
-When your game is ready for distribution, select **"Build Standalone Game"** from the **Project Menu**. The engine will package your game into a single executable file, located in the `dist/` folder next to your `scribe-engine` executable. This self-contained game can then be shared with players.
+Hit the "Build" button and your game is packaged into a standalone distribution in under 15 seconds. Players can run your games immediately without installing anything - just download and play.
 
 ## Documentation
 
-For detailed instructions on writing your story, managing game logic, customizing your game, and advanced features, please refer to the comprehensive [Scribe Engine Documentation](docs/Guide/0.%20Introduction.md).
-
-## Contributing
-
-Scribe Engine is open-source! If you're interested in contributing to the engine's development, please see the [CONTRIBUTING.md](CONTRIBUTING.md) file (coming soon) for guidelines and setup instructions.
+For detailed instructions on writing your story, managing game logic, customizing your game, and advanced features, please refer to the comprehensive [User Documentation](https://github.com/slate20/ScribeEngine/wiki).

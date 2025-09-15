@@ -1,0 +1,29 @@
+<!-- Save Details Fragment -->
+<div class="save-details">
+    <form id="save-form">
+        <div class="form-group">
+            <label for="save-description">Save Description:</label>
+            <input type="text" id="save-description" name="save-description" class="form-control" 
+                   placeholder="Enter description (optional)" maxlength="100" 
+                   value="{{ existing_description or '' }}">
+            <small class="form-hint">Describe this save point to remember where you left off</small>
+        </div>
+        <input type="hidden" name="slot" value="{{ slot }}">
+    </form>
+    <div class="save-info">
+        <p><strong>Current Location:</strong> {{ current_passage }}</p>
+        <p><strong>Save Slot:</strong> {{ slot }}</p>
+        {% if existing_save %}
+            <p><strong>Existing Save:</strong> {{ existing_save.description or 'Untitled Save' }}</p>
+            <p class="text-warning">This will overwrite your existing save.</p>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+// Simply enable the save button - HTMX attributes are already set
+const saveBtn = document.getElementById('confirm-save-btn');
+if (saveBtn) {
+    saveBtn.disabled = false;
+}
+</script>

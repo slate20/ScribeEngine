@@ -1,76 +1,122 @@
 import PyInstaller.__main__
 import os
 import sys
+import subprocess
 
 version = '1.0'
 
-def build_engine_executable():
-
-    # Default to a console application
-    build_type = 'cli'
-    pyinstaller_options = []
-
-    # Check for command line argument
-    if len(sys.argv) > 1 and sys.argv[1] == 'gui':
-        print("Building GUI Scribe Engine executable...")
-        build_type = 'gui'
-        pyinstaller_options.append('--noconsole')
-    else:
-        print("Building CLI Scribe Engine executable...")
-    
-    # Determine the base directory of the project
+def ensure_scribe_player_exists():
+    """Ensure ScribePlayer exists before building the engine."""
     script_dir = os.path.dirname(os.path.abspath(__file__))
 
-    # Define paths to include
-    main_engine_path = os.path.join(script_dir, 'main_engine.py')
-    app_path = os.path.join(script_dir, 'app.py')
-    engine_dir = os.path.join(script_dir, 'engine')
-    templates_dir = os.path.join(script_dir, 'templates')
-    static_dir = os.path.join(script_dir, 'static')
-    config_py_path = os.path.join(script_dir, 'config.py')
-    webview_wrapper_path = os.path.join(script_dir, 'webview_wrapper.py')
-    build_py_path = os.path.join(script_dir, 'build.py')
-    config_manager_path = os.path.join(script_dir, 'config_manager.py')
+    # Check for ScribePlayer with correct platform extension
+    if sys.platform.startswith('win'):
+        player_name = 'ScribePlayer.exe'
+    else:
+        player_name = 'ScribePlayer'
+
+    player_path = os.path.join(script_dir, 'dist_tools', player_name)
+
+    if not os.path.exists(player_path):
+        print(f"{player_name} not found. Building it first...")
+        build_player_script = os.path.join(script_dir, 'build_player.py')
+
+        if os.path.exists(build_player_script):
+            try:
+                result = subprocess.run([sys.executable, build_player_script],
+                                      capture_output=True, text=True, cwd=script_dir)
+                if result.returncode != 0:
+                    print(f"Failed to build {player_name}: {result.stderr}")
+                    return False
+                print(f"{player_name} built successfully!")
+            except Exception as e:
+                print(f"Error building {player_name}: {e}")
+                return False
+        else:
+            print(f"Error: build_player.py not found at {build_player_script}")
+            return False
+    else:
+        print(f"{player_name} found, proceeding with engine build...")
+
+    return True
+
+def build_engine_executable():
+    # Ensure ScribePlayer.exe exists first
+    if not ensure_scribe_player_exists():
+        print("Cannot proceed with engine build without ScribePlayer.exe")
+        return False
 
     # Determine platform for naming
     if sys.platform.startswith('linux'):
         platform_suffix = 'linux'
     elif sys.platform.startswith('win'):
         platform_suffix = 'windows'
-    elif sys.platform.startswith('darwin'): # macOS
+    elif sys.platform.startswith('darwin'):  # macOS
         platform_suffix = 'macos'
     else:
         platform_suffix = 'unknown'
 
-    # PyInstaller options
-    # --noconsole: Do not open a console window (for GUI apps)
-    # --onefile: Create a single executable file
-    # --name: Name of the executable
-    # --add-data: Add non-binary files or folders to the executable
-    # Format: <source_path><os.pathsep><destination_path_in_bundle>
-    
-    # The destination path in bundle should be relative to the executable's root
-    # For example, if you add 'templates' folder, it will be accessible as 'templates' in the bundle
+    # Determine the base directory of the project
+    script_dir = os.path.dirname(os.path.abspath(__file__))
 
+    # Check for command line argument to determine build type
+    if len(sys.argv) > 1 and sys.argv[1] == 'gui':
+        print("Building GUI Scribe Engine executable...")
+        build_type = 'gui'
+        main_script = 'gui_launcher.py'
+        executable_name = f'scribe-engine-v{version}-{platform_suffix}'
+        pyinstaller_options = ['--noconsole']
+    else:
+        print("Building CLI Scribe Engine executable...")
+        build_type = 'cli'
+        main_script = 'main_engine.py'
+        executable_name = f'scribe-engine-cli-v{version}-{platform_suffix}'
+        pyinstaller_options = []
+
+    main_script_path = os.path.join(script_dir, main_script)
+
+    # Define paths to include
+    main_engine_path = os.path.join(script_dir, 'main_engine.py')
+    gui_launcher_path = os.path.join(script_dir, 'gui_launcher.py')
+    app_path = os.path.join(script_dir, 'app.py')
+    engine_dir = os.path.join(script_dir, 'engine')
+    templates_dir = os.path.join(script_dir, 'templates')
+    static_dir = os.path.join(script_dir, 'static')
+    game_server_path = os.path.join(script_dir, 'game_server.py')
+    game_server_wrapper_path = os.path.join(script_dir, 'game_server_wrapper.py')
+    config_manager_path = os.path.join(script_dir, 'config_manager.py')
+    loading_window_path = os.path.join(script_dir, 'loading_window.py')
+
+    # ScribePlayer path (to embed as resource)
+    if sys.platform.startswith('win'):
+        player_name = 'ScribePlayer.exe'
+    else:
+        player_name = 'ScribePlayer'
+    scribe_player_path = os.path.join(script_dir, 'dist_tools', player_name)
+
+    # PyInstaller arguments
     pyinstaller_args = [
-        main_engine_path,  # Main script to execute
-        '--onefile',           # Create a single executable file
-        f'--name=scribe-engine-v{version}-{platform_suffix}',  # Name of the executable
+        main_script_path,
+        '--onefile',
+        f'--name={executable_name}',
         f'--icon={script_dir}/SE_icon.png',
-        
-        # Add Python source files that are imported dynamically or needed by other parts
+
+        # Add Python source files that are imported dynamically or needed
+        f'--add-data={main_engine_path}{os.pathsep}.',
+        f'--add-data={gui_launcher_path}{os.pathsep}.',
         f'--add-data={app_path}{os.pathsep}.',
-        f'--add-data={build_py_path}{os.pathsep}.',
-        f'--add-data={webview_wrapper_path}{os.pathsep}.',
+        f'--add-data={game_server_path}{os.pathsep}.',
+        f'--add-data={game_server_wrapper_path}{os.pathsep}.',
         f'--add-data={config_manager_path}{os.pathsep}.',
+        f'--add-data={loading_window_path}{os.pathsep}.',
 
         # Add directories
         f'--add-data={engine_dir}{os.pathsep}engine',
         f'--add-data={templates_dir}{os.pathsep}templates',
         f'--add-data={static_dir}{os.pathsep}static',
-        
-        # Add config.py (if it's a separate file and not just part of app.py)
-        
+
+        # Embed ScribePlayer.exe as resource
+        f'--add-data={scribe_player_path}{os.pathsep}resources',
 
         # Hidden imports for modules that PyInstaller might miss
         '--hidden-import=flask',
@@ -82,19 +128,15 @@ def build_engine_executable():
         '--hidden-import=qtpy.QtCore',
         '--hidden-import=qtpy.QtGui',
         '--hidden-import=qtpy.QtWidgets',
-        
-        # Optional: Specify where to put the dist and build folders
+
+        # Specify where to put the dist and build folders
         '--distpath=./dist_engine',
         '--workpath=./build_engine',
         '--specpath=./spec_engine',
     ]
 
-    # add the conditional options to the main list
+    # Add conditional options (like --noconsole for GUI)
     pyinstaller_args.extend(pyinstaller_options)
-
-    # If running on Linux, you might want to include a custom icon
-    # if sys.platform.startswith('linux'):
-    #     pyinstaller_args.append('--icon=path/to/your/icon.png')
 
     PyInstaller.__main__.run(pyinstaller_args)
 
@@ -102,3 +144,4 @@ def build_engine_executable():
 
 if __name__ == '__main__':
     build_engine_executable()
+

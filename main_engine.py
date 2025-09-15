@@ -21,8 +21,8 @@ from watchdog.events import FileSystemEventHandler
 import config_manager
 import app
 from app import reset_game_engine
-import build
-import webview_wrapper
+from engine.asset_packer import AssetPacker
+# import webview_wrapper
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -46,9 +46,9 @@ def create_new_project(project_name: str, project_root_dir: str):
         "title": project_name.replace('_', ' ').title(),
         "author": "Anonymous",
         "starting_passage": "start",
+        "icon_path": "",
         "features": {
-            "use_default_player": True,
-            "use_default_inventory": True
+            "use_default_player": True
         },
         "nav": {
             "enabled": True,
@@ -57,9 +57,19 @@ def create_new_project(project_name: str, project_root_dir: str):
         "theme": {
             "enabled": True,
             "use_engine_defaults": True,
-            "colors": {},
-            "fonts": {}
-        }
+            "colors": {
+                "primary_color": "",
+                "background_color": "",
+                "text_color": "",
+                "link_color": "",
+                "border_color": ""
+            },
+            "fonts": {
+                "body_font": "",
+                "heading_font": ""
+            }
+        },
+        "debug_mode": False
     }
 
     # Default story.tgame content
@@ -68,29 +78,54 @@ def create_new_project(project_name: str, project_root_dir: str):
 [[Home->start]]
 
 :: PrePassage
+<!-- Python code runs before Jinja2 templating -->
 <div class="hud">
-    <span>Health: {{ player.health }}</span>
-    <span>Score: {{ player.score }}</span>
+    <span>Health: {{{{ player.health }}}}</span> |
+    <span>Energy: {{{{ player.energy }}}}</span>
 </div>
 <hr>
 
 :: PostPassage
 <hr>
 <div class="footer">
-    <p>Copyright {datetime.now().year}, {{ game_title }}</p>
+    <p>Copyright 2025 | {{{{ game_title }}}}</p>
 </div>
 
 :: start
-Welcome to your new adventure, {{ player.name }}!
+{{$ player.name = player.name or "Adventurer" $}}
 
-This is your first passage. You can edit this file (story.tgame) to begin writing your story.
+<h2>Welcome to Scribe Engine!</h2>
 
-[[Start the adventure!->first_step]]
+Hello, {{{{ player.name }}}}! This is your starting passage.
 
-:: first_step
-You have taken your first step into a larger world.
+Edit this file (story.tgame) to begin writing your story.
 
-[[Go back->start]]
+[[Start exploring->explore]]
+[[Check status->status]]
+
+:: explore
+{{$- 
+# Example: Python logic affecting story
+player.energy -= 5
+found_item = "Magic Stone"
+player.inventory.append(found_item)
+-$}}
+
+You venture forth and discover a {{{{ found_item }}}}!
+
+*Energy: {{{{ player.energy }}}}/100*
+
+[[Continue->start]]
+
+:: status
+<h2> Character Status</h2>
+
+<b>Name:</b> {{{{ player.name }}}} <br>
+<b>Health:</b> {{{{ player.health }}}}/100 <br>
+<b>Energy:</b> {{{{ player.energy }}}}/100 <br>
+<b>Inventory:</b> {{{{ player.inventory|length }}}} items
+
+[[Back->start]]
 """
 
     # Write project.json
@@ -101,11 +136,11 @@ You have taken your first step into a larger world.
     with open(os.path.join(project_path, 'story.tgame'), 'w') as f:
         f.write(default_story_tgame)
 
-    # Optional: Create placeholder systems.py and custom.css
-    with open(os.path.join(project_path, 'systems.py'), 'w') as f:
-        f.write("# Your custom Python logic goes here.\n# You can create multiple .py files in your project to organize your code.\n")
+    # Optional: Create placeholder custom_logic.py and custom.css
+    with open(os.path.join(project_path, 'custom_logic.py'), 'w') as f:
+        f.write("# Custom Python classes and functions for your game\n# Example: Create custom Player class, helper functions, etc.\n")
     with open(os.path.join(project_path, 'custom.css'), 'w') as f:
-        f.write("/* Your custom CSS goes here */\n")
+        f.write("/* Custom styles for your game */\n/* Example: .special-text { color: gold; font-weight: bold; } */\n")
 
     print(f"Project '{project_name}' created successfully.")
 
@@ -367,9 +402,30 @@ def project_menu(project_root):
                 stop_flask_server()
                 stop_watcher()
                 flask_server_running = False
-                time.sleep(2) # Give server time to shut down
-            build.build_standalone_game(project_name, project_root)
-            print(f"Build process for {project_name} completed. Executable can be found in the 'dist' directory.")
+                time.sleep(2)  # Give server time to shut down
+
+            try:
+                print("Initializing Asset Packer...")
+                packer = AssetPacker()
+
+                builds_dir = os.path.join(active_project_path, 'builds')
+                print(f"Output directory will be: {builds_dir}")
+
+                print("\nCreating distribution... (This may take a few moments)")
+                info = packer.create_distribution(active_project_path, builds_dir)
+
+                print("\n" + "=" * 50)
+                print("✓ Build completed successfully!")
+                print(f"  Distribution created at: {info['distribution_dir']}")
+                print("=" * 50)
+
+            except Exception as e:
+                print("\n" + "!" * 50)
+                print(f"✗ Build Failed: An error occurred.")
+                print(f"  Reason: {e}")
+                print("!" * 50)
+
+            input("\nPress Enter to return to the project menu...")
             # Stay in project menu
         elif choice == '3':
             if flask_server_running:
