@@ -7,26 +7,29 @@
         </div>
         <div class="modal-body">
             <div class="save-slots-grid">
-                {% if populated_saves %}
-                    {% for slot, save_info in populated_saves.items() %}
-                        <div class="save-slot populated" 
-                             hx-post="/modal/load/select" 
-                             hx-vals='{"slot": {{ slot }}}' 
-                             hx-target="#load-details"
-                             onclick="selectSlot(this)">
-                            <div class="slot-number">Slot {{ slot }}</div>
-                            <div class="slot-content">
+                {% for slot in range(1, 7) %}
+                    {% set save_info = saves.get(slot) %}
+                    <div class="save-slot {{ 'populated' if save_info else 'empty' }}"
+                         {% if save_info %}
+                         hx-post="/modal/load/select"
+                         hx-vals='{"slot": {{ slot }}}'
+                         hx-target="#load-details"
+                         onclick="selectSlot(this)"
+                         {% endif %}>
+                        <div class="slot-number">Slot {{ slot }}</div>
+                        <div class="slot-content">
+                            {% if save_info %}
                                 <div class="slot-description">{{ save_info.description or 'Untitled Save' }}</div>
                                 <div class="slot-meta">
                                     <div class="slot-passage">{{ save_info.passage_name or 'Unknown' }}</div>
                                     <div class="slot-date">{{ save_info.timestamp|format_timestamp }}</div>
                                 </div>
-                            </div>
+                            {% else %}
+                                <div class="empty-slot">Empty</div>
+                            {% endif %}
                         </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="no-saves">No saves found. Save your game first!</div>
-                {% endif %}
+                    </div>
+                {% endfor %}
             </div>
             <div id="load-details">
                 <!-- Load details will be loaded here via HTMX -->

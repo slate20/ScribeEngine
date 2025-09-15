@@ -48,7 +48,8 @@ def create_new_project(project_name: str, project_root_dir: str):
         "starting_passage": "start",
         "icon_path": "",
         "features": {
-            "use_default_player": True
+            "use_default_player": True,
+            "last_passage_enabled": True
         },
         "nav": {
             "enabled": True,

@@ -19,7 +19,7 @@ class GameEngine:
         self.systems = {}
 
         self.parser = GameParser()
-        self.storage = JSONStorage(save_dir=os.path.join(self.project_path, 'saves'))
+        self.storage = JSONStorage(save_dir=os.path.join(self.project_path, 'saves'), project_path=self.project_path)
         
         self.load_project()
 
