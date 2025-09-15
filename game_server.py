@@ -136,7 +136,8 @@ def index():
                                nav_config=nav_config,
                                nav_content=nav_content,
                                theme_css=theme_css,
-                               use_engine_defaults=use_engine_defaults)
+                               use_engine_defaults=use_engine_defaults,
+                               features=game_engine.config.get('features', {}))
     except Exception as e:
         print(f"Error rendering game: {e}")
         return f"Error: {e}", 500
@@ -398,15 +399,21 @@ def confirm_save():
     """Handle save confirmation."""
     try:
         slot = int(request.form.get('slot', 1))
-        description = request.form.get('description', '').strip()
-        
-        success = game_engine.save_game(slot, description)
-        if success:
-            return jsonify({'success': True, 'message': f'Game saved to slot {slot}'})
-        else:
-            return jsonify({'success': False, 'error': 'Failed to save game'})
+        description = request.form.get('save-description', '').strip()
+
+        game_engine.save_game(slot, description)
+
+        # Return success message and close modal (matching app.py format)
+        return '''
+        <div class="success-message">Game saved successfully!</div>
+        <script>
+            setTimeout(() => {
+                document.getElementById('modal-container').innerHTML = '';
+            }, 1500);
+        </script>
+        '''
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)})
+        return f'<div class="error">Error saving game: {str(e)}</div>', 500
 
 @app.route('/modal/load/confirm', methods=['POST'])
 def confirm_load():
