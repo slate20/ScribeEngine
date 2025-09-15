@@ -1378,11 +1378,20 @@ body {
 }
 
 .modal-body .form-hint {
-	display: block;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
 	margin-top: 6px;
 	font-size: 12px;
 	color: var(--text-muted);
 	font-style: italic;
+}
+
+.modal-body .form-hint .char-counter {
+	font-style: normal;
+	font-weight: 500;
+	color: var(--text-secondary);
+	transition: color 0.2s ease;
 }
 
 .modal-footer {

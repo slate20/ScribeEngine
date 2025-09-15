@@ -2,11 +2,15 @@
 <div class="save-details">
     <form id="save-form">
         <div class="form-group">
-            <label for="save-description">Save Description:</label>
-            <input type="text" id="save-description" name="save-description" class="form-control" 
-                   placeholder="Enter description (optional)" maxlength="100" 
-                   value="{{ existing_description or '' }}">
-            <small class="form-hint">Describe this save point to remember where you left off</small>
+            <label for="save-description">Save Name:</label>
+            <input type="text" id="save-description" name="save-description" class="form-control"
+                   placeholder="Enter save name (optional)" maxlength="50"
+                   value="{{ existing_description or '' }}"
+                   oninput="updateCharCounter(this)">
+            <small class="form-hint">
+                <span>Name this save to easily identify it later</span>
+                <span class="char-counter" id="char-counter">{{ (existing_description or '')|length }}/50</span>
+            </small>
         </div>
         <input type="hidden" name="slot" value="{{ slot }}">
     </form>
@@ -21,9 +25,25 @@
 </div>
 
 <script>
-// Simply enable the save button - HTMX attributes are already set
+// Enable the save button and add character counter functionality
 const saveBtn = document.getElementById('confirm-save-btn');
 if (saveBtn) {
     saveBtn.disabled = false;
+}
+
+function updateCharCounter(input) {
+    const counter = document.getElementById('char-counter');
+    if (counter) {
+        const currentLength = input.value.length;
+        const maxLength = input.maxLength;
+        counter.textContent = `${currentLength}/${maxLength}`;
+
+        // Add visual feedback for approaching limit
+        if (currentLength > maxLength * 0.8) {
+            counter.style.color = '#ff6b35';
+        } else {
+            counter.style.color = '';
+        }
+    }
 }
 </script>
