@@ -559,12 +559,42 @@ def open_editor(project_name):
 
     return render_template('editor.html', project_name=project_name, project_root=project_root)
 
+def group_files_by_directory(files):
+    """Groups files by their directory structure, separating root files."""
+    groups = {}
+    root_files = []
+
+    for file_path in files:
+        dir_name = os.path.dirname(file_path)
+
+        if not dir_name:  # Root file
+            root_files.append({
+                'filename': os.path.basename(file_path),
+                'full_path': file_path,
+                'relative_path': file_path
+            })
+        else:  # File in subdirectory
+            if dir_name not in groups:
+                groups[dir_name] = []
+            groups[dir_name].append({
+                'filename': os.path.basename(file_path),
+                'full_path': file_path,
+                'relative_path': file_path
+            })
+
+    # Sort files within each group and root files
+    for group in groups.values():
+        group.sort(key=lambda x: x['filename'])
+    root_files.sort(key=lambda x: x['filename'])
+
+    return groups, root_files
+
 @app.route('/api/files/<project_name>')
 def list_files(project_name):
     """Lists all files in the project directory, grouped by type."""
     project_root = config_manager.get_project_root()
     project_path = os.path.join(project_root, project_name)
-    
+
     if not os.path.isdir(project_path):
         return "Project not found", 404
 
@@ -575,13 +605,23 @@ def list_files(project_name):
     css_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.css", recursive=True)]
     asset_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/assets/**/*", recursive=True) if os.path.isfile(f)]
 
-    return render_template('_fragments/_file_list.html', 
-                           story_files=sorted(story_files),
-                           logic_files=sorted(logic_files),
+    # Group files by directory
+    story_groups, story_root_files = group_files_by_directory(story_files)
+    logic_groups, logic_root_files = group_files_by_directory(logic_files)
+    css_groups, css_root_files = group_files_by_directory(css_files)
+    asset_groups, asset_root_files = group_files_by_directory(asset_files)
+
+    return render_template('_fragments/_file_list.html',
+                           story_groups=story_groups,
+                           story_root_files=story_root_files,
+                           logic_groups=logic_groups,
+                           logic_root_files=logic_root_files,
                            config_files=sorted(config_files),
-                           asset_files=sorted(asset_files),
+                           asset_groups=asset_groups,
+                           asset_root_files=asset_root_files,
                            project_name=project_name,
-                           css_files=sorted(css_files))
+                           css_groups=css_groups,
+                           css_root_files=css_root_files)
 
 @app.route('/api/create-item/<project_name>', methods=['POST'])
 def create_item(project_name):

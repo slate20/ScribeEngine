@@ -394,6 +394,57 @@ body {
 	font-style: italic;
 }
 
+/* File Group Styles */
+.file-explorer-panel .file-group {
+	margin-bottom: 8px;
+}
+
+.file-explorer-panel .file-group-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-primary);
+	background: var(--secondary-bg);
+	border-radius: 4px;
+	margin-bottom: 4px;
+}
+
+.file-explorer-panel .group-folder-icon {
+	width: 14px;
+	height: 14px;
+	color: var(--accent-color);
+}
+
+.file-explorer-panel .group-name {
+	flex-grow: 1;
+}
+
+.file-explorer-panel .file-count {
+	font-size: 11px;
+	color: var(--text-muted);
+	font-weight: normal;
+}
+
+.file-explorer-panel .file-group-files {
+	list-style: none;
+	padding-left: 16px;
+	margin: 0;
+}
+
+.file-explorer-panel .file-group-files .file-item {
+	margin-left: 0;
+}
+
+.file-explorer-panel .file-group-files .file-icon {
+	width: 14px;
+	height: 14px;
+	color: var(--text-muted);
+	margin-right: 4px;
+}
+
 
 /* Editor Area */
 .editor-area {
