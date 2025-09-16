@@ -96,10 +96,14 @@
         <ul class="file-tree">
             {% for file in asset_files %}
             <li class="file-item" data-filepath="{{ file }}">
-                <span class="file-name" onclick="openInfoModal('Asset File', 'Asset file editing is not yet supported. File: {{ file }}')">{{ file }}</span>
-                <button class="delete-btn" title="Delete File" 
+                <span class="file-name"
+                      onclick="copyAssetPath('{{ file }}')"
+                      title="Click to copy: game/{{ file }}">
+                    {{ file.split('/')[-1] }}
+                </span>
+                <button class="delete-btn" title="Delete File"
                         hx-post="/api/delete-item/{{ project_name }}"
-                        hx-vals='{"path": "{{ file }}"}' 
+                        hx-vals='{"path": "{{ file }}"}'
                         hx-confirm="Are you sure you want to delete '{{ file }}'?"
                         hx-target="#sidebar-content" hx-swap="innerHTML">
                     <i data-lucide="x"></i>

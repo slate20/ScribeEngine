@@ -902,3 +902,35 @@ async function startBuild(projectName) {
         }, 2000);
     }
 }
+
+/**
+ * Copies asset path to clipboard using textarea method (pywebview compatible)
+ * @param {string} assetPath - The asset file path relative to assets folder
+ */
+function copyAssetPath(assetPath) {
+    const fullPath = `game/${assetPath}`;
+
+    // Create a temporary textarea element for copying
+    const textarea = document.createElement('textarea');
+    textarea.value = fullPath;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+
+    try {
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length);
+        const success = document.execCommand('copy');
+
+        if (success) {
+            showNotification(`Copied: ${fullPath}`, 'success');
+        } else {
+            showNotification('Failed to copy to clipboard', 'error');
+        }
+    } catch (error) {
+        console.error('Copy failed:', error);
+        showNotification('Failed to copy to clipboard', 'error');
+    } finally {
+        document.body.removeChild(textarea);
+    }
+}
