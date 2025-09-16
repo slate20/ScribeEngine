@@ -3,8 +3,9 @@
         <div class="section-header">
             <span>Story Files (.tgame)</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New Story File" 
-                        onclick="openNewFileModal('file', 'New Story File', 'story/new_scene.tgame', 'Example: story/new_scene.tgame')">
+                <button class="btn-icon" title="New Story File"
+                        hx-get="/modal/new-file/{{ project_name }}"
+                        hx-target="#modal-container">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
@@ -64,8 +65,9 @@
         <div class="section-header">
             <span>Game Logic (.py)</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New Logic File" 
-                        onclick="openNewFileModal('file', 'New Logic File', 'systems/new_logic.py', 'Example: systems/new_logic.py')">
+                <button class="btn-icon" title="New Logic File"
+                        hx-get="/modal/new-file/{{ project_name }}"
+                        hx-target="#modal-container">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
@@ -125,8 +127,9 @@
         <div class="section-header">
             <span>Styling (.css)</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New CSS File" 
-                        onclick="openNewFileModal('file', 'New CSS File', 'custom.css', 'Example: custom.css')">
+                <button class="btn-icon" title="New CSS File"
+                        hx-get="/modal/new-file/{{ project_name }}"
+                        hx-target="#modal-container">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
@@ -186,8 +189,9 @@
         <div class="section-header">
             <span>Assets</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New Folder" 
-                        onclick="openNewFolderModal()">
+                <button class="btn-icon" title="New Folder"
+                        hx-get="/modal/new-folder/{{ project_name }}"
+                        hx-target="#modal-container">
                     <i data-lucide="folder-plus"></i>
                 </button>
             </div>

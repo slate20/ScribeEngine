@@ -1,0 +1,43 @@
+<!-- HTMX New File Modal -->
+<div id="new-file-modal" class="modal show" style="display: flex !important;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>New File</h3>
+            <button class="modal-close" hx-post="/modal/close" hx-target="#modal-container">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form hx-post="/api/create-item/{{ project_name }}"
+                  hx-target="#sidebar-content"
+                  hx-swap="innerHTML"
+                  hx-on::after-request="if(event.detail.successful) { htmx.ajax('POST', '/modal/close', {target: '#modal-container'}); showNotification('File created successfully', 'success'); }">
+                <div class="form-group">
+                    <label for="file-path">File Path:</label>
+                    <input type="text" id="file-path" name="path" class="form-control"
+                           placeholder="Enter file path" required>
+                    <small class="form-hint">Example: story/new_scene.tgame, systems/logic.py, styles/custom.css</small>
+                </div>
+                <input type="hidden" name="type" value="file">
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" hx-post="/modal/close" hx-target="#modal-container">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('new-file-modal');
+    if (event.target === modal) {
+        htmx.ajax('POST', '/modal/close', {target: '#modal-container'});
+    }
+});
+
+// Process HTMX on the entire modal
+htmx.process(document.getElementById('new-file-modal'));
+
+// Focus the input field
+document.getElementById('file-path').focus();
+</script>

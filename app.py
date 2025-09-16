@@ -478,6 +478,16 @@ def close_modal():
     """Close any open modal."""
     return ''  # Return empty content to clear modal container
 
+@app.route('/modal/new-file/<project_name>')
+def new_file_modal(project_name):
+    """Show new file modal."""
+    return render_template('_fragments/_htmx_new_file_modal.html', project_name=project_name)
+
+@app.route('/modal/new-folder/<project_name>')
+def new_folder_modal(project_name):
+    """Show new folder modal."""
+    return render_template('_fragments/_htmx_new_folder_modal.html', project_name=project_name)
+
 @app.route('/custom.css')
 def serve_custom_css():
     custom_css_path = os.path.join(game_engine.project_path, 'custom.css')
@@ -589,6 +599,42 @@ def group_files_by_directory(files):
 
     return groups, root_files
 
+def group_asset_files_by_directory(asset_files):
+    """Groups asset files by their directory structure, stripping 'assets/' prefix from group names."""
+    groups = {}
+    root_files = []
+
+    for file_path in asset_files:
+        # Strip 'assets/' prefix from the path for grouping purposes
+        if file_path.startswith('assets/'):
+            relative_path = file_path[7:]  # Remove 'assets/' prefix
+        else:
+            relative_path = file_path
+
+        dir_name = os.path.dirname(relative_path)
+
+        if not dir_name:  # Root asset file (directly in assets/)
+            root_files.append({
+                'filename': os.path.basename(file_path),
+                'full_path': file_path,
+                'relative_path': file_path
+            })
+        else:  # Asset file in subdirectory
+            if dir_name not in groups:
+                groups[dir_name] = []
+            groups[dir_name].append({
+                'filename': os.path.basename(file_path),
+                'full_path': file_path,
+                'relative_path': file_path
+            })
+
+    # Sort files within each group and root files
+    for group in groups.values():
+        group.sort(key=lambda x: x['filename'])
+    root_files.sort(key=lambda x: x['filename'])
+
+    return groups, root_files
+
 @app.route('/api/files/<project_name>')
 def list_files(project_name):
     """Lists all files in the project directory, grouped by type."""
@@ -609,7 +655,7 @@ def list_files(project_name):
     story_groups, story_root_files = group_files_by_directory(story_files)
     logic_groups, logic_root_files = group_files_by_directory(logic_files)
     css_groups, css_root_files = group_files_by_directory(css_files)
-    asset_groups, asset_root_files = group_files_by_directory(asset_files)
+    asset_groups, asset_root_files = group_asset_files_by_directory(asset_files)
 
     return render_template('_fragments/_file_list.html',
                            story_groups=story_groups,
