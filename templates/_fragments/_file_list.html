@@ -1,113 +1,289 @@
 <div class="file-explorer-panel">
     <div class="explorer-section">
-        <div class="section-header">
+        <div class="section-header collapsible-header" data-section="story"
+             onclick="toggleSection('story')" role="button" tabindex="0"
+             aria-expanded="true" aria-label="Toggle story files section">
+            <i data-lucide="chevron-down" class="collapse-icon"></i>
             <span>Story Files (.tgame)</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New Story File" 
-                        onclick="openNewFileModal('file', 'New Story File', 'story/new_scene.tgame', 'Example: story/new_scene.tgame')">
+                <button class="btn-icon" title="New Story File"
+                        hx-get="/modal/new-file/{{ project_name }}/story"
+                        hx-target="#modal-container"
+                        onclick="event.stopPropagation()">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
         </div>
-        <ul class="file-tree">
-            {% for file in story_files %}
-            <li class="file-item" data-filepath="{{ file }}">
-                <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{ file }}</span>
-                <button class="delete-btn" title="Delete File" 
-                        hx-post="/api/delete-item/{{ project_name }}"
-                        hx-vals='{"path": "{{ file }}"}' 
-                        hx-confirm="Are you sure you want to delete '{{ file }}'?"
-                        hx-target="#sidebar-content" hx-swap="innerHTML">
-                    <i data-lucide="x"></i>
-                </button>
-            </li>
+        <ul class="file-tree" id="story-section">
+            {% if story_root_files or story_groups %}
+                <!-- Root files (displayed directly under main category) -->
+                {% for file_info in story_root_files %}
+                <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                    <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
+                        {{ file_info.filename }}
+                    </span>
+                    <button class="delete-btn" title="Delete File"
+                            hx-post="/api/delete-item/{{ project_name }}"
+                            hx-vals='{"path": "{{ file_info.full_path }}"}'
+                            hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                            hx-target="#sidebar-content" hx-swap="innerHTML">
+                        <i data-lucide="x"></i>
+                    </button>
+                </li>
+                {% endfor %}
+
+                <!-- Grouped files (in subdirectories) -->
+                {% for group_name, files in story_groups.items() %}
+                <li class="file-group">
+                    <div class="file-group-header collapsible-header"
+                         data-group="story-{{ group_name|replace('/', '-') }}"
+                         onclick="toggleGroup('story-{{ group_name|replace('/', '-') }}')"
+                         role="button" tabindex="0"
+                         aria-expanded="true" aria-label="Toggle {{ group_name }} folder">
+                        <i data-lucide="chevron-down" class="collapse-icon"></i>
+                        <i data-lucide="folder" class="group-folder-icon"></i>
+                        <span class="group-name">{{ group_name }}</span>
+                        <span class="file-count">({{ files|length }})</span>
+                    </div>
+                    <ul class="file-group-files" id="story-{{ group_name|replace('/', '-') }}-files">
+                        {% for file_info in files %}
+                        <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                            <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
+                                <i data-lucide="file" class="file-icon"></i>
+                                {{ file_info.filename }}
+                            </span>
+                            <button class="delete-btn" title="Delete File"
+                                    hx-post="/api/delete-item/{{ project_name }}"
+                                    hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                    hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                    hx-target="#sidebar-content" hx-swap="innerHTML">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
             {% else %}
             <li class="file-item-empty">No story files found.</li>
-            {% endfor %}
+            {% endif %}
         </ul>
     </div>
 
     <div class="explorer-section">
-        <div class="section-header">
+        <div class="section-header collapsible-header" data-section="logic"
+             onclick="toggleSection('logic')" role="button" tabindex="0"
+             aria-expanded="true" aria-label="Toggle logic files section">
+            <i data-lucide="chevron-down" class="collapse-icon"></i>
             <span>Game Logic (.py)</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New Logic File" 
-                        onclick="openNewFileModal('file', 'New Logic File', 'systems/new_logic.py', 'Example: systems/new_logic.py')">
+                <button class="btn-icon" title="New Logic File"
+                        hx-get="/modal/new-file/{{ project_name }}/logic"
+                        hx-target="#modal-container"
+                        onclick="event.stopPropagation()">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
         </div>
-        <ul class="file-tree">
-            {% for file in logic_files %}
-            <li class="file-item" data-filepath="{{ file }}">
-                <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{ file }}</span>
-                <button class="delete-btn" title="Delete File" 
-                        hx-post="/api/delete-item/{{ project_name }}"
-                        hx-vals='{"path": "{{ file }}"}' 
-                        hx-confirm="Are you sure you want to delete '{{ file }}'?"
-                        hx-target="#sidebar-content" hx-swap="innerHTML">
-                    <i data-lucide="x"></i>
-                </button>
-            </li>
+        <ul class="file-tree" id="logic-section">
+            {% if logic_root_files or logic_groups %}
+                <!-- Root files (displayed directly under main category) -->
+                {% for file_info in logic_root_files %}
+                <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                    <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
+                        {{ file_info.filename }}
+                    </span>
+                    <button class="delete-btn" title="Delete File"
+                            hx-post="/api/delete-item/{{ project_name }}"
+                            hx-vals='{"path": "{{ file_info.full_path }}"}'
+                            hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                            hx-target="#sidebar-content" hx-swap="innerHTML">
+                        <i data-lucide="x"></i>
+                    </button>
+                </li>
+                {% endfor %}
+
+                <!-- Grouped files (in subdirectories) -->
+                {% for group_name, files in logic_groups.items() %}
+                <li class="file-group">
+                    <div class="file-group-header collapsible-header"
+                         data-group="logic-{{ group_name|replace('/', '-') }}"
+                         onclick="toggleGroup('logic-{{ group_name|replace('/', '-') }}')"
+                         role="button" tabindex="0"
+                         aria-expanded="true" aria-label="Toggle {{ group_name }} folder">
+                        <i data-lucide="chevron-down" class="collapse-icon"></i>
+                        <i data-lucide="folder" class="group-folder-icon"></i>
+                        <span class="group-name">{{ group_name }}</span>
+                        <span class="file-count">({{ files|length }})</span>
+                    </div>
+                    <ul class="file-group-files" id="logic-{{ group_name|replace('/', '-') }}-files">
+                        {% for file_info in files %}
+                        <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                            <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
+                                <i data-lucide="file" class="file-icon"></i>
+                                {{ file_info.filename }}
+                            </span>
+                            <button class="delete-btn" title="Delete File"
+                                    hx-post="/api/delete-item/{{ project_name }}"
+                                    hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                    hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                    hx-target="#sidebar-content" hx-swap="innerHTML">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
             {% else %}
             <li class="file-item-empty">No logic files found.</li>
-            {% endfor %}
+            {% endif %}
         </ul>
     </div>
 
     <div class="explorer-section">
-        <div class="section-header">
+        <div class="section-header collapsible-header" data-section="css"
+             onclick="toggleSection('css')" role="button" tabindex="0"
+             aria-expanded="true" aria-label="Toggle CSS files section">
+            <i data-lucide="chevron-down" class="collapse-icon"></i>
             <span>Styling (.css)</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New CSS File" 
-                        onclick="openNewFileModal('file', 'New CSS File', 'custom.css', 'Example: custom.css')">
+                <button class="btn-icon" title="New CSS File"
+                        hx-get="/modal/new-file/{{ project_name }}/css"
+                        hx-target="#modal-container"
+                        onclick="event.stopPropagation()">
                     <i data-lucide="file-plus-2"></i>
                 </button>
             </div>
         </div>
-        <ul class="file-tree">
-            {% for file in css_files %}
-            <li class="file-item" data-filepath="{{ file }}">
-                <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file }}', this.parentElement)">{{ file }}</span>
-                <button class="delete-btn" title="Delete File" 
-                        hx-post="/api/delete-item/{{ project_name }}"
-                        hx-vals='{"path": "{{ file }}"}' 
-                        hx-confirm="Are you sure you want to delete '{{ file }}'?"
-                        hx-target="#sidebar-content" hx-swap="innerHTML">
-                    <i data-lucide="x"></i>
-                </button>
-            </li>
+        <ul class="file-tree" id="css-section">
+            {% if css_root_files or css_groups %}
+                <!-- Root files (displayed directly under main category) -->
+                {% for file_info in css_root_files %}
+                <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                    <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
+                        {{ file_info.filename }}
+                    </span>
+                    <button class="delete-btn" title="Delete File"
+                            hx-post="/api/delete-item/{{ project_name }}"
+                            hx-vals='{"path": "{{ file_info.full_path }}"}'
+                            hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                            hx-target="#sidebar-content" hx-swap="innerHTML">
+                        <i data-lucide="x"></i>
+                    </button>
+                </li>
+                {% endfor %}
+
+                <!-- Grouped files (in subdirectories) -->
+                {% for group_name, files in css_groups.items() %}
+                <li class="file-group">
+                    <div class="file-group-header collapsible-header"
+                         data-group="css-{{ group_name|replace('/', '-') }}"
+                         onclick="toggleGroup('css-{{ group_name|replace('/', '-') }}')"
+                         role="button" tabindex="0"
+                         aria-expanded="true" aria-label="Toggle {{ group_name }} folder">
+                        <i data-lucide="chevron-down" class="collapse-icon"></i>
+                        <i data-lucide="folder" class="group-folder-icon"></i>
+                        <span class="group-name">{{ group_name }}</span>
+                        <span class="file-count">({{ files|length }})</span>
+                    </div>
+                    <ul class="file-group-files" id="css-{{ group_name|replace('/', '-') }}-files">
+                        {% for file_info in files %}
+                        <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                            <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
+                                <i data-lucide="file" class="file-icon"></i>
+                                {{ file_info.filename }}
+                            </span>
+                            <button class="delete-btn" title="Delete File"
+                                    hx-post="/api/delete-item/{{ project_name }}"
+                                    hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                    hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                    hx-target="#sidebar-content" hx-swap="innerHTML">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
             {% else %}
             <li class="file-item-empty">No CSS files found.</li>
-            {% endfor %}
+            {% endif %}
         </ul>
     </div>
 
     <div class="explorer-section">
-        <div class="section-header">
+        <div class="section-header collapsible-header" data-section="assets"
+             onclick="toggleSection('assets')" role="button" tabindex="0"
+             aria-expanded="true" aria-label="Toggle assets section">
+            <i data-lucide="chevron-down" class="collapse-icon"></i>
             <span>Assets</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New Folder" 
-                        onclick="openNewFolderModal()">
+                <button class="btn-icon" title="New Folder"
+                        hx-get="/modal/new-folder/{{ project_name }}"
+                        hx-target="#modal-container"
+                        onclick="event.stopPropagation()">
                     <i data-lucide="folder-plus"></i>
                 </button>
             </div>
         </div>
-        <ul class="file-tree">
-            {% for file in asset_files %}
-            <li class="file-item" data-filepath="{{ file }}">
-                <span class="file-name" onclick="openInfoModal('Asset File', 'Asset file editing is not yet supported. File: {{ file }}')">{{ file }}</span>
-                <button class="delete-btn" title="Delete File" 
-                        hx-post="/api/delete-item/{{ project_name }}"
-                        hx-vals='{"path": "{{ file }}"}' 
-                        hx-confirm="Are you sure you want to delete '{{ file }}'?"
-                        hx-target="#sidebar-content" hx-swap="innerHTML">
-                    <i data-lucide="x"></i>
-                </button>
-            </li>
+        <ul class="file-tree" id="assets-section">
+            {% if asset_root_files or asset_groups %}
+                <!-- Root files (displayed directly under main category) -->
+                {% for file_info in asset_root_files %}
+                <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                    <span class="file-name"
+                          onclick="copyAssetPath('{{ file_info.relative_path }}')"
+                          title="Click to copy: game/{{ file_info.relative_path }}">
+                        {{ file_info.filename }}
+                    </span>
+                    <button class="delete-btn" title="Delete File"
+                            hx-post="/api/delete-item/{{ project_name }}"
+                            hx-vals='{"path": "{{ file_info.full_path }}"}'
+                            hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                            hx-target="#sidebar-content" hx-swap="innerHTML">
+                        <i data-lucide="x"></i>
+                    </button>
+                </li>
+                {% endfor %}
+
+                <!-- Grouped files (in subdirectories) -->
+                {% for group_name, files in asset_groups.items() %}
+                <li class="file-group">
+                    <div class="file-group-header collapsible-header"
+                         data-group="assets-{{ group_name|replace('/', '-') }}"
+                         onclick="toggleGroup('assets-{{ group_name|replace('/', '-') }}')"
+                         role="button" tabindex="0"
+                         aria-expanded="true" aria-label="Toggle {{ group_name }} folder">
+                        <i data-lucide="chevron-down" class="collapse-icon"></i>
+                        <i data-lucide="folder" class="group-folder-icon"></i>
+                        <span class="group-name">{{ group_name }}</span>
+                        <span class="file-count">({{ files|length }})</span>
+                    </div>
+                    <ul class="file-group-files" id="assets-{{ group_name|replace('/', '-') }}-files">
+                        {% for file_info in files %}
+                        <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                            <span class="file-name"
+                                  onclick="copyAssetPath('{{ file_info.relative_path }}')"
+                                  title="Click to copy: game/{{ file_info.relative_path }}">
+                                <i data-lucide="file" class="file-icon"></i>
+                                {{ file_info.filename }}
+                            </span>
+                            <button class="delete-btn" title="Delete File"
+                                    hx-post="/api/delete-item/{{ project_name }}"
+                                    hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                    hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                    hx-target="#sidebar-content" hx-swap="innerHTML">
+                                <i data-lucide="x"></i>
+                            </button>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
             {% else %}
             <li class="file-item-empty">No assets found.</li>
-            {% endfor %}
+            {% endif %}
         </ul>
     </div>
 </div>

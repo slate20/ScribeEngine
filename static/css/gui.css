@@ -394,6 +394,124 @@ body {
 	font-style: italic;
 }
 
+/* Collapsible Header Styles */
+.file-explorer-panel .collapsible-header {
+	cursor: pointer;
+	user-select: none;
+	transition: background-color 0.15s ease;
+}
+
+.file-explorer-panel .collapsible-header:hover {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.file-explorer-panel .collapsible-header:focus {
+	outline: 2px solid var(--accent-color);
+	outline-offset: 1px;
+}
+
+.file-explorer-panel .collapse-icon {
+	width: 16px;
+	height: 16px;
+	color: var(--text-muted);
+	transition: transform 0.2s ease;
+	flex-shrink: 0;
+}
+
+.file-explorer-panel .collapsible-header.collapsed .collapse-icon {
+	transform: rotate(-90deg);
+}
+
+/* Section Header Collapsible Styles */
+.file-explorer-panel .section-header.collapsible-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-radius: 6px;
+}
+
+.file-explorer-panel .section-header.collapsible-header span {
+	flex: 1;
+}
+
+/* File Tree Collapse Styles */
+.file-explorer-panel .file-tree {
+	overflow: hidden;
+	transition: max-height 0.25s ease, opacity 0.2s ease;
+	max-height: 1000px; /* Large enough for most content */
+	opacity: 1;
+}
+
+.file-explorer-panel .file-tree.collapsed {
+	max-height: 0;
+	opacity: 0;
+	margin: 0;
+	padding: 0;
+}
+
+/* File Group Styles */
+.file-explorer-panel .file-group {
+	margin-bottom: 8px;
+}
+
+.file-explorer-panel .file-group-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding: 4px 8px;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-primary);
+	background: var(--secondary-bg);
+	border-radius: 4px;
+	margin-bottom: 4px;
+}
+
+.file-explorer-panel .group-folder-icon {
+	width: 14px;
+	height: 14px;
+	color: var(--accent-color);
+}
+
+.file-explorer-panel .group-name {
+	flex-grow: 1;
+}
+
+.file-explorer-panel .file-count {
+	font-size: 11px;
+	color: var(--text-muted);
+	font-weight: normal;
+}
+
+.file-explorer-panel .file-group-files {
+	list-style: none;
+	padding-left: 16px;
+	margin: 0;
+	overflow: hidden;
+	transition: max-height 0.25s ease, opacity 0.2s ease;
+	max-height: 1000px;
+	opacity: 1;
+}
+
+.file-explorer-panel .file-group-files.collapsed {
+	max-height: 0;
+	opacity: 0;
+	margin: 0;
+	padding: 0;
+}
+
+.file-explorer-panel .file-group-files .file-item {
+	margin-left: 0;
+}
+
+.file-explorer-panel .file-group-files .file-icon {
+	width: 14px;
+	height: 14px;
+	color: var(--text-muted);
+	margin-right: 4px;
+}
+
 
 /* Editor Area */
 .editor-area {
@@ -463,6 +581,14 @@ body {
 .tab-close:hover {
 	background: var(--danger-color);
 	color: white;
+}
+
+.editor-tab.unsaved {
+	font-style: italic;
+}
+
+.editor-tab.unsaved .tab-name {
+	color: var(--warning-color);
 }
 
 .editor-actions {
@@ -1277,6 +1403,12 @@ body {
 	background-color: var(--modal-overlay);
 	justify-content: center;
 	align-items: center;
+	/* Prevent modal from affecting document flow and causing layout recalculations */
+	pointer-events: none;
+}
+
+.modal.show {
+	pointer-events: auto;
 }
 
 .modal-content {
@@ -1289,6 +1421,7 @@ body {
 	overflow: hidden;
 	box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
 	animation: modalFadeIn 0.3s ease-out;
+	pointer-events: auto;
 }
 
 @keyframes modalFadeIn {

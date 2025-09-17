@@ -27,11 +27,13 @@ class Api:
         """
         Opens a folder selection dialog and returns the selected path.
         """
-        result = webview.create_file_dialog(webview.FOLDER_DIALOG)
-        if result:
-            # result is a tuple, we want the first element
-            return result[0]
-        return None
+        # Get the active webview window and create a folder dialog
+        if webview.windows:
+            window = webview.windows[0]
+            result = window.create_file_dialog(webview.FileDialog.FOLDER)
+            if result:
+                # result is a tuple, the first element is the path
+                return result[0]
 
 def start_flask_app():
     """Starts the Flask server in a separate thread."""

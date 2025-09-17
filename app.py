@@ -478,6 +478,79 @@ def close_modal():
     """Close any open modal."""
     return ''  # Return empty content to clear modal container
 
+@app.route('/modal/new-file/<project_name>/<category>')
+def new_file_modal(project_name, category):
+    """Show new file modal with category context."""
+    category_config = {
+        'story': {
+            'title': 'New Story File',
+            'extension': '.tgame',
+            'placeholder': 'story_scene',
+            'hint': 'Enter filename without extension (will add .tgame automatically)'
+        },
+        'logic': {
+            'title': 'New Logic File',
+            'extension': '.py',
+            'placeholder': 'game_logic',
+            'hint': 'Enter filename without extension (will add .py automatically)'
+        },
+        'css': {
+            'title': 'New CSS File',
+            'extension': '.css',
+            'placeholder': 'custom_styles',
+            'hint': 'Enter filename without extension (will add .css automatically)'
+        }
+    }
+
+    config = category_config.get(category, category_config['story'])
+    return render_template('_fragments/_htmx_new_file_modal.html',
+                         project_name=project_name,
+                         category=category,
+                         config=config)
+
+@app.route('/api/subdirectories/<project_name>/<category>')
+def get_subdirectories(project_name, category):
+    """Get existing subdirectories for a specific category."""
+    project_root = config_manager.get_project_root()
+    project_path = os.path.join(project_root, project_name)
+
+    if not os.path.isdir(project_path):
+        return jsonify({'status': 'error', 'message': 'Project not found'}), 404
+
+    # Map categories to file extensions and base directories
+    category_mapping = {
+        'story': {'extensions': ['*.tgame'], 'base_dir': ''},
+        'logic': {'extensions': ['*.py'], 'base_dir': ''},
+        'css': {'extensions': ['*.css'], 'base_dir': ''}
+    }
+
+    if category not in category_mapping:
+        return jsonify({'status': 'error', 'message': 'Invalid category'}), 400
+
+    mapping = category_mapping[category]
+    directories = set()
+
+    # Find all files of this type and extract their directories
+    for extension in mapping['extensions']:
+        pattern = os.path.join(project_path, '**', extension)
+        files = glob.glob(pattern, recursive=True)
+
+        for file_path in files:
+            rel_path = os.path.relpath(file_path, project_path)
+            dir_name = os.path.dirname(rel_path)
+            if dir_name and dir_name != '.':
+                directories.add(dir_name.replace('\\', '/'))
+
+    # Sort directories and add root option
+    sorted_dirs = [''] + sorted(list(directories))  # Empty string represents root
+
+    return jsonify({'status': 'success', 'directories': sorted_dirs})
+
+@app.route('/modal/new-folder/<project_name>')
+def new_folder_modal(project_name):
+    """Show new folder modal."""
+    return render_template('_fragments/_htmx_new_folder_modal.html', project_name=project_name)
+
 @app.route('/custom.css')
 def serve_custom_css():
     custom_css_path = os.path.join(game_engine.project_path, 'custom.css')
@@ -559,12 +632,78 @@ def open_editor(project_name):
 
     return render_template('editor.html', project_name=project_name, project_root=project_root)
 
+def group_files_by_directory(files):
+    """Groups files by their directory structure, separating root files."""
+    groups = {}
+    root_files = []
+
+    for file_path in files:
+        dir_name = os.path.dirname(file_path)
+
+        if not dir_name:  # Root file
+            root_files.append({
+                'filename': os.path.basename(file_path),
+                'full_path': file_path,
+                'relative_path': file_path
+            })
+        else:  # File in subdirectory
+            if dir_name not in groups:
+                groups[dir_name] = []
+            groups[dir_name].append({
+                'filename': os.path.basename(file_path),
+                'full_path': file_path,
+                'relative_path': file_path
+            })
+
+    # Sort files within each group and root files
+    for group in groups.values():
+        group.sort(key=lambda x: x['filename'])
+    root_files.sort(key=lambda x: x['filename'])
+
+    return groups, root_files
+
+def group_asset_files_by_directory(asset_files):
+    """Groups asset files by their directory structure, stripping 'assets/' prefix from group names."""
+    groups = {}
+    root_files = []
+
+    for file_path in asset_files:
+        # Strip 'assets/' prefix from the path for grouping purposes
+        if file_path.startswith('assets/'):
+            relative_path = file_path[7:]  # Remove 'assets/' prefix
+        else:
+            relative_path = file_path
+
+        dir_name = os.path.dirname(relative_path)
+
+        if not dir_name:  # Root asset file (directly in assets/)
+            root_files.append({
+                'filename': os.path.basename(file_path),
+                'full_path': file_path,
+                'relative_path': file_path
+            })
+        else:  # Asset file in subdirectory
+            if dir_name not in groups:
+                groups[dir_name] = []
+            groups[dir_name].append({
+                'filename': os.path.basename(file_path),
+                'full_path': file_path,
+                'relative_path': file_path
+            })
+
+    # Sort files within each group and root files
+    for group in groups.values():
+        group.sort(key=lambda x: x['filename'])
+    root_files.sort(key=lambda x: x['filename'])
+
+    return groups, root_files
+
 @app.route('/api/files/<project_name>')
 def list_files(project_name):
     """Lists all files in the project directory, grouped by type."""
     project_root = config_manager.get_project_root()
     project_path = os.path.join(project_root, project_name)
-    
+
     if not os.path.isdir(project_path):
         return "Project not found", 404
 
@@ -575,13 +714,23 @@ def list_files(project_name):
     css_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.css", recursive=True)]
     asset_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/assets/**/*", recursive=True) if os.path.isfile(f)]
 
-    return render_template('_fragments/_file_list.html', 
-                           story_files=sorted(story_files),
-                           logic_files=sorted(logic_files),
+    # Group files by directory
+    story_groups, story_root_files = group_files_by_directory(story_files)
+    logic_groups, logic_root_files = group_files_by_directory(logic_files)
+    css_groups, css_root_files = group_files_by_directory(css_files)
+    asset_groups, asset_root_files = group_asset_files_by_directory(asset_files)
+
+    return render_template('_fragments/_file_list.html',
+                           story_groups=story_groups,
+                           story_root_files=story_root_files,
+                           logic_groups=logic_groups,
+                           logic_root_files=logic_root_files,
                            config_files=sorted(config_files),
-                           asset_files=sorted(asset_files),
+                           asset_groups=asset_groups,
+                           asset_root_files=asset_root_files,
                            project_name=project_name,
-                           css_files=sorted(css_files))
+                           css_groups=css_groups,
+                           css_root_files=css_root_files)
 
 @app.route('/api/create-item/<project_name>', methods=['POST'])
 def create_item(project_name):

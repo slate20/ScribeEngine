@@ -91,6 +91,11 @@
 
 			<div class="editor-area" id="editor-area">
 				<div id="editor-pane" style="height: 100%; display: flex; flex-direction: column;">
+					<!-- Tab container -->
+					<div class="editor-tabs" id="editor-tabs" style="display: none;">
+						<!-- Tabs will be dynamically generated here -->
+					</div>
+
 					<div class="editor-header">
 						<span class="editor-title" id="editor-file-title">No file open</span>
 						<div class="editor-actions">
@@ -150,6 +155,9 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- Modal Container for HTMX modals -->
+	<div id="modal-container"></div>
 </body>
 
 </html>
