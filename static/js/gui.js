@@ -628,6 +628,170 @@ function switchTab(clickedTab) {
     clickedTab.classList.add('active');
 }
 
+// File Explorer Collapse/Expand Functionality
+function toggleSection(sectionId) {
+    const header = document.querySelector(`[data-section="${sectionId}"]`);
+    const section = document.getElementById(`${sectionId}-section`);
+
+    if (!header || !section) return;
+
+    const isCollapsed = section.classList.contains('collapsed');
+    const icon = header.querySelector('.collapse-icon');
+
+    if (isCollapsed) {
+        // Expand
+        section.classList.remove('collapsed');
+        header.classList.remove('collapsed');
+        header.setAttribute('aria-expanded', 'true');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+    } else {
+        // Collapse
+        section.classList.add('collapsed');
+        header.classList.add('collapsed');
+        header.setAttribute('aria-expanded', 'false');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-right');
+    }
+
+    // Re-initialize Lucide icons for the changed icon
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+
+    // Save state to localStorage
+    saveSectionState(sectionId, !isCollapsed);
+}
+
+function toggleGroup(groupId) {
+    const header = document.querySelector(`[data-group="${groupId}"]`);
+    const groupFiles = document.getElementById(`${groupId}-files`);
+
+    if (!header || !groupFiles) return;
+
+    const isCollapsed = groupFiles.classList.contains('collapsed');
+    const icon = header.querySelector('.collapse-icon');
+
+    if (isCollapsed) {
+        // Expand
+        groupFiles.classList.remove('collapsed');
+        header.classList.remove('collapsed');
+        header.setAttribute('aria-expanded', 'true');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-down');
+    } else {
+        // Collapse
+        groupFiles.classList.add('collapsed');
+        header.classList.add('collapsed');
+        header.setAttribute('aria-expanded', 'false');
+        if (icon) icon.setAttribute('data-lucide', 'chevron-right');
+    }
+
+    // Re-initialize Lucide icons for the changed icon
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+
+    // Save state to localStorage
+    saveGroupState(groupId, !isCollapsed);
+}
+
+// LocalStorage state management
+function getCollapseStateKey() {
+    return `fileExplorer_${currentProject || 'default'}_collapseState`;
+}
+
+function saveSectionState(sectionId, isCollapsed) {
+    const stateKey = getCollapseStateKey();
+    let state = JSON.parse(localStorage.getItem(stateKey) || '{}');
+
+    if (!state.sections) state.sections = {};
+    state.sections[sectionId] = isCollapsed;
+
+    localStorage.setItem(stateKey, JSON.stringify(state));
+}
+
+function saveGroupState(groupId, isCollapsed) {
+    const stateKey = getCollapseStateKey();
+    let state = JSON.parse(localStorage.getItem(stateKey) || '{}');
+
+    if (!state.groups) state.groups = {};
+    state.groups[groupId] = isCollapsed;
+
+    localStorage.setItem(stateKey, JSON.stringify(state));
+}
+
+function loadCollapseState() {
+    const stateKey = getCollapseStateKey();
+    const state = JSON.parse(localStorage.getItem(stateKey) || '{}');
+
+    // Restore section states
+    if (state.sections) {
+        Object.entries(state.sections).forEach(([sectionId, isCollapsed]) => {
+            if (isCollapsed) {
+                const header = document.querySelector(`[data-section="${sectionId}"]`);
+                const section = document.getElementById(`${sectionId}-section`);
+                const icon = header?.querySelector('.collapse-icon');
+
+                if (header && section) {
+                    section.classList.add('collapsed');
+                    header.classList.add('collapsed');
+                    header.setAttribute('aria-expanded', 'false');
+                    if (icon) icon.setAttribute('data-lucide', 'chevron-right');
+                }
+            }
+        });
+    }
+
+    // Restore group states
+    if (state.groups) {
+        Object.entries(state.groups).forEach(([groupId, isCollapsed]) => {
+            if (isCollapsed) {
+                const header = document.querySelector(`[data-group="${groupId}"]`);
+                const groupFiles = document.getElementById(`${groupId}-files`);
+                const icon = header?.querySelector('.collapse-icon');
+
+                if (header && groupFiles) {
+                    groupFiles.classList.add('collapsed');
+                    header.classList.add('collapsed');
+                    header.setAttribute('aria-expanded', 'false');
+                    if (icon) icon.setAttribute('data-lucide', 'chevron-right');
+                }
+            }
+        });
+    }
+
+    // Re-initialize Lucide icons after state restoration
+    if (window.lucide) {
+        lucide.createIcons();
+    }
+}
+
+// Keyboard support for collapsible headers
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        const target = event.target;
+
+        if (target.classList.contains('collapsible-header')) {
+            event.preventDefault();
+
+            const sectionId = target.getAttribute('data-section');
+            const groupId = target.getAttribute('data-group');
+
+            if (sectionId) {
+                toggleSection(sectionId);
+            } else if (groupId) {
+                toggleGroup(groupId);
+            }
+        }
+    }
+});
+
+// Load collapse state when file list loads
+document.addEventListener('htmx:afterSwap', function(event) {
+    if (event.target && event.target.id === 'sidebar-content') {
+        // File list has been refreshed, restore collapse state
+        setTimeout(loadCollapseState, 50); // Small delay to ensure DOM is ready
+    }
+});
+
 // Event delegation for project actions dropdown
 document.body.addEventListener('click', function(event) {
     const projectActionsBtn = document.getElementById('project-actions-btn');

@@ -394,6 +394,62 @@ body {
 	font-style: italic;
 }
 
+/* Collapsible Header Styles */
+.file-explorer-panel .collapsible-header {
+	cursor: pointer;
+	user-select: none;
+	transition: background-color 0.15s ease;
+}
+
+.file-explorer-panel .collapsible-header:hover {
+	background: rgba(255, 255, 255, 0.05);
+}
+
+.file-explorer-panel .collapsible-header:focus {
+	outline: 2px solid var(--accent-color);
+	outline-offset: 1px;
+}
+
+.file-explorer-panel .collapse-icon {
+	width: 16px;
+	height: 16px;
+	color: var(--text-muted);
+	transition: transform 0.2s ease;
+	flex-shrink: 0;
+}
+
+.file-explorer-panel .collapsible-header.collapsed .collapse-icon {
+	transform: rotate(-90deg);
+}
+
+/* Section Header Collapsible Styles */
+.file-explorer-panel .section-header.collapsible-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 12px;
+	border-radius: 6px;
+}
+
+.file-explorer-panel .section-header.collapsible-header span {
+	flex: 1;
+}
+
+/* File Tree Collapse Styles */
+.file-explorer-panel .file-tree {
+	overflow: hidden;
+	transition: max-height 0.25s ease, opacity 0.2s ease;
+	max-height: 1000px; /* Large enough for most content */
+	opacity: 1;
+}
+
+.file-explorer-panel .file-tree.collapsed {
+	max-height: 0;
+	opacity: 0;
+	margin: 0;
+	padding: 0;
+}
+
 /* File Group Styles */
 .file-explorer-panel .file-group {
 	margin-bottom: 8px;
@@ -432,6 +488,17 @@ body {
 	list-style: none;
 	padding-left: 16px;
 	margin: 0;
+	overflow: hidden;
+	transition: max-height 0.25s ease, opacity 0.2s ease;
+	max-height: 1000px;
+	opacity: 1;
+}
+
+.file-explorer-panel .file-group-files.collapsed {
+	max-height: 0;
+	opacity: 0;
+	margin: 0;
+	padding: 0;
 }
 
 .file-explorer-panel .file-group-files .file-item {
