@@ -341,11 +341,14 @@ function initResizer() {
 
 	if (!handle || !leftPanel || !rightPanel || !container) return;
 
-	// Set initial panel sizes (e.g., 65% for editor, 35% for preview)
-	const sidebarWidth = document.querySelector('.sidebar').offsetWidth;
-	const availableWidth = container.offsetWidth - sidebarWidth - handle.offsetWidth;
-	leftPanel.style.width = `${availableWidth * 0.65}px`;
-	rightPanel.style.width = `${availableWidth * 0.35}px`;
+	// Set initial panel sizes only if they haven't been set already (to prevent modal-triggered resets)
+	const hasCustomWidths = leftPanel.style.width && rightPanel.style.width;
+	if (!hasCustomWidths) {
+		const sidebarWidth = document.querySelector('.sidebar').offsetWidth;
+		const availableWidth = container.offsetWidth - sidebarWidth - handle.offsetWidth;
+		leftPanel.style.width = `${availableWidth * 0.65}px`;
+		rightPanel.style.width = `${availableWidth * 0.35}px`;
+	}
 
 	let isDragging = false;
 	let startX, startLeftWidth, startRightWidth;
@@ -474,6 +477,11 @@ function updateEditorUI() {
 // This listener waits for HTMX to finish swapping content onto the page.
 // It's the key to initializing the editor at the right time.
 document.body.addEventListener('htmx:afterSwap', function (event) {
+	// Skip initialization if this is a modal-related swap to prevent preview panel resizing
+	if (event.target && event.target.id === 'modal-container') {
+		return;
+	}
+
 	// Check if the editor container is now present in the DOM
 	const editorContainer = document.getElementById('codemirror-container');
 

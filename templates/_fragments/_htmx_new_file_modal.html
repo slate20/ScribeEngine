@@ -1,25 +1,42 @@
-<!-- HTMX New File Modal -->
+<!-- Enhanced HTMX New File Modal -->
 <div id="new-file-modal" class="modal show" style="display: flex !important;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3>New File</h3>
+            <h3>{{ config.title }}</h3>
             <button class="modal-close" hx-post="/modal/close" hx-target="#modal-container">&times;</button>
         </div>
         <div class="modal-body">
-            <form hx-post="/api/create-item/{{ project_name }}"
-                  hx-target="#sidebar-content"
-                  hx-swap="innerHTML"
-                  hx-on::after-request="if(event.detail.successful) { htmx.ajax('POST', '/modal/close', {target: '#modal-container'}); showNotification('File created successfully', 'success'); }">
+            <form id="new-file-form">
+
                 <div class="form-group">
-                    <label for="file-path">File Path:</label>
-                    <input type="text" id="file-path" name="path" class="form-control"
-                           placeholder="Enter file path" required>
-                    <small class="form-hint">Example: story/new_scene.tgame, systems/logic.py, styles/custom.css</small>
+                    <label for="folder-select">Folder:</label>
+                    <select id="folder-select" name="folder" class="form-control">
+                        <option value="">Loading folders...</option>
+                    </select>
                 </div>
+
+                <!-- New folder creation section (initially hidden) -->
+                <div id="new-folder-section" class="form-group" style="display: none;">
+                    <label for="new-folder-name">New Folder Name:</label>
+                    <input type="text" id="new-folder-name" name="new_folder_name" class="form-control"
+                           placeholder="Enter folder name">
+                    <small class="form-hint">Leave empty to create file in selected folder</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="file-name">Filename:</label>
+                    <input type="text" id="file-name" name="filename" class="form-control"
+                           placeholder="{{ config.placeholder }}" required>
+                    <small class="form-hint">{{ config.hint }}</small>
+                </div>
+
+                <input type="hidden" name="category" value="{{ category }}">
+                <input type="hidden" name="extension" value="{{ config.extension }}">
                 <input type="hidden" name="type" value="file">
+
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" hx-post="/modal/close" hx-target="#modal-container">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Create</button>
+                    <button type="button" class="btn btn-primary" id="create-file-btn">Create File</button>
                 </div>
             </form>
         </div>
@@ -27,6 +44,116 @@
 </div>
 
 <script>
+// Initialize modal when it loads
+(function() {
+    // Load folder options
+    fetch('/api/subdirectories/{{ project_name }}/{{ category }}')
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const folderSelect = document.getElementById('folder-select');
+                folderSelect.innerHTML = '';
+
+                // Add root option
+                const rootOption = document.createElement('option');
+                rootOption.value = '';
+                rootOption.textContent = '(root)';
+                folderSelect.appendChild(rootOption);
+
+                // Add existing directories
+                data.directories.forEach(dir => {
+                    if (dir !== '') {  // Skip empty string (root) as we already added it
+                        const option = document.createElement('option');
+                        option.value = dir;
+                        option.textContent = dir;
+                        folderSelect.appendChild(option);
+                    }
+                });
+
+                // Add "Create new folder" option
+                const newFolderOption = document.createElement('option');
+                newFolderOption.value = '__CREATE_NEW__';
+                newFolderOption.textContent = '+ Create new folder...';
+                folderSelect.appendChild(newFolderOption);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading folders:', error);
+            const folderSelect = document.getElementById('folder-select');
+            folderSelect.innerHTML = '<option value="">(root)</option>';
+        });
+
+    // Handle folder selection changes
+    document.getElementById('folder-select').addEventListener('change', function() {
+        const newFolderSection = document.getElementById('new-folder-section');
+        if (this.value === '__CREATE_NEW__') {
+            newFolderSection.style.display = 'block';
+            document.getElementById('new-folder-name').focus();
+        } else {
+            newFolderSection.style.display = 'none';
+            document.getElementById('new-folder-name').value = '';
+        }
+    });
+
+    // Focus the filename input after modal loads
+    setTimeout(() => {
+        const fileNameInput = document.getElementById('file-name');
+        if (fileNameInput) {
+            fileNameInput.focus();
+        }
+    }, 100);
+
+    // Handle create button click
+    document.getElementById('create-file-btn').addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const folderSelect = document.getElementById('folder-select');
+        const newFolderName = document.getElementById('new-folder-name').value.trim();
+        const filename = document.getElementById('file-name').value.trim();
+        const extension = '{{ config.extension }}';
+
+        if (!filename) {
+            alert('Please enter a filename');
+            return;
+        }
+
+        // Determine the final folder path
+        let folderPath = folderSelect.value;
+        if (folderSelect.value === '__CREATE_NEW__' && newFolderName) {
+            folderPath = newFolderName;
+        }
+
+        // Construct full file path
+        let fullPath = filename + extension;
+        if (folderPath) {
+            fullPath = folderPath + '/' + fullPath;
+        }
+
+        // Submit via HTMX
+        const submitData = new FormData();
+        submitData.set('path', fullPath);
+        submitData.set('type', 'file');
+
+        htmx.ajax('POST', '/api/create-item/{{ project_name }}', {
+            values: Object.fromEntries(submitData),
+            target: '#sidebar-content',
+            swap: 'innerHTML'
+        }).then(() => {
+            htmx.ajax('POST', '/modal/close', {target: '#modal-container'});
+            showNotification('File created successfully', 'success');
+        }).catch(() => {
+            showNotification('Failed to create file', 'error');
+        });
+    });
+
+    // Prevent form submission (handle Enter key)
+    document.getElementById('new-file-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        // Trigger the create button click
+        document.getElementById('create-file-btn').click();
+    });
+})();
+
 // Close modal when clicking outside
 document.addEventListener('click', function(event) {
     const modal = document.getElementById('new-file-modal');
@@ -37,7 +164,4 @@ document.addEventListener('click', function(event) {
 
 // Process HTMX on the entire modal
 htmx.process(document.getElementById('new-file-modal'));
-
-// Focus the input field
-document.getElementById('file-path').focus();
 </script>

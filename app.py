@@ -478,10 +478,73 @@ def close_modal():
     """Close any open modal."""
     return ''  # Return empty content to clear modal container
 
-@app.route('/modal/new-file/<project_name>')
-def new_file_modal(project_name):
-    """Show new file modal."""
-    return render_template('_fragments/_htmx_new_file_modal.html', project_name=project_name)
+@app.route('/modal/new-file/<project_name>/<category>')
+def new_file_modal(project_name, category):
+    """Show new file modal with category context."""
+    category_config = {
+        'story': {
+            'title': 'New Story File',
+            'extension': '.tgame',
+            'placeholder': 'story_scene',
+            'hint': 'Enter filename without extension (will add .tgame automatically)'
+        },
+        'logic': {
+            'title': 'New Logic File',
+            'extension': '.py',
+            'placeholder': 'game_logic',
+            'hint': 'Enter filename without extension (will add .py automatically)'
+        },
+        'css': {
+            'title': 'New CSS File',
+            'extension': '.css',
+            'placeholder': 'custom_styles',
+            'hint': 'Enter filename without extension (will add .css automatically)'
+        }
+    }
+
+    config = category_config.get(category, category_config['story'])
+    return render_template('_fragments/_htmx_new_file_modal.html',
+                         project_name=project_name,
+                         category=category,
+                         config=config)
+
+@app.route('/api/subdirectories/<project_name>/<category>')
+def get_subdirectories(project_name, category):
+    """Get existing subdirectories for a specific category."""
+    project_root = config_manager.get_project_root()
+    project_path = os.path.join(project_root, project_name)
+
+    if not os.path.isdir(project_path):
+        return jsonify({'status': 'error', 'message': 'Project not found'}), 404
+
+    # Map categories to file extensions and base directories
+    category_mapping = {
+        'story': {'extensions': ['*.tgame'], 'base_dir': ''},
+        'logic': {'extensions': ['*.py'], 'base_dir': ''},
+        'css': {'extensions': ['*.css'], 'base_dir': ''}
+    }
+
+    if category not in category_mapping:
+        return jsonify({'status': 'error', 'message': 'Invalid category'}), 400
+
+    mapping = category_mapping[category]
+    directories = set()
+
+    # Find all files of this type and extract their directories
+    for extension in mapping['extensions']:
+        pattern = os.path.join(project_path, '**', extension)
+        files = glob.glob(pattern, recursive=True)
+
+        for file_path in files:
+            rel_path = os.path.relpath(file_path, project_path)
+            dir_name = os.path.dirname(rel_path)
+            if dir_name and dir_name != '.':
+                directories.add(dir_name.replace('\\', '/'))
+
+    # Sort directories and add root option
+    sorted_dirs = [''] + sorted(list(directories))  # Empty string represents root
+
+    return jsonify({'status': 'success', 'directories': sorted_dirs})
 
 @app.route('/modal/new-folder/<project_name>')
 def new_folder_modal(project_name):

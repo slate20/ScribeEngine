@@ -4,7 +4,7 @@
             <span>Story Files (.tgame)</span>
             <div class="header-actions">
                 <button class="btn-icon" title="New Story File"
-                        hx-get="/modal/new-file/{{ project_name }}"
+                        hx-get="/modal/new-file/{{ project_name }}/story"
                         hx-target="#modal-container">
                     <i data-lucide="file-plus-2"></i>
                 </button>
@@ -66,7 +66,7 @@
             <span>Game Logic (.py)</span>
             <div class="header-actions">
                 <button class="btn-icon" title="New Logic File"
-                        hx-get="/modal/new-file/{{ project_name }}"
+                        hx-get="/modal/new-file/{{ project_name }}/logic"
                         hx-target="#modal-container">
                     <i data-lucide="file-plus-2"></i>
                 </button>
@@ -128,7 +128,7 @@
             <span>Styling (.css)</span>
             <div class="header-actions">
                 <button class="btn-icon" title="New CSS File"
-                        hx-get="/modal/new-file/{{ project_name }}"
+                        hx-get="/modal/new-file/{{ project_name }}/css"
                         hx-target="#modal-container">
                     <i data-lucide="file-plus-2"></i>
                 </button>
