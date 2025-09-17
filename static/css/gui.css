@@ -583,6 +583,14 @@ body {
 	color: white;
 }
 
+.editor-tab.unsaved {
+	font-style: italic;
+}
+
+.editor-tab.unsaved .tab-name {
+	color: var(--warning-color);
+}
+
 .editor-actions {
 	display: flex;
 	align-items: center;
