@@ -56,3 +56,7 @@ Hit the "Build" button and your game is packaged into a standalone distribution 
 ## Documentation
 
 For detailed instructions on writing your story, managing game logic, customizing your game, and advanced features, please refer to the comprehensive [User Documentation](https://github.com/slate20/ScribeEngine/wiki).
+
+## Feedback & Discussions
+
+If you want to offer any feedback, report issues, or just engage with other users and myself, head over to the [Discussions](https://github.com/slate20/ScribeEngine/discussions)!
