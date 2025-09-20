@@ -38,3 +38,27 @@ def set_project_root(path):
     config = load_config()
     config['project_root'] = path
     save_config(config)
+
+def get_update_settings():
+    """Retrieves update settings from the configuration."""
+    config = load_config()
+    return config.get('update_settings', {
+        'check_for_updates': True,
+        'check_frequency': 'daily',  # 'daily', 'weekly', 'startup'
+        'last_check': None,
+        'skipped_versions': []
+    })
+
+def set_update_settings(settings):
+    """Saves update settings to the configuration."""
+    config = load_config()
+    config['update_settings'] = settings
+    save_config(config)
+
+def update_setting(key, value):
+    """Updates a specific update setting."""
+    config = load_config()
+    if 'update_settings' not in config:
+        config['update_settings'] = get_update_settings()
+    config['update_settings'][key] = value
+    save_config(config)

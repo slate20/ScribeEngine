@@ -13,6 +13,7 @@ from app import app as flask_app
 from app import set_game_project_path, set_debug_mode, reset_game_engine, set_gui_mode
 import config_manager
 from loading_window import LoadingWindow
+from update_checker import check_for_updates_gui, UpdateChecker
 
 # Global variables for server management
 flask_thread_instance = None
@@ -38,6 +39,75 @@ class Api:
 def start_flask_app():
     """Starts the Flask server in a separate thread."""
     flask_app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
+
+def handle_update_gui(update_info):
+    """Handle update notification in GUI mode."""
+    try:
+        import tkinter as tk
+        from tkinter import messagebox
+
+        # Create a hidden root window
+        root = tk.Tk()
+        root.withdraw()
+
+        message = f"""A new version of Scribe Engine is available!
+
+Current version: v{update_info['current_version']}
+Latest version: v{update_info['version']}
+
+Would you like to update now?
+
+The application will restart after updating."""
+
+        result = messagebox.askyesnocancel(
+            "Update Available",
+            message,
+            icon='question'
+        )
+
+        if result is True:  # Yes - Update now
+            if not update_info['asset_url']:
+                messagebox.showerror("Update Error", "No compatible download found for your platform.")
+                root.destroy()
+                return
+
+            # Show progress dialog (simplified)
+            progress_window = tk.Toplevel()
+            progress_window.title("Updating...")
+            progress_window.geometry("400x100")
+            progress_window.resizable(False, False)
+
+            tk.Label(progress_window, text="Downloading update...").pack(pady=20)
+            progress_window.update()
+
+            # Download and update
+            checker = UpdateChecker()
+            success = checker.download_and_replace(update_info['asset_url'], update_info['asset_name'])
+
+            progress_window.destroy()
+
+            if success:
+                messagebox.showinfo("Update Complete", "Update completed successfully!\nThe application will now restart.")
+                root.destroy()
+                checker.restart_application()
+            else:
+                messagebox.showerror("Update Failed", "Update failed. Please try again later or download manually.")
+
+        elif result is False:  # No - Skip this version
+            checker = UpdateChecker()
+            checker.skip_version(update_info['version'])
+
+        # result is None for Cancel - do nothing
+
+        root.destroy()
+
+    except ImportError:
+        # tkinter not available, fall back to console
+        print(f"\n🎉 Update Available: v{update_info['current_version']} → v{update_info['version']}")
+        print(f"Visit: {update_info['release_url']}")
+    except Exception:
+        # Any other error, fail silently
+        pass
 
 def run_gui_app():
     """Main function to launch the GUI and the Flask server."""
@@ -92,7 +162,16 @@ def run_gui_app():
     
     # Run the Flask startup sequence with the loading window
     loading_window.run_with_loading(flask_startup_sequence)
-    
+
+    # Check for updates after Flask startup
+    try:
+        update_info = check_for_updates_gui()
+        if update_info:
+            handle_update_gui(update_info)
+    except Exception:
+        # Silently fail if update check encounters any issues
+        pass
+
     # Create an API instance to expose to the webview
     api = Api()
 
