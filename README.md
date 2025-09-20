@@ -1,5 +1,5 @@
 > <h4>NOTE: Windows Virus False-Positive</h4>
-> While it didn't originally, as of version 1.2, Windows has start falsely flagging the exe as a Virus. I am aware and currently digging into what might be triggering it to see if I can implement an alternative that Windows will be happy with.
+> While it didn't originally, as of version 1.2, Windows has started falsely flagging the exe as a Virus. I am aware and currently digging into what might be triggering it to see if I can implement an alternative that Windows will be happy with.
 
 # Scribe Engine - A Robust Text-Based Game Engine
 
