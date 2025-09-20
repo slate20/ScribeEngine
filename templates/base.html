@@ -86,5 +86,16 @@
     {% endif %}
 
     <script src="{{ url_for('static', filename='js/engine.js') }}"></script>
+    {% if config.get('features', {}).get('save_system') == 'browser' %}
+    <script src="{{ url_for('static', filename='js/browser_storage.js') }}"></script>
+    <script>
+        // Initialize browser storage for this project
+        document.addEventListener('DOMContentLoaded', function() {
+            const projectName = '{{ project_name }}';
+            console.log('Loading browser storage for project:', projectName);
+            initializeBrowserStorage(projectName);
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

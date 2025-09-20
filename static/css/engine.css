@@ -327,6 +327,34 @@ body {
 	overflow-y: auto;
 }
 
+/* Browser Storage Notice Styles */
+.browser-storage-notice {
+	background-color: #e3f2fd;
+	border: 1px solid #bbdefb;
+	border-radius: 6px;
+	padding: 12px 16px;
+	margin-bottom: 16px;
+	font-size: 14px;
+}
+
+.browser-storage-notice .notice-header {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+	color: #1565c0;
+	margin-bottom: 6px;
+}
+
+.browser-storage-notice .notice-content {
+	color: #0d47a1;
+	line-height: 1.4;
+}
+
+.browser-storage-notice .notice-content strong {
+	font-weight: 600;
+}
+
 .modal-footer {
 	display: flex;
 	justify-content: flex-end;

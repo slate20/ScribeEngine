@@ -3,7 +3,7 @@ import os
 import sys
 import subprocess
 
-version = '1.2'
+version = '1.2.1'
 
 def ensure_scribe_player_exists():
     """Ensure ScribePlayer exists before building the engine."""

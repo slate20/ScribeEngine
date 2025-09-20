@@ -129,6 +129,13 @@ def index():
     theme_css = game_engine._generate_theme_css()
     use_engine_defaults = game_engine.theme_config.get('use_engine_defaults', True)
 
+    # Only pass necessary config values to avoid exposing sensitive data
+    safe_config = {
+        'features': {
+            'save_system': game_engine.config.get('features', {}).get('save_system', 'server')
+        }
+    }
+
     return render_template('base.html',
                          game_title=game_engine.get_title(),
                          debug_mode=game_engine.debug_mode,
@@ -136,7 +143,9 @@ def index():
                          nav_content=nav_content,
                          theme_css=theme_css,
                          use_engine_defaults=use_engine_defaults,
-                         features=game_engine.config.get('features', {}))
+                         features=game_engine.config.get('features', {}),
+                         config=safe_config,
+                         project_name=os.path.basename(game_engine.project_path))
 
 @app.route('/passage/<passage_name>')
 def render_passage(passage_name):
@@ -153,8 +162,17 @@ def save_game():
     try:
         slot = request.json.get('slot', 1)
         description = request.json.get('description', '')
-        game_engine.save_game(slot, description)
-        return jsonify({'status': 'success', 'message': 'Game saved'}), 200
+
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - return JavaScript to execute
+            current_passage = game_engine.game_state.get('current_passage', 'Unknown')
+            serializable_state = game_engine.get_serializable_state()
+            js_result = game_engine.storage.save_game(slot, serializable_state, description, current_passage)
+            return jsonify(js_result), 200
+        else:
+            # Server storage mode - execute save directly
+            game_engine.save_game(slot, description)
+            return jsonify({'status': 'success', 'message': 'Game saved'}), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -162,13 +180,47 @@ def save_game():
 def load_game():
     try:
         slot = request.json.get('slot', 1)
-        success = game_engine.load_game(slot)
-        if success:
-            current_passage = game_engine.game_state.get('current_passage', 'start')
-            passage_html = game_engine.render_main_passage(current_passage)
-            return jsonify({'status': 'success', 'message': 'Game loaded', 'passage_html': passage_html}), 200
+
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - return JavaScript to execute
+            js_result = game_engine.storage.load_game(slot)
+            return jsonify(js_result), 200
         else:
-            return jsonify({'status': 'error', 'message': 'Save not found'}), 404
+            # Server storage mode - execute load directly
+            success = game_engine.load_game(slot)
+            if success:
+                current_passage = game_engine.game_state.get('current_passage', 'start')
+                passage_html = game_engine.render_main_passage(current_passage)
+                return jsonify({'status': 'success', 'message': 'Game loaded', 'passage_html': passage_html}), 200
+            else:
+                return jsonify({'status': 'error', 'message': 'Save not found'}), 404
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+@app.route('/browser-storage/load-complete', methods=['POST'])
+def browser_load_complete():
+    """Handle browser storage load completion - process loaded data from localStorage."""
+    try:
+        data = request.get_json()
+        slot = data.get('slot')
+        save_data = data.get('save_data')
+
+        if not save_data or 'game_state' not in save_data:
+            return jsonify({'status': 'error', 'message': 'Invalid save data'}), 400
+
+        # Restore the game state
+        game_engine.restore_state_from_dict(save_data['game_state'])
+
+        # Render current passage
+        current_passage = game_engine.game_state.get('current_passage', 'start')
+        passage_html = game_engine.render_main_passage(current_passage)
+
+        return jsonify({
+            'status': 'success',
+            'message': 'Game loaded from browser cache',
+            'passage_html': passage_html
+        }), 200
+
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -282,9 +334,15 @@ def get_saves_metadata():
     try:
         if game_engine is None:
             return jsonify({'status': 'error', 'message': 'No game project loaded'}), 400
-        
-        saves = game_engine.storage.list_saves_with_metadata()
-        return jsonify({'status': 'success', 'saves': saves}), 200
+
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - return JavaScript to execute
+            js_result = game_engine.storage.list_saves_with_metadata()
+            return jsonify(js_result), 200
+        else:
+            # Server storage mode - get saves directly
+            saves = game_engine.storage.list_saves_with_metadata()
+            return jsonify({'status': 'success', 'saves': saves}), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -292,11 +350,17 @@ def get_saves_metadata():
 def delete_save(slot):
     """Delete a specific save slot."""
     try:
-        success = game_engine.storage.delete_save(slot)
-        if success:
-            return jsonify({'status': 'success', 'message': 'Save deleted'}), 200
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - return JavaScript to execute
+            js_result = game_engine.storage.delete_save(slot)
+            return jsonify(js_result), 200
         else:
-            return jsonify({'status': 'error', 'message': 'Save not found or could not be deleted'}), 404
+            # Server storage mode - delete directly
+            success = game_engine.storage.delete_save(slot)
+            if success:
+                return jsonify({'status': 'success', 'message': 'Save deleted'}), 200
+            else:
+                return jsonify({'status': 'error', 'message': 'Save not found or could not be deleted'}), 404
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -304,20 +368,26 @@ def delete_save(slot):
 def export_save(slot):
     """Export a save file for download."""
     try:
-        save_data = game_engine.storage.export_save(slot)
-        if save_data:
-            from flask import Response
-            response_data = json.dumps(save_data, indent=2, default=str)
-            response = Response(
-                response_data,
-                mimetype='application/json',
-                headers={
-                    'Content-Disposition': f'attachment; filename=save_slot_{slot}.json'
-                }
-            )
-            return response
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - return JavaScript to execute
+            js_result = game_engine.storage.export_save(slot)
+            return jsonify(js_result), 200
         else:
-            return jsonify({'status': 'error', 'message': 'Save not found'}), 404
+            # Server storage mode - create download response
+            save_data = game_engine.storage.export_save(slot)
+            if save_data:
+                from flask import Response
+                response_data = json.dumps(save_data, indent=2, default=str)
+                response = Response(
+                    response_data,
+                    mimetype='application/json',
+                    headers={
+                        'Content-Disposition': f'attachment; filename=save_slot_{slot}.json'
+                    }
+                )
+                return response
+            else:
+                return jsonify({'status': 'error', 'message': 'Save not found'}), 404
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -325,24 +395,34 @@ def export_save(slot):
 def import_save(slot):
     """Import a save file."""
     try:
-        if 'file' not in request.files:
-            return jsonify({'status': 'error', 'message': 'No file provided'}), 400
-        
-        file = request.files['file']
-        if file.filename == '':
-            return jsonify({'status': 'error', 'message': 'No file selected'}), 400
-        
-        if not file.filename.endswith('.json'):
-            return jsonify({'status': 'error', 'message': 'Invalid file type. Please upload a JSON file'}), 400
-        
-        save_data = json.loads(file.read().decode('utf-8'))
-        success = game_engine.storage.import_save(slot, save_data)
-        
-        if success:
-            return jsonify({'status': 'success', 'message': 'Save imported successfully'}), 200
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - expect JSON data directly (from JavaScript)
+            save_data = request.get_json()
+            if not save_data:
+                return jsonify({'status': 'error', 'message': 'No save data provided'}), 400
+
+            js_result = game_engine.storage.import_save(slot, save_data)
+            return jsonify(js_result), 200
         else:
-            return jsonify({'status': 'error', 'message': 'Invalid save file format'}), 400
-            
+            # Server storage mode - handle file upload
+            if 'file' not in request.files:
+                return jsonify({'status': 'error', 'message': 'No file provided'}), 400
+
+            file = request.files['file']
+            if file.filename == '':
+                return jsonify({'status': 'error', 'message': 'No file selected'}), 400
+
+            if not file.filename.endswith('.json'):
+                return jsonify({'status': 'error', 'message': 'Invalid file type. Please upload a JSON file'}), 400
+
+            save_data = json.loads(file.read().decode('utf-8'))
+            success = game_engine.storage.import_save(slot, save_data)
+
+            if success:
+                return jsonify({'status': 'success', 'message': 'Save imported successfully'}), 200
+            else:
+                return jsonify({'status': 'error', 'message': 'Invalid save file format'}), 400
+
     except json.JSONDecodeError:
         return jsonify({'status': 'error', 'message': 'Invalid JSON file'}), 400
     except Exception as e:
@@ -352,12 +432,18 @@ def import_save(slot):
 def validate_save(slot):
     """Validate a save file's integrity."""
     try:
-        is_valid, message = game_engine.storage.validate_save(slot)
-        return jsonify({
-            'status': 'success' if is_valid else 'error',
-            'valid': is_valid,
-            'message': message
-        }), 200
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - return JavaScript to execute
+            js_result = game_engine.storage.validate_save(slot)
+            return jsonify(js_result), 200
+        else:
+            # Server storage mode - validate directly
+            is_valid, message = game_engine.storage.validate_save(slot)
+            return jsonify({
+                'status': 'success' if is_valid else 'error',
+                'valid': is_valid,
+                'message': message
+            }), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -369,8 +455,36 @@ def get_save_modal():
         if game_engine is None:
             return '<div class="error">No game project loaded</div>', 400
         
-        saves = game_engine.storage.list_saves_with_metadata()
-        return render_template('_fragments/_htmx_save_modal.html', saves=saves)
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - render modal with empty saves, JavaScript will populate it
+            safe_config = {
+                'features': {
+                    'save_system': game_engine.config.get('features', {}).get('save_system', 'server')
+                }
+            }
+            modal_html = render_template('_fragments/_htmx_save_modal.html', saves={}, config=safe_config, project_name=os.path.basename(game_engine.project_path))
+
+            # Get JavaScript to list saves
+            js_result = game_engine.storage.list_saves_with_metadata()
+
+            # Return modal with embedded JavaScript to populate saves
+            return f'''
+            {modal_html}
+            <script>
+                console.log('Loading browser storage save modal');
+                // Execute JavaScript to populate save list
+                {js_result['code']}
+            </script>
+            '''
+        else:
+            # Server storage mode - get saves directly
+            saves = game_engine.storage.list_saves_with_metadata()
+            safe_config = {
+                'features': {
+                    'save_system': game_engine.config.get('features', {}).get('save_system', 'server')
+                }
+            }
+            return render_template('_fragments/_htmx_save_modal.html', saves=saves, config=safe_config, project_name=os.path.basename(game_engine.project_path))
     except Exception as e:
         return f'<div class="error">Error loading save modal: {str(e)}</div>', 500
 
@@ -381,12 +495,40 @@ def get_load_modal():
         if game_engine is None:
             return '<div class="error">No game project loaded</div>', 400
         
-        saves = game_engine.storage.list_saves_with_metadata()
-        # Filter to only populated saves for loading
-        populated_saves = {slot: info for slot, info in saves.items() if info}
-        
-        return render_template('_fragments/_htmx_load_modal.html', 
-                             saves=saves, populated_saves=populated_saves)
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - render modal with empty saves, JavaScript will populate it
+            safe_config = {
+                'features': {
+                    'save_system': game_engine.config.get('features', {}).get('save_system', 'server')
+                }
+            }
+            modal_html = render_template('_fragments/_htmx_load_modal.html', saves={}, populated_saves={}, config=safe_config, project_name=os.path.basename(game_engine.project_path))
+
+            # Get JavaScript to list saves
+            js_result = game_engine.storage.list_saves_with_metadata()
+
+            # Return modal with embedded JavaScript to populate saves
+            return f'''
+            {modal_html}
+            <script>
+                console.log('Loading browser storage load modal');
+                // Execute JavaScript to populate save list
+                {js_result['code']}
+            </script>
+            '''
+        else:
+            # Server storage mode - get saves directly
+            saves = game_engine.storage.list_saves_with_metadata()
+            # Filter to only populated saves for loading
+            populated_saves = {slot: info for slot, info in saves.items() if info}
+
+            safe_config = {
+                'features': {
+                    'save_system': game_engine.config.get('features', {}).get('save_system', 'server')
+                }
+            }
+            return render_template('_fragments/_htmx_load_modal.html',
+                                 saves=saves, populated_saves=populated_saves, config=safe_config, project_name=os.path.basename(game_engine.project_path))
     except Exception as e:
         return f'<div class="error">Error loading load modal: {str(e)}</div>', 500
 
@@ -420,13 +562,28 @@ def select_load_slot():
             return '<div class="error">No game project loaded</div>', 400
             
         slot = int(request.form.get('slot', 1))
-        save_info = game_engine.storage.get_save_metadata(slot)
-        
-        if not save_info:
-            return '<div class="error">Save not found</div>', 404
-            
-        return render_template('_fragments/_load_details.html',
-                             slot=slot, save_info=save_info)
+
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - get metadata via JavaScript
+            js_result = game_engine.storage.get_save_metadata(slot)
+
+            return f'''
+            <script>
+                console.log('Getting save metadata for slot {slot}');
+                // Execute JavaScript to get save metadata
+                {js_result['code']}
+            </script>
+            <div id="load-details-placeholder">Loading save details...</div>
+            '''
+        else:
+            # Server storage mode - get metadata directly
+            save_info = game_engine.storage.get_save_metadata(slot)
+
+            if not save_info:
+                return '<div class="error">Save not found</div>', 404
+
+            return render_template('_fragments/_load_details.html',
+                                 slot=slot, save_info=save_info)
     except Exception as e:
         return f'<div class="error">Error selecting load slot: {str(e)}</div>', 500
 
@@ -439,18 +596,40 @@ def confirm_save():
             
         slot = int(request.form.get('slot', 1))
         description = request.form.get('save-description', '').strip()
-        
-        game_engine.save_game(slot, description)
-        
-        # Return success message and close modal
-        return '''
-        <div class="success-message">Game saved successfully!</div>
-        <script>
-            setTimeout(() => {
-                document.getElementById('modal-container').innerHTML = '';
-            }, 1500);
-        </script>
-        '''
+
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - get JavaScript and execute it
+            current_passage = game_engine.game_state.get('current_passage', 'Unknown')
+            serializable_state = game_engine.get_serializable_state()
+            js_result = game_engine.storage.save_game(slot, serializable_state, description, current_passage)
+
+            # Return HTML with embedded JavaScript execution
+            return f'''
+            <div class="success-message">Game saved successfully!</div>
+            <script>
+                console.log('Executing browser storage save from modal confirm');
+                // Execute the storage JavaScript
+                {js_result['code']}
+
+                // Close modal after short delay
+                setTimeout(() => {{
+                    document.getElementById('modal-container').innerHTML = '';
+                }}, 1500);
+            </script>
+            '''
+        else:
+            # Server storage mode - normal save
+            game_engine.save_game(slot, description)
+
+            # Return success message and close modal
+            return '''
+            <div class="success-message">Game saved successfully!</div>
+            <script>
+                setTimeout(() => {
+                    document.getElementById('modal-container').innerHTML = '';
+                }, 1500);
+            </script>
+            '''
     except Exception as e:
         return f'<div class="error">Error saving game: {str(e)}</div>', 500
 
@@ -462,14 +641,34 @@ def confirm_load():
             return '<div class="error">No game project loaded</div>', 400
             
         slot = int(request.form.get('slot', 1))
-        success = game_engine.load_game(slot)
-        
-        if success:
-            current_passage = game_engine.game_state.get('current_passage', 'start')
-            passage_html = game_engine.render_main_passage(current_passage)
-            return passage_html
+
+        if hasattr(game_engine, 'is_browser_storage') and game_engine.is_browser_storage:
+            # Browser storage mode - return JavaScript to load from localStorage
+            # The JavaScript will handle loading and sending data back to server
+            js_result = game_engine.storage.load_game(slot)
+
+            return f'''
+            <script>
+                console.log('Executing browser storage load from modal confirm');
+                // Execute the storage JavaScript which will call scribeStorageCallback
+                {js_result['code']}
+
+                // Close modal - the callback will handle the actual game loading
+                setTimeout(() => {{
+                    document.getElementById('modal-container').innerHTML = '';
+                }}, 500);
+            </script>
+            '''
         else:
-            return '<div class="error">Failed to load game</div>', 500
+            # Server storage mode - normal load
+            success = game_engine.load_game(slot)
+
+            if success:
+                current_passage = game_engine.game_state.get('current_passage', 'start')
+                passage_html = game_engine.render_main_passage(current_passage)
+                return passage_html
+            else:
+                return '<div class="error">Failed to load game</div>', 500
     except Exception as e:
         return f'<div class="error">Error loading game: {str(e)}</div>', 500
 
@@ -911,11 +1110,12 @@ def save_project_settings(project_name):
     # Update config with form data
     config['title'] = request.form.get('title', config.get('title'))
     config['author'] = request.form.get('author', config.get('author'))
-    config['start_passage'] = request.form.get('start_passage', config.get('start_passage'))
+    config['starting_passage'] = request.form.get('starting_passage', config.get('starting_passage'))
     config['icon_path'] = request.form.get('icon_path', config.get('icon_path', ''))
 
     # Features
     update_nested(config, ['features', 'use_default_player'], 'features.use_default_player' in request.form)
+    update_nested(config, ['features', 'save_system'], request.form.get('features.save_system', 'server'))
     # update_nested(config, ['features', 'last_passage_enabled'], 'features.last_passage_enabled' in request.form)
 
     # Navigation

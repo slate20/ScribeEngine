@@ -791,8 +791,8 @@ function initResizer() {
 	if (!hasCustomWidths) {
 		const sidebarWidth = document.querySelector('.sidebar').offsetWidth;
 		const availableWidth = container.offsetWidth - sidebarWidth - handle.offsetWidth;
-		leftPanel.style.width = `${availableWidth * 0.65}px`;
-		rightPanel.style.width = `${availableWidth * 0.35}px`;
+		leftPanel.style.width = `${availableWidth * 0.50}px`;
+		rightPanel.style.width = `${availableWidth * 0.50}px`;
 	}
 
 	let isDragging = false;
@@ -803,7 +803,7 @@ function initResizer() {
 		startX = e.clientX;
 		startLeftWidth = leftPanel.offsetWidth;
 		startRightWidth = rightPanel.offsetWidth;
-		
+
 		document.body.style.cursor = 'col-resize';
 		document.body.style.userSelect = 'none';
 		document.body.style.pointerEvents = 'none';
@@ -811,7 +811,7 @@ function initResizer() {
 
 	document.addEventListener('mousemove', function (e) {
 		if (!isDragging) return;
-		
+
 		const deltaX = e.clientX - startX;
 		const newLeftWidth = startLeftWidth + deltaX;
 		const newRightWidth = startRightWidth - deltaX;
@@ -830,6 +830,7 @@ function initResizer() {
 		document.body.style.pointerEvents = '';
 	});
 }
+
 
 /**
  * Initializes the draggable resizer for the debug terminal.
