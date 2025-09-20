@@ -22,6 +22,7 @@ import config_manager
 import app
 from app import reset_game_engine
 from engine.asset_packer import AssetPacker
+from update_checker import check_for_updates_cli
 # import webview_wrapper
 
 def clear_screen():
@@ -475,22 +476,39 @@ flask_server_running = False
 
 def main_menu(project_root):
     global active_project_path
+
+    # Check for updates on first menu display
+    update_checked = False
+
     while True:
         clear_screen()
         print("""
-  █████████                      ███  █████                 ██████████                      ███                     
- ███▒▒▒▒▒███                    ▒▒▒  ▒▒███                 ▒▒███▒▒▒▒▒█                     ▒▒▒                      
-▒███    ▒▒▒   ██████  ████████  ████  ▒███████   ██████     ▒███  █ ▒  ████████    ███████ ████  ████████    ██████ 
+  █████████                      ███  █████                 ██████████                      ███
+ ███▒▒▒▒▒███                    ▒▒▒  ▒▒███                 ▒▒███▒▒▒▒▒█                     ▒▒▒
+▒███    ▒▒▒   ██████  ████████  ████  ▒███████   ██████     ▒███  █ ▒  ████████    ███████ ████  ████████    ██████
 ▒▒█████████  ███▒▒███▒▒███▒▒███▒▒███  ▒███▒▒███ ███▒▒███    ▒██████   ▒▒███▒▒███  ███▒▒███▒▒███ ▒▒███▒▒███  ███▒▒███
- ▒▒▒▒▒▒▒▒███▒███ ▒▒▒  ▒███ ▒▒▒  ▒███  ▒███ ▒███▒███████     ▒███▒▒█    ▒███ ▒███ ▒███ ▒███ ▒███  ▒███ ▒███ ▒███████ 
- ███    ▒███▒███  ███ ▒███      ▒███  ▒███ ▒███▒███▒▒▒      ▒███ ▒   █ ▒███ ▒███ ▒███ ▒███ ▒███  ▒███ ▒███ ▒███▒▒▒  
-▒▒█████████ ▒▒██████  █████     █████ ████████ ▒▒██████     ██████████ ████ █████▒▒███████ █████ ████ █████▒▒██████ 
- ▒▒▒▒▒▒▒▒▒   ▒▒▒▒▒▒  ▒▒▒▒▒     ▒▒▒▒▒ ▒▒▒▒▒▒▒▒   ▒▒▒▒▒▒     ▒▒▒▒▒▒▒▒▒▒ ▒▒▒▒ ▒▒▒▒▒  ▒▒▒▒▒███▒▒▒▒▒ ▒▒▒▒ ▒▒▒▒▒  ▒▒▒▒▒▒  
-                                                                                  ███ ▒███                          
-                                                                                 ▒▒██████                           
+ ▒▒▒▒▒▒▒▒███▒███ ▒▒▒  ▒███ ▒▒▒  ▒███  ▒███ ▒███▒███████     ▒███▒▒█    ▒███ ▒███ ▒███ ▒███ ▒███  ▒███ ▒███ ▒███████
+ ███    ▒███▒███  ███ ▒███      ▒███  ▒███ ▒███▒███▒▒▒      ▒███ ▒   █ ▒███ ▒███ ▒███ ▒███ ▒███  ▒███ ▒███ ▒███▒▒▒
+▒▒█████████ ▒▒██████  █████     █████ ████████ ▒▒██████     ██████████ ████ █████▒▒███████ █████ ████ █████▒▒██████
+ ▒▒▒▒▒▒▒▒▒   ▒▒▒▒▒▒  ▒▒▒▒▒     ▒▒▒▒▒ ▒▒▒▒▒▒▒▒   ▒▒▒▒▒▒     ▒▒▒▒▒▒▒▒▒▒ ▒▒▒▒ ▒▒▒▒▒  ▒▒▒▒▒███▒▒▒▒▒ ▒▒▒▒ ▒▒▒▒▒  ▒▒▒▒▒▒
+                                                                                  ███ ▒███
+                                                                                 ▒▒██████
                                                                                   ▒▒▒▒▒▒
         """)
         print(f"---(Projects Root: {project_root}) ---")
+
+        # Check for updates on first display
+        if not update_checked:
+            update_checked = True
+            try:
+                if check_for_updates_cli():
+                    # If user chose to update, the application will restart
+                    # This code will only execute if update was declined
+                    continue
+            except Exception:
+                # Silently continue if update check fails
+                pass
+
         print("\nMain Menu:")
         print("1. Create New Project")
         print("2. Load Existing Project")

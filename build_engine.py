@@ -2,8 +2,60 @@ import PyInstaller.__main__
 import os
 import sys
 import subprocess
+from datetime import datetime
 
-version = '1.3.0'
+# Get version from single source of truth
+from version_info import get_version
+version = get_version()
+
+print(f"Building Scribe Engine v{version}")
+
+def update_version_info():
+    """Update version_info.py with current version and build metadata."""
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    version_info_path = os.path.join(script_dir, 'version_info.py')
+
+    # Get git commit hash if available
+    commit_hash = None
+    try:
+        result = subprocess.run(['git', 'rev-parse', '--short', 'HEAD'],
+                               capture_output=True, text=True, cwd=script_dir)
+        if result.returncode == 0:
+            commit_hash = result.stdout.strip()
+    except Exception:
+        pass
+
+    # Read current version_info.py
+    with open(version_info_path, 'r') as f:
+        content = f.read()
+
+    # Update version using regex to handle any existing version
+    import re
+    content = re.sub(r'__version__\s*=\s*["\'][^"\']*["\']', f'__version__ = "{version}"', content)
+
+    # Update VERSION_INFO
+    version_parts = version.split('.')
+    major, minor, patch = int(version_parts[0]), int(version_parts[1]), int(version_parts[2])
+    build_date = datetime.now().isoformat()
+
+    version_info_block = f'''VERSION_INFO = {{
+    "major": {major},
+    "minor": {minor},
+    "patch": {patch},
+    "version": "{version}",
+    "build_date": "{build_date}",
+    "commit_hash": {f'"{commit_hash}"' if commit_hash else 'None'},
+}}'''
+
+    # Replace VERSION_INFO block
+    import re
+    content = re.sub(r'VERSION_INFO = \{[^}]+\}', version_info_block, content, flags=re.DOTALL)
+
+    # Write updated content
+    with open(version_info_path, 'w') as f:
+        f.write(content)
+
+    print(f"Updated version_info.py: v{version} (commit: {commit_hash or 'unknown'})")
 
 def ensure_scribe_player_exists():
     """Ensure ScribePlayer exists before building the engine."""
@@ -41,6 +93,9 @@ def ensure_scribe_player_exists():
     return True
 
 def build_engine_executable():
+    # Update version info before building
+    update_version_info()
+
     # Ensure ScribePlayer.exe exists first
     if not ensure_scribe_player_exists():
         print("Cannot proceed with engine build without ScribePlayer.exe")
@@ -86,6 +141,8 @@ def build_engine_executable():
     game_server_wrapper_path = os.path.join(script_dir, 'game_server_wrapper.py')
     config_manager_path = os.path.join(script_dir, 'config_manager.py')
     loading_window_path = os.path.join(script_dir, 'loading_window.py')
+    version_info_path = os.path.join(script_dir, 'version_info.py')
+    update_checker_path = os.path.join(script_dir, 'update_checker.py')
 
     # ScribePlayer path (to embed as resource)
     if sys.platform.startswith('win'):
@@ -109,6 +166,8 @@ def build_engine_executable():
         f'--add-data={game_server_wrapper_path}{os.pathsep}.',
         f'--add-data={config_manager_path}{os.pathsep}.',
         f'--add-data={loading_window_path}{os.pathsep}.',
+        f'--add-data={version_info_path}{os.pathsep}.',
+        f'--add-data={update_checker_path}{os.pathsep}.',
 
         # Add directories
         f'--add-data={engine_dir}{os.pathsep}engine',
