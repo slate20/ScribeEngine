@@ -9,6 +9,7 @@ from .parser import GameParser
 from .executor import SafeExecutor
 from .state import StateManager
 from .storage import JSONStorage
+from .browser_storage import BrowserStorage
 
 class GameEngine:
     def __init__(self, project_path, debug_mode=False):
@@ -19,9 +20,11 @@ class GameEngine:
         self.systems = {}
 
         self.parser = GameParser()
-        self.storage = JSONStorage(save_dir=os.path.join(self.project_path, 'saves'), project_path=self.project_path)
-        
+
+        # Initialize storage after loading project config
+        self.storage = None
         self.load_project()
+        self._initialize_storage()
 
     def update_debug_mode(self, debug_mode):
         """Update the debug mode setting and reinitialize executor if needed."""
@@ -64,15 +67,34 @@ class GameEngine:
             passages_from_file = self.parser.parse_file(passage_file)
             self.passages.update(passages_from_file)
 
-        # Auto-instantiate Player class if found
-        systems = self.executor.get_systems()
-        if 'Player' in systems and isinstance(systems['Player'], type):
-            self.game_state['player'] = systems['Player']()
-
+        # Debug information (moved back from _initialize_storage)
         if self.debug_mode:
             print(f"Loaded project '{self.config.get('title', 'Untitled')}'")
             print(f"  - {len(self.passages)} passages from {len(passage_files)} file(s)")
             print(f"  - Systems from {len(python_files)} file(s)")
+
+    def _initialize_storage(self):
+        """Initialize the appropriate storage system based on project configuration."""
+        features = self.config.get('features', {})
+        save_system = features.get('save_system', 'server')
+
+        if save_system == 'browser':
+            self.storage = BrowserStorage(
+                save_dir=os.path.join(self.project_path, 'saves'),
+                project_path=self.project_path
+            )
+            self.is_browser_storage = True
+        else:
+            self.storage = JSONStorage(
+                save_dir=os.path.join(self.project_path, 'saves'),
+                project_path=self.project_path
+            )
+            self.is_browser_storage = False
+
+        # Auto-instantiate Player class if found
+        systems = self.executor.get_systems()
+        if 'Player' in systems and isinstance(systems['Player'], type):
+            self.game_state['player'] = systems['Player']()
 
     def _process_passage_content(self, passage_name, executor, use_raw_content=False):
         """Helper to execute Python blocks and render Jinja for a passage."""

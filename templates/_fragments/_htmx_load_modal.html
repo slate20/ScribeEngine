@@ -6,6 +6,17 @@
             <button class="modal-close" hx-post="/modal/close" hx-target="#modal-container">&times;</button>
         </div>
         <div class="modal-body">
+            {% if config.get('features', {}).get('save_system') == 'browser' %}
+            <div class="browser-storage-notice">
+                <div class="notice-header">
+                    <i class="icon-info-circle"></i>
+                    Browser Cache Saves
+                </div>
+                <div class="notice-content">
+                    Loading from your browser's local cache. These saves are device-specific and may be lost if you clear browser data.
+                </div>
+            </div>
+            {% endif %}
             <div class="save-slots-grid">
                 {% for slot in range(1, 7) %}
                     {% set save_info = saves.get(slot) %}

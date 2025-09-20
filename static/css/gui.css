@@ -206,6 +206,7 @@ body {
 	margin-top: 60px;
 	height: calc(100vh - 60px);
 	width: 100%;
+	overflow: hidden;
 }
 
 .main-content.preview-hidden .preview-panel,
@@ -518,7 +519,8 @@ body {
 	display: flex;
 	flex-direction: column;
 	min-width: 300px;
-	flex: 0 0 auto;
+	flex: 1 1 auto;
+	width: 65%;
 }
 
 .editor-header {
@@ -624,7 +626,9 @@ body {
 #codemirror-container,
 .CodeMirror {
 	height: 100% !important;
+	width: 100% !important;
 	font-size: var(--editor-font-size, 14px);
+	box-sizing: border-box;
 }
 
 .sr-only {
@@ -740,7 +744,8 @@ body {
 	display: flex;
 	flex-direction: column;
 	min-width: 300px;
-	flex: 0 0 auto;
+	flex: 1 1 auto;
+	width: 35%;
 }
 
 .preview-panel.collapsed {

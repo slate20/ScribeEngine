@@ -169,4 +169,51 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     // Save/Load button handlers are now in the modal template to ensure proper loading order
+
+    // Browser storage JavaScript execution handler
+    function executeServerJavaScript(response) {
+        if (response && response.type === 'javascript' && response.code) {
+            console.log('About to execute JavaScript code:', response.code.substring(0, 100) + '...');
+            try {
+                eval(response.code);
+                console.log('JavaScript execution completed successfully');
+            } catch (error) {
+                console.error('Error executing server JavaScript:', error);
+                if (window.showNotification) {
+                    window.showNotification('Failed to execute storage operation', 'error');
+                }
+            }
+        } else {
+            console.log('Response does not contain JavaScript to execute:', response);
+        }
+    }
+
+    // Enhanced HTMX integration for browser storage
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        // Add project info to requests if needed
+        const projectName = document.querySelector('body').dataset.projectName;
+        if (projectName) {
+            evt.detail.xhr.setRequestHeader('X-Project-Name', projectName);
+        }
+    });
+
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        // Handle JavaScript responses from server
+        if (evt.detail.xhr.responseText) {
+            try {
+                const response = JSON.parse(evt.detail.xhr.responseText);
+                console.log('HTMX Response:', response);
+                if (response.type === 'javascript') {
+                    console.log('Executing browser storage JavaScript');
+                }
+                executeServerJavaScript(response);
+            } catch (e) {
+                // Response might not be JSON, ignore
+                console.log('HTMX response was not JSON:', evt.detail.xhr.responseText);
+            }
+        }
+    });
+
+    // Make function globally available
+    window.executeServerJavaScript = executeServerJavaScript;
 });
