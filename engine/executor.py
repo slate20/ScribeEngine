@@ -13,7 +13,7 @@ class SafeExecutor:
         self.systems = {}
 
     def load_systems(self, python_files: List[str]):
-        """Load functions and classes from .py files into the executor."""
+        """Load functions, classes, AND module-level variables from .py files into the executor."""
         self.debug_print(f"Found {len(python_files)} Python files to load.")
         temp_globals = {}
         # First, execute all code in a shared temporary environment
@@ -25,10 +25,16 @@ class SafeExecutor:
                 except Exception as e:
                     print(f"Error loading system file {py_file}: {e}")
 
-        # Then, extract only the functions and classes
+        # Then, extract functions, classes, AND non-private variables
         for name, value in temp_globals.items():
-            if isinstance(value, (FunctionType, type)) and not name.startswith('__'):
-                self.systems[name] = value
+            if not name.startswith('__'):  # Skip private/magic attributes
+                if isinstance(value, (FunctionType, type)):
+                    self.systems[name] = value
+                    self.debug_print(f"Loaded {type(value).__name__}: {name}")
+                elif not callable(value) and not inspect.ismodule(value):
+                    # Include non-callable, non-module objects (dicts, lists, etc.)
+                    self.systems[name] = value
+                    self.debug_print(f"Loaded variable: {name} = {type(value).__name__}")
 
     def get_systems(self) -> Dict[str, Any]:
         return self.systems
@@ -53,6 +59,7 @@ class SafeExecutor:
             'min': min, 'max': max, 'sum': sum, 'abs': abs, 'round': round,
             'print': self.debug_print, 'isinstance': isinstance,
             'hasattr': hasattr, 'getattr': getattr, 'setattr': setattr,
+            'locals': lambda: safe_globals, 'globals': lambda: safe_globals,
             '__import__': custom_import
         }
         safe_globals['__builtins__'] = safe_builtins

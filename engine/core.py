@@ -435,52 +435,159 @@ class GameEngine:
     
     def get_serializable_state(self):
         """
-        Get game state in JSON-serializable format
+        Get game state in JSON-serializable format with enhanced auto-serialization
         """
         serializable_state = {}
         for key, value in self.game_state.items():
-            if hasattr(value, 'to_dict'):
-                # Handle Player objects with to_dict method (DefaultPlayer)
-                serializable_state[key] = value.to_dict()
-            elif hasattr(value, '__dict__'):
-                # Handle custom Player classes and other objects
-                obj_dict = {k: v for k, v in vars(value).items() if not k.startswith('__') and not callable(v)}
-                obj_dict['__class_name__'] = type(value).__name__
-                serializable_state[key] = obj_dict
-            else:
-                # Handle primitives and basic types
-                serializable_state[key] = value
+            try:
+                serializable_state[key] = self._auto_serialize_object(value)
+            except Exception as e:
+                if self.debug_mode:
+                    print(f"Warning: Failed to serialize '{key}' ({type(value).__name__}): {e}")
+                # Skip objects that can't be serialized
+                continue
         return serializable_state
+
+    def _auto_serialize_object(self, obj):
+        """
+        Automatically serialize objects with fallback hierarchy:
+        1. User-defined to_dict() method (backward compatibility)
+        2. Python's __getstate__ protocol
+        3. Automatic introspection for objects with __dict__
+        4. Return as-is for basic types
+        """
+        # Handle basic JSON-serializable types
+        if obj is None or isinstance(obj, (str, int, float, bool)):
+            return obj
+
+        # Handle collections
+        if isinstance(obj, list):
+            return [self._auto_serialize_object(item) for item in obj]
+
+        if isinstance(obj, dict):
+            return {k: self._auto_serialize_object(v) for k, v in obj.items()}
+
+        if isinstance(obj, tuple):
+            return [self._auto_serialize_object(item) for item in obj]
+
+        # 1. User-defined methods (backward compatibility)
+        if hasattr(obj, 'to_dict') and callable(getattr(obj, 'to_dict')):
+            return obj.to_dict()
+
+        # 2. Python's standard pickling protocol (only if explicitly overridden)
+        if (hasattr(obj, '__getstate__') and callable(getattr(obj, '__getstate__')) and
+            '__getstate__' in type(obj).__dict__):  # Only if explicitly defined by the class
+            return {
+                '__class_name__': type(obj).__name__,
+                '__state__': obj.__getstate__()
+            }
+
+        # 3. Automatic introspection for objects with __dict__
+        if hasattr(obj, '__dict__'):
+            obj_dict = {}
+            for attr_name, attr_value in vars(obj).items():
+                if not attr_name.startswith('__') and not callable(attr_value):
+                    try:
+                        obj_dict[attr_name] = self._auto_serialize_object(attr_value)
+                    except Exception:
+                        # Skip attributes that can't be serialized
+                        continue
+            obj_dict['__class_name__'] = type(obj).__name__
+            return obj_dict
+
+        # 4. For everything else, try JSON serialization (will raise if not supported)
+        import json
+        try:
+            json.dumps(obj)  # Test if it's JSON serializable
+            return obj
+        except (TypeError, ValueError):
+            raise TypeError(f"Object of type {type(obj).__name__} is not serializable. "
+                          f"Consider adding a to_dict() method or using basic Python types.")
     
     def restore_state_from_dict(self, state_dict: dict):
         """
-        Restore game state from serialized dictionary
+        Restore game state from serialized dictionary with enhanced auto-restoration
         """
         self.game_state.clear()
-        
+
         for key, value in state_dict.items():
-            if isinstance(value, dict) and '__class_name__' in value:
-                # Restore Player objects
-                class_name = value['__class_name__']
-                if class_name == 'DefaultPlayer':
-                    from .state import DefaultPlayer
-                    self.game_state[key] = DefaultPlayer.from_dict(value)
-                else:
-                    # Handle custom Player classes
-                    systems = self.executor.get_systems()
-                    if class_name in systems and isinstance(systems[class_name], type):
-                        # Create instance and set attributes
-                        player_instance = systems[class_name]()
-                        for attr_name, attr_value in value.items():
-                            if not attr_name.startswith('__'):
-                                setattr(player_instance, attr_name, attr_value)
-                        self.game_state[key] = player_instance
-                    else:
-                        # Fallback to dictionary if class not found
-                        self.game_state[key] = value
-            else:
-                # Regular values
+            try:
+                self.game_state[key] = self._auto_restore_object(value)
+            except Exception as e:
+                if self.debug_mode:
+                    print(f"Warning: Failed to restore '{key}': {e}")
+                # Fallback to raw value
                 self.game_state[key] = value
+
+    def _auto_restore_object(self, data):
+        """
+        Automatically restore objects with fallback hierarchy:
+        1. DefaultPlayer special case (backward compatibility)
+        2. Objects with __state__ (from __getstate__)
+        3. Objects with __class_name__ (from automatic introspection)
+        4. Collections (lists, dicts)
+        5. Return as-is for basic types
+        """
+        # Handle basic types
+        if data is None or isinstance(data, (str, int, float, bool)):
+            return data
+
+        # Handle lists
+        if isinstance(data, list):
+            return [self._auto_restore_object(item) for item in data]
+
+        # Handle dictionaries
+        if isinstance(data, dict):
+            # Special case: DefaultPlayer
+            if data.get('__class_name__') == 'DefaultPlayer':
+                from .state import DefaultPlayer
+                return DefaultPlayer.from_dict(data)
+
+            # Handle objects with __state__ (from __getstate__)
+            if '__state__' in data and '__class_name__' in data:
+                class_name = data['__class_name__']
+                systems = self.executor.get_systems()
+                if class_name in systems and isinstance(systems[class_name], type):
+                    try:
+                        obj = systems[class_name]()
+                        if hasattr(obj, '__setstate__'):
+                            obj.__setstate__(data['__state__'])
+                            return obj
+                    except Exception as e:
+                        if self.debug_mode:
+                            print(f"Failed to restore {class_name} using __setstate__: {e}")
+
+            # Handle objects with __class_name__ (from automatic introspection)
+            elif '__class_name__' in data:
+                class_name = data['__class_name__']
+                systems = self.executor.get_systems()
+                if class_name in systems and isinstance(systems[class_name], type):
+                    try:
+                        # Create new instance
+                        obj = systems[class_name]()
+
+                        # Check if it has from_dict method (backward compatibility)
+                        if hasattr(obj, 'from_dict') and callable(getattr(obj, 'from_dict')):
+                            obj.from_dict(data)
+                            return obj
+
+                        # Otherwise, restore attributes automatically
+                        for attr_name, attr_value in data.items():
+                            if not attr_name.startswith('__'):
+                                restored_value = self._auto_restore_object(attr_value)
+                                setattr(obj, attr_name, restored_value)
+                        return obj
+                    except Exception as e:
+                        if self.debug_mode:
+                            print(f"Failed to restore {class_name}: {e}")
+                        # Fallback to dictionary
+                        return {k: self._auto_restore_object(v) for k, v in data.items()}
+
+            # Regular dictionary - restore nested objects
+            return {k: self._auto_restore_object(v) for k, v in data.items()}
+
+        # Return as-is for unknown types
+        return data
 
     def reset_game_state(self):
         """

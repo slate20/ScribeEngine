@@ -52,7 +52,7 @@ class BrowserStorage:
             'version': '2.0',
 
             # Engine compatibility
-            'engine_version': '2.0',
+            'engine_version': '1.3',
             'save_format_version': 2
         }
 
@@ -186,7 +186,7 @@ class BrowserStorage:
                     created_timestamp: parsed.created_timestamp,
                     playtime: parsed.playtime || 0,
                     version: parsed.version || '1.0',
-                    engine_version: parsed.engine_version || '1.0'
+                    engine_version: parsed.engine_version || '1.3'
                 }};
 
                 if (window.scribeStorageCallback) {{
@@ -253,7 +253,7 @@ class BrowserStorage:
                             created_timestamp: parsed.created_timestamp,
                             playtime: parsed.playtime || 0,
                             version: parsed.version || '1.0',
-                            engine_version: parsed.engine_version || '1.0'
+                            engine_version: parsed.engine_version || '1.3'
                         }};
                     }} catch (parseError) {{
                         console.warn('Failed to parse save slot', slot, parseError);
