@@ -91,7 +91,7 @@ class JSONStorage:
             'version': '2.0',
             
             # Engine compatibility
-            'engine_version': '2.0',
+            'engine_version': '1.3',
             'save_format_version': 2
         }
         
@@ -129,7 +129,7 @@ class JSONStorage:
                 'created_timestamp': save_data.get('created_timestamp'),
                 'playtime': save_data.get('playtime', 0),
                 'version': save_data.get('version', '1.0'),
-                'engine_version': save_data.get('engine_version', '1.0')
+                'engine_version': save_data.get('engine_version', '1.3')
             }
         return None
     
