@@ -225,6 +225,11 @@ class GameEngine:
         if 'PostPassage' in self.passages:
             html_parts.append(self.render_special_passage('PostPassage', executor))
 
+        # Add NavMenu out-of-band swap to update navigation with current game state
+        if 'NavMenu' in self.passages:
+            nav_content = self.render_special_passage('NavMenu', executor)
+            html_parts.append(f'<div id="main-nav-content" hx-swap-oob="innerHTML">{nav_content}</div>')
+
         return "".join(html_parts)
 
     def execute_python_blocks(self, passage, executor, content_to_process=None):

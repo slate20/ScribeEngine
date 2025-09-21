@@ -99,6 +99,9 @@
 					<div class="editor-header">
 						<span class="editor-title" id="editor-file-title">No file open</span>
 						<div class="editor-actions">
+							<button class="btn btn-secondary" id="color-picker-btn" title="Color Picker Tool">
+								<i data-lucide="palette"></i>
+							</button>
 							<label for="font-size-selector">Font Size</label>
 							<select id="font-size-selector" class="btn btn-secondary">
 								<option value="12px">12px</option>
@@ -152,6 +155,56 @@
 				<button type="button" class="btn btn-success" id="build-close-btn" onclick="hideBuildModal(true)" style="display: none;">
 					<i data-lucide="check"></i> Close
 				</button>
+			</div>
+		</div>
+	</div>
+
+	<!-- Color Picker Modal -->
+	<div id="color-picker-modal" class="modal" style="display: none;">
+		<div class="modal-content color-picker-modal-content">
+			<div class="modal-header">
+				<h3>Color Picker Tool</h3>
+				<button class="modal-close" onclick="closeColorPickerModal()">&times;</button>
+			</div>
+			<div class="modal-body">
+				<div class="color-picker-container">
+					<div class="color-input-section">
+						<label for="color-input">Select Color:</label>
+						<input type="color" id="color-input" value="#3498db">
+					</div>
+					<div class="color-formats">
+						<div class="color-format-row">
+							<label>HEX:</label>
+							<div class="color-value-container">
+								<span class="color-value" id="hex-value">#3498db</span>
+								<button class="copy-btn" onclick="copyColorValue('hex')" title="Copy to clipboard">
+									<i data-lucide="copy"></i>
+								</button>
+							</div>
+						</div>
+						<div class="color-format-row">
+							<label>RGB:</label>
+							<div class="color-value-container">
+								<span class="color-value" id="rgb-value">rgb(52, 152, 219)</span>
+								<button class="copy-btn" onclick="copyColorValue('rgb')" title="Copy to clipboard">
+									<i data-lucide="copy"></i>
+								</button>
+							</div>
+						</div>
+						<div class="color-format-row">
+							<label>HSL:</label>
+							<div class="color-value-container">
+								<span class="color-value" id="hsl-value">hsl(204, 70%, 53%)</span>
+								<button class="copy-btn" onclick="copyColorValue('hsl')" title="Copy to clipboard">
+									<i data-lucide="copy"></i>
+								</button>
+							</div>
+						</div>
+					</div>
+					<div class="color-preview">
+						<div class="color-swatch" id="color-swatch"></div>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

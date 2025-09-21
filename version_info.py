@@ -10,16 +10,16 @@ be the primary source of truth for version checking.
 """
 
 # Current version of Scribe Engine
-__version__ = "1.3.0"
+__version__ = "1.3.1"
 
 # Version metadata
 VERSION_INFO = {
     "major": 1,
     "minor": 3,
-    "patch": 0,
-    "version": "1.3.0",
-    "build_date": "2025-09-20T18:38:35.797683",
-    "commit_hash": "20810ff",
+    "patch": 1,
+    "version": "1.3.1",
+    "build_date": None,
+    "commit_hash": None,
 }
 
 def get_version() -> str:

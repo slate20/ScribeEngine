@@ -1552,3 +1552,176 @@ function copyAssetPath(assetPath) {
         document.body.removeChild(textarea);
     }
 }
+
+// Color Picker Functions
+function openColorPickerModal() {
+    const modal = document.getElementById('color-picker-modal');
+    const colorInput = document.getElementById('color-input');
+
+    if (!modal) {
+        console.error('Color picker modal not found');
+        return;
+    }
+
+    modal.style.display = 'flex';
+    modal.classList.add('show');
+
+    // Initialize color picker with default color
+    updateColorDisplay(colorInput.value);
+
+    // Remove any existing event listeners to prevent duplicates
+    const newColorInput = colorInput.cloneNode(true);
+    colorInput.parentNode.replaceChild(newColorInput, colorInput);
+
+    // Add event listener for color changes
+    newColorInput.addEventListener('input', function() {
+        updateColorDisplay(this.value);
+    });
+}
+
+function closeColorPickerModal() {
+    const modal = document.getElementById('color-picker-modal');
+    modal.classList.remove('show');
+    setTimeout(() => {
+        modal.style.display = 'none';
+    }, 300);
+}
+
+function updateColorDisplay(hexColor) {
+    const hexValue = document.getElementById('hex-value');
+    const rgbValue = document.getElementById('rgb-value');
+    const hslValue = document.getElementById('hsl-value');
+    const colorSwatch = document.getElementById('color-swatch');
+
+    // Update hex value
+    hexValue.textContent = hexColor.toUpperCase();
+
+    // Convert to RGB
+    const rgb = hexToRgb(hexColor);
+    rgbValue.textContent = `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+
+    // Convert to HSL
+    const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
+    hslValue.textContent = `hsl(${hsl.h}, ${hsl.s}%, ${hsl.l}%)`;
+
+    // Update color swatch
+    colorSwatch.style.backgroundColor = hexColor;
+}
+
+function hexToRgb(hex) {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+    } : null;
+}
+
+function rgbToHsl(r, g, b) {
+    r /= 255;
+    g /= 255;
+    b /= 255;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    let h, s, l = (max + min) / 2;
+
+    if (max === min) {
+        h = s = 0; // Achromatic
+    } else {
+        const d = max - min;
+        s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+
+        switch (max) {
+            case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+            case g: h = (b - r) / d + 2; break;
+            case b: h = (r - g) / d + 4; break;
+        }
+        h /= 6;
+    }
+
+    return {
+        h: Math.round(h * 360),
+        s: Math.round(s * 100),
+        l: Math.round(l * 100)
+    };
+}
+
+function copyColorValue(format) {
+    let value;
+    let button;
+
+    switch (format) {
+        case 'hex':
+            value = document.getElementById('hex-value').textContent;
+            button = document.querySelector('.color-format-row:nth-child(1) .copy-btn');
+            break;
+        case 'rgb':
+            value = document.getElementById('rgb-value').textContent;
+            button = document.querySelector('.color-format-row:nth-child(2) .copy-btn');
+            break;
+        case 'hsl':
+            value = document.getElementById('hsl-value').textContent;
+            button = document.querySelector('.color-format-row:nth-child(3) .copy-btn');
+            break;
+    }
+
+    if (value && button) {
+        // Create a temporary textarea element for copying
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+
+        try {
+            textarea.select();
+            textarea.setSelectionRange(0, textarea.value.length);
+            const success = document.execCommand('copy');
+
+            if (success) {
+                // Show copy feedback
+                button.classList.add('copied');
+                const originalIcon = button.innerHTML;
+                button.innerHTML = '<i data-lucide="check"></i>';
+                lucide.createIcons();
+
+                setTimeout(() => {
+                    button.classList.remove('copied');
+                    button.innerHTML = originalIcon;
+                    lucide.createIcons();
+                }, 1500);
+
+                showNotification(`Copied: ${value}`, 'success');
+            } else {
+                showNotification('Failed to copy to clipboard', 'error');
+            }
+        } catch (error) {
+            console.error('Copy failed:', error);
+            showNotification('Failed to copy to clipboard', 'error');
+        } finally {
+            document.body.removeChild(textarea);
+        }
+    }
+}
+
+// Initialize color picker button event listener when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Use event delegation since the button might be added dynamically
+    document.addEventListener('click', function(e) {
+        // Check if the clicked element is the color picker button or a child of it
+        const colorPickerBtn = e.target.closest('#color-picker-btn');
+        if (colorPickerBtn) {
+            e.preventDefault();
+            openColorPickerModal();
+        }
+    });
+
+    // Close modal when clicking outside
+    document.addEventListener('click', function(e) {
+        const modal = document.getElementById('color-picker-modal');
+        if (modal && e.target === modal) {
+            closeColorPickerModal();
+        }
+    });
+});

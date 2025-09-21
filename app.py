@@ -123,8 +123,6 @@ def index():
 
     nav_config = game_engine.config.get('nav', {'enabled': True, 'position': 'horizontal'})
     nav_content = ''
-    if nav_config.get('enabled', False):
-        nav_content = game_engine.render_special_passage('NavMenu')
 
     theme_css = game_engine._generate_theme_css()
     use_engine_defaults = game_engine.theme_config.get('use_engine_defaults', True)
