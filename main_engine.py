@@ -123,11 +123,11 @@ You venture forth and discover a {{{{ found_item }}}}!
     with open(os.path.join(project_path, 'story.tgame'), 'w') as f:
         f.write(default_story_tgame)
 
-    # Optional: Create placeholder custom_logic.py and custom.css
+    # Optional: Create placeholder custom_logic.py and game_theme.css
     with open(os.path.join(project_path, 'custom_logic.py'), 'w') as f:
         f.write("# Custom Python classes and functions for your game\n# Example: Create custom Player class, helper functions, etc.\n")
 
-    # Create custom.css with theme.css content as a starting point
+    # Create game_theme.css with theme.css content as a starting point
     custom_css_content = """:root {
 	/* Earthy & Fantasy Colors */
 	--primary-color: #4A6B4A;
@@ -315,11 +315,26 @@ body {
 	box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
 }
 
+/* Action button styling */
+.inline-action-btn {
+	background: var(--button-bg);
+	border-color: var(--border-color);
+	color: white;
+}
+
+.inline-action-btn:hover {
+	background: var(--secondary-color);
+	border-color: var(--secondary-color);
+	color: white;
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 /* Custom styles for your game - modify the CSS variables above or add new styles below */
 /* Example: .special-text { color: gold; font-weight: bold; } */
 """
 
-    with open(os.path.join(project_path, 'custom.css'), 'w') as f:
+    with open(os.path.join(project_path, 'game_theme.css'), 'w') as f:
         f.write(custom_css_content)
 
     print(f"Project '{project_name}' created successfully.")

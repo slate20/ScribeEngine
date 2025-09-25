@@ -150,18 +150,25 @@ body {
 	/* Remove shadow */
 }
 
+/* Action button styling */
+.inline-action-btn {
+	background: var(--button-bg);
+	border-color: var(--border-color);
+	color: white;
+}
+
+.inline-action-btn:hover {
+	background: var(--secondary-color);
+	border-color: var(--secondary-color);
+	color: white;
+	transform: translateY(-1px);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
 .debug-error {
 	background: var(--error-bg);
 	border: 1px solid var(--error-text);
 	color: var(--error-text);
-}
-
-.footer {
-	/* Removed styling */
-}
-
-.hud {
-	/* Removed styling */
 }
 
 #main-nav .nav-section.game-controls button {

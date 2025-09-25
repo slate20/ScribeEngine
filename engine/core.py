@@ -378,7 +378,7 @@ class GameEngine:
                 <input type="hidden" name="action" value="{escaped_action}">
                 <input type="hidden" name="target_passage" value="{target_passage}">
                 <input type="hidden" name="context" value="{context_encoded}">
-                <button type="submit" class="choice-btn inline-action-btn" data-target="{target_passage}">
+                <button type="submit" class="inline-action-btn" data-target="{target_passage}">
                     {text}
                 </button>
             </form>

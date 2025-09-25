@@ -439,17 +439,35 @@ def close_modal():
 
 # --- Asset and Styling Routes ---
 
-@app.route('/custom.css')
-def serve_custom_css():
-    """Serve custom CSS from the game project."""
+@app.route('/game_theme.css')
+def serve_game_theme_css():
+    """Serve game theme CSS from the game project."""
     if not game_engine:
         return '', 404
-    
+
+    game_theme_css_path = os.path.join(game_engine.project_path, 'game_theme.css')
+    if os.path.exists(game_theme_css_path):
+        return send_file(game_theme_css_path, mimetype='text/css')
+    else:
+        # Return empty CSS if no game theme stylesheet exists
+        return '', 404
+
+# Backward compatibility route for existing projects
+@app.route('/custom.css')
+def serve_custom_css():
+    """Serve custom CSS from the game project (backward compatibility)."""
+    if not game_engine:
+        return '', 404
+
     custom_css_path = os.path.join(game_engine.project_path, 'custom.css')
     if os.path.exists(custom_css_path):
         return send_file(custom_css_path, mimetype='text/css')
+    # If custom.css doesn't exist, try game_theme.css as fallback
+    game_theme_css_path = os.path.join(game_engine.project_path, 'game_theme.css')
+    if os.path.exists(game_theme_css_path):
+        return send_file(game_theme_css_path, mimetype='text/css')
     else:
-        # Return empty CSS if no custom stylesheet exists
+        # Return empty CSS if no stylesheet exists
         response = make_response('/* No custom CSS */')
         response.headers['Content-Type'] = 'text/css'
         return response
