@@ -105,13 +105,14 @@ class GameEngine:
 
         content_to_process = passage['raw_content'] if use_raw_content else passage['content']
         processed_content = self.execute_python_blocks(passage, executor, content_to_process=content_to_process)
-        
+
         env = Environment(extensions=['jinja2.ext.do'])
         template = env.from_string(processed_content)
         context = self.get_template_context()
         rendered_content = template.render(**context)
         self.sync_context_to_state(context)
-        
+
+
         return rendered_content
 
     def render_passage_content(self, passage_name, executor):
@@ -121,7 +122,13 @@ class GameEngine:
         
         # Re-extract links from the rendered content after Jinja2 evaluation
         # This ensures that any Jinja2 expressions that generate or modify links are processed.
-        extracted_links = self.parser.link_pattern.findall(rendered_content)
+        found_links = self.parser.link_pattern.findall(rendered_content)
+
+        # Filter out inline links and convert to 3-tuples for regular processing
+        extracted_links = []
+        for text, target, action, inline_flag in found_links:
+            if not inline_flag:  # Only include non-inline links
+                extracted_links.append((text, target, action or ""))
         
         # Remove links from the final content before passing to HTML generation
         content_without_links = self.parser.link_pattern.sub('', rendered_content).strip()
@@ -159,7 +166,7 @@ class GameEngine:
         else:
             return self.render_passage_content(passage_name, executor)
 
-    def render_main_passage(self, passage_name, _recursion_depth=0):
+    def render_main_passage(self, passage_name, _recursion_depth=0, include_oob_nav=True):
         """Render a main passage, handling silent passages and including Pre/Post passages."""
 
         # --- Last Passage Tracking ---
@@ -201,11 +208,11 @@ class GameEngine:
                 # We'll proceed with the first one, but it's a warning sign.
                 print(f"WARNING: Silent passage '{passage_name}' rendered multiple links. Redirecting to the first one found.")
 
-            # The target is the second item in the tuple (text, target, action)
+            # The target is the second item in the tuple (text, target, action, inline_flag)
             next_passage_name = found_links[0][1]
 
             # Recursively call render_main_passage for the next passage
-            return self.render_main_passage(next_passage_name, _recursion_depth + 1)
+            return self.render_main_passage(next_passage_name, _recursion_depth + 1, include_oob_nav)
 
         # --- Regular Passage Rendering ---
         self.game_state['current_passage'] = passage_name
@@ -226,7 +233,7 @@ class GameEngine:
             html_parts.append(self.render_special_passage('PostPassage', executor))
 
         # Add NavMenu out-of-band swap to update navigation with current game state
-        if 'NavMenu' in self.passages:
+        if include_oob_nav and 'NavMenu' in self.passages:
             nav_content = self.render_special_passage('NavMenu', executor)
             html_parts.append(f'<div id="main-nav-content" hx-swap-oob="innerHTML">{nav_content}</div>')
 
@@ -262,6 +269,8 @@ class GameEngine:
         context.update({
             'input_field': self.generate_input_html, # Expose input_field macro
             'now': datetime.now, # Add datetime.now to context
+            'action_button': self.create_action_button, # Context-aware action button generator
+            'action_button_tag': self.create_action_button_tag, # New <<...>> action button processor
         })
         return context
 
@@ -269,7 +278,7 @@ class GameEngine:
         """Synchronizes any changes from template context back to the game state."""
         # Sync back any variables that could have been modified during template rendering
         # Skip systems functions and helper functions
-        skip_keys = {'input_field', 'now'} | set(self.executor.get_systems().keys())
+        skip_keys = {'input_field', 'now', 'action_button', 'action_button_tag'} | set(self.executor.get_systems().keys())
         
         for key, value in context.items():
             if key not in skip_keys:
@@ -339,7 +348,78 @@ class GameEngine:
         </form>
         """
         return Markup(html)
-    
+
+    def create_action_button(self, text, target_passage, action_code, **context_vars):
+        """
+        Create a context-aware action button that captures current template variables.
+        Usage in templates: {{ action_button("Buy", "BuyItem", "temp_item = item", item=item) }}
+        """
+        import json
+        import base64
+
+        # Serialize context variables for later retrieval
+        context_data = {}
+        for key, value in context_vars.items():
+            try:
+                # Try to serialize the context variable
+                context_data[key] = self._auto_serialize_object(value)
+            except Exception as e:
+                if self.debug_mode:
+                    print(f"Warning: Could not serialize context variable '{key}': {e}")
+                continue
+
+        # Encode context as base64 to include in form data
+        context_json = json.dumps(context_data)
+        context_encoded = base64.b64encode(context_json.encode('utf-8')).decode('utf-8')
+
+        escaped_action = escape(action_code)
+        html = f'''
+            <form hx-post="/action_link" hx-target="#game-content" class="action-link-form inline-action">
+                <input type="hidden" name="action" value="{escaped_action}">
+                <input type="hidden" name="target_passage" value="{target_passage}">
+                <input type="hidden" name="context" value="{context_encoded}">
+                <button type="submit" class="choice-btn inline-action-btn" data-target="{target_passage}">
+                    {text}
+                </button>
+            </form>
+        '''
+        return Markup(html)
+
+
+    def create_action_button_tag(self, text, target_passage, action_code, **context_vars):
+        """
+        Create an action button from <<...>> syntax with automatic context capture.
+        Handles default passage reloading when no target is specified.
+        Usage: {{ action_button_tag("Buy", "BuyAction", "temp_item = item", item=item) }}
+        """
+        # Default to current passage if no target specified (for quick actions)
+        if not target_passage:
+            target_passage = self.game_state.get('current_passage', 'start')
+
+        # Filter out Jinja2 internal variables and functions (same as inline_link)
+        filtered_context = {}
+        skip_prefixes = ('__', 'l_', 'environment', 'context', 'missing', 'StrictUndefined')
+        skip_keys = {'range', 'dict', 'lipsum', 'cycler', 'joiner', 'namespace'}
+
+        for key, value in context_vars.items():
+            # Skip internal Jinja2 variables and functions
+            if (not key.startswith(skip_prefixes) and
+                key not in skip_keys and
+                not callable(value) and
+                key not in self.executor.get_systems().keys()):
+                try:
+                    # Ensure value is serializable
+                    self._auto_serialize_object(value)
+                    filtered_context[key] = value
+                except:
+                    continue
+
+        if self.debug_mode:
+            print(f"Action button context captured: {list(filtered_context.keys())}")
+
+        return self.create_action_button(text, target_passage, action_code, **filtered_context)
+
+
     def save_game(self, slot, description=None):
         current_passage = self.game_state.get('current_passage', 'Unknown')
         serializable_state = self.get_serializable_state()

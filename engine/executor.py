@@ -54,18 +54,49 @@ class SafeExecutor:
         safe_globals.update(self.game_state)  # Direct references to game state objects
 
         safe_builtins = {
+            # Basic types
             'len': len, 'str': str, 'int': int, 'float': float,
-            'bool': bool, 'list': list, 'dict': dict, 'range': range,
+            'bool': bool, 'list': list, 'dict': dict, 'tuple': tuple,
+            'set': set, 'frozenset': frozenset,
+
+            # Numeric operations
             'min': min, 'max': max, 'sum': sum, 'abs': abs, 'round': round,
-            'print': self.debug_print, 'isinstance': isinstance,
+            'range': range,
+
+            # Collection operations
+            'enumerate': enumerate, 'zip': zip, 'sorted': sorted,
+            'reversed': reversed, 'any': any, 'all': all,
+            'map': map, 'filter': filter,
+
+            # Iterator protocol
+            'iter': iter, 'next': next,
+
+            # String/character operations
+            'chr': chr, 'ord': ord, 'hex': hex, 'oct': oct, 'bin': bin,
+            'repr': repr, 'ascii': ascii,
+
+            # Type introspection
+            'type': type, 'isinstance': isinstance, 'callable': callable,
             'hasattr': hasattr, 'getattr': getattr, 'setattr': setattr,
+            'delattr': delattr, 'vars': vars, 'dir': dir, 'id': id,
+
+            # Exception types for error handling
+            'Exception': Exception, 'TypeError': TypeError, 'ValueError': ValueError,
+            'KeyError': KeyError, 'IndexError': IndexError, 'AttributeError': AttributeError,
+            'ZeroDivisionError': ZeroDivisionError, 'RuntimeError': RuntimeError,
+
+            # System functions (custom implementations)
+            'print': self.debug_print,
             'locals': lambda: safe_globals, 'globals': lambda: safe_globals,
-            '__import__': custom_import
+            '__import__': custom_import,
+            '__delitem__': lambda obj, key: obj.__delitem__(key),
+            '__delattr__': lambda obj, attr: delattr(obj, attr)
         }
         safe_globals['__builtins__'] = safe_builtins
 
         helpers = {
             'debug': self.debug_print,
+            'delete_var': lambda var_name: self.delete_variable(var_name, safe_globals),
         }
         safe_globals.update(helpers)
         safe_globals.update(self.systems)
@@ -79,8 +110,21 @@ class SafeExecutor:
     def execute_code(self, code: str) -> Optional[str]:
         self.debug_print(f"execute_code received: {code}")
         """Execute a block of code from a passage safely."""
+        return self.execute_code_with_context(code, {})
+
+    def execute_code_with_context(self, code: str, context: Dict[str, Any]) -> Optional[str]:
+        """Execute a block of code with additional context variables from template rendering."""
+        self.debug_print(f"execute_code_with_context received: {code}")
+        self.debug_print(f"Context variables: {list(context.keys())}")
         try:
             safe_globals, non_persistent_keys = self.create_safe_globals()
+
+            # Add context variables to the execution environment
+            # Context variables are temporary and shouldn't persist to game state
+            for key, value in context.items():
+                if key not in safe_globals:  # Don't override existing game state
+                    safe_globals[key] = value
+                    non_persistent_keys.add(key)  # Mark as non-persistent
 
             exec(code, safe_globals)
             self.update_game_state(safe_globals, non_persistent_keys)
@@ -111,6 +155,25 @@ class SafeExecutor:
         if self.debug_mode:
             message = ' '.join(str(arg) for arg in args)
             print(f"[DEBUG] {message}")
+
+    def delete_variable(self, var_name: str, local_scope=None):
+        """Safely delete a variable from both local scope and game state"""
+        deleted = False
+
+        # Remove from local execution scope if provided
+        if local_scope and var_name in local_scope:
+            del local_scope[var_name]
+            deleted = True
+            self.debug_print(f"Deleted '{var_name}' from local scope")
+
+        # Remove from persistent game state
+        if var_name in self.game_state:
+            del self.game_state[var_name]
+            deleted = True
+            self.debug_print(f"Deleted '{var_name}' from game state")
+
+        if not deleted:
+            self.debug_print(f"Variable '{var_name}' not found in any scope")
 
     # --- Helper Functions --- #
 

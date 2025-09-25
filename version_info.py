@@ -10,14 +10,14 @@ be the primary source of truth for version checking.
 """
 
 # Current version of Scribe Engine
-__version__ = "1.3.1"
+__version__ = "1.3.2"
 
 # Version metadata
 VERSION_INFO = {
     "major": 1,
     "minor": 3,
-    "patch": 1,
-    "version": "1.3.1",
+    "patch": 2,
+    "version": "1.3.2",
     "build_date": None,
     "commit_hash": None,
 }

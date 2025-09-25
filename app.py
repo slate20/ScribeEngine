@@ -295,6 +295,7 @@ def handle_action_link():
     try:
         action_string = request.form.get('action')
         target_passage = request.form.get('target_passage')
+        context_encoded = request.form.get('context', '')
 
         if not all([action_string, target_passage]):
             return "Error: 'action' and 'target_passage' are required.", 400
@@ -303,9 +304,27 @@ def handle_action_link():
         if action_string.strip().startswith('{$') and action_string.strip().endswith('$}'):
             action_string = action_string.strip()[2:-2].strip()
 
-        # Use the SafeExecutor to execute the action string as Python code.
-        # The executor will directly modify the game_state.
-        error = game_engine.executor.execute_code(action_string)
+        # Decode context data if present
+        context_data = {}
+        if context_encoded:
+            try:
+                import json
+                import base64
+                context_json = base64.b64decode(context_encoded.encode('utf-8')).decode('utf-8')
+                serialized_context = json.loads(context_json)
+
+                # Restore context objects
+                for key, value in serialized_context.items():
+                    context_data[key] = game_engine._auto_restore_object(value)
+
+                if game_engine.debug_mode:
+                    print(f"Restored context for action: {list(context_data.keys())}")
+            except Exception as e:
+                if game_engine.debug_mode:
+                    print(f"Warning: Failed to decode context data: {e}")
+
+        # Use the context-aware executor to execute the action string
+        error = game_engine.executor.execute_code_with_context(action_string, context_data)
         
         # Prepend an error message to the next passage if one occurs
         error_html = ''
@@ -1014,8 +1033,9 @@ def save_file_content(project_name, filename):
             print("Game state restored after file save.") # For testing purposes
 
         # Render the current passage from the restored state and return it
+        # For IDE preview updates, exclude OOB navigation to prevent duplicate elements
         current_passage = game_engine.game_state.get('current_passage', 'start')
-        passage_html = game_engine.render_main_passage(current_passage)
+        passage_html = game_engine.render_main_passage(current_passage, include_oob_nav=False)
 
         return jsonify({'status': 'success', 'message': f'{filename} saved successfully', 'passage_html': passage_html})
     except Exception as e:
