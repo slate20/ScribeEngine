@@ -22,13 +22,20 @@
                     <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
                         {{ file_info.filename }}
                     </span>
-                    <button class="delete-btn" title="Delete File"
-                            hx-post="/api/delete-item/{{ project_name }}"
-                            hx-vals='{"path": "{{ file_info.full_path }}"}'
-                            hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
-                            hx-target="#sidebar-content" hx-swap="innerHTML">
-                        <i data-lucide="x"></i>
-                    </button>
+                    <div class="file-actions">
+                        <button class="rename-btn" title="Rename File"
+                                hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                hx-target="#modal-container">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="delete-btn" title="Delete File"
+                                hx-post="/api/delete-item/{{ project_name }}"
+                                hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                hx-target="#sidebar-content" hx-swap="innerHTML">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
                 </li>
                 {% endfor %}
 
@@ -52,13 +59,20 @@
                                 <i data-lucide="file" class="file-icon"></i>
                                 {{ file_info.filename }}
                             </span>
-                            <button class="delete-btn" title="Delete File"
-                                    hx-post="/api/delete-item/{{ project_name }}"
-                                    hx-vals='{"path": "{{ file_info.full_path }}"}'
-                                    hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
-                                    hx-target="#sidebar-content" hx-swap="innerHTML">
-                                <i data-lucide="x"></i>
-                            </button>
+                            <div class="file-actions">
+                                <button class="rename-btn" title="Rename File"
+                                        hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                        hx-target="#modal-container">
+                                    <i data-lucide="edit-2"></i>
+                                </button>
+                                <button class="delete-btn" title="Delete File"
+                                        hx-post="/api/delete-item/{{ project_name }}"
+                                        hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                        hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
                         </li>
                         {% endfor %}
                     </ul>
@@ -93,13 +107,20 @@
                     <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
                         {{ file_info.filename }}
                     </span>
-                    <button class="delete-btn" title="Delete File"
-                            hx-post="/api/delete-item/{{ project_name }}"
-                            hx-vals='{"path": "{{ file_info.full_path }}"}'
-                            hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
-                            hx-target="#sidebar-content" hx-swap="innerHTML">
-                        <i data-lucide="x"></i>
-                    </button>
+                    <div class="file-actions">
+                        <button class="rename-btn" title="Rename File"
+                                hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                hx-target="#modal-container">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="delete-btn" title="Delete File"
+                                hx-post="/api/delete-item/{{ project_name }}"
+                                hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                hx-target="#sidebar-content" hx-swap="innerHTML">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
                 </li>
                 {% endfor %}
 
@@ -123,13 +144,20 @@
                                 <i data-lucide="file" class="file-icon"></i>
                                 {{ file_info.filename }}
                             </span>
-                            <button class="delete-btn" title="Delete File"
-                                    hx-post="/api/delete-item/{{ project_name }}"
-                                    hx-vals='{"path": "{{ file_info.full_path }}"}'
-                                    hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
-                                    hx-target="#sidebar-content" hx-swap="innerHTML">
-                                <i data-lucide="x"></i>
-                            </button>
+                            <div class="file-actions">
+                                <button class="rename-btn" title="Rename File"
+                                        hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                        hx-target="#modal-container">
+                                    <i data-lucide="edit-2"></i>
+                                </button>
+                                <button class="delete-btn" title="Delete File"
+                                        hx-post="/api/delete-item/{{ project_name }}"
+                                        hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                        hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
                         </li>
                         {% endfor %}
                     </ul>
@@ -164,13 +192,20 @@
                     <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
                         {{ file_info.filename }}
                     </span>
-                    <button class="delete-btn" title="Delete File"
-                            hx-post="/api/delete-item/{{ project_name }}"
-                            hx-vals='{"path": "{{ file_info.full_path }}"}'
-                            hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
-                            hx-target="#sidebar-content" hx-swap="innerHTML">
-                        <i data-lucide="x"></i>
-                    </button>
+                    <div class="file-actions">
+                        <button class="rename-btn" title="Rename File"
+                                hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                hx-target="#modal-container">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="delete-btn" title="Delete File"
+                                hx-post="/api/delete-item/{{ project_name }}"
+                                hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                hx-target="#sidebar-content" hx-swap="innerHTML">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
                 </li>
                 {% endfor %}
 
@@ -194,13 +229,20 @@
                                 <i data-lucide="file" class="file-icon"></i>
                                 {{ file_info.filename }}
                             </span>
-                            <button class="delete-btn" title="Delete File"
-                                    hx-post="/api/delete-item/{{ project_name }}"
-                                    hx-vals='{"path": "{{ file_info.full_path }}"}'
-                                    hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
-                                    hx-target="#sidebar-content" hx-swap="innerHTML">
-                                <i data-lucide="x"></i>
-                            </button>
+                            <div class="file-actions">
+                                <button class="rename-btn" title="Rename File"
+                                        hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                        hx-target="#modal-container">
+                                    <i data-lucide="edit-2"></i>
+                                </button>
+                                <button class="delete-btn" title="Delete File"
+                                        hx-post="/api/delete-item/{{ project_name }}"
+                                        hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                        hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
                         </li>
                         {% endfor %}
                     </ul>
@@ -237,13 +279,20 @@
                           title="Click to copy: game/{{ file_info.relative_path }}">
                         {{ file_info.filename }}
                     </span>
-                    <button class="delete-btn" title="Delete File"
-                            hx-post="/api/delete-item/{{ project_name }}"
-                            hx-vals='{"path": "{{ file_info.full_path }}"}'
-                            hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
-                            hx-target="#sidebar-content" hx-swap="innerHTML">
-                        <i data-lucide="x"></i>
-                    </button>
+                    <div class="file-actions">
+                        <button class="rename-btn" title="Rename File"
+                                hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                hx-target="#modal-container">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="delete-btn" title="Delete File"
+                                hx-post="/api/delete-item/{{ project_name }}"
+                                hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                hx-target="#sidebar-content" hx-swap="innerHTML">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
                 </li>
                 {% endfor %}
 
@@ -269,13 +318,20 @@
                                 <i data-lucide="file" class="file-icon"></i>
                                 {{ file_info.filename }}
                             </span>
-                            <button class="delete-btn" title="Delete File"
-                                    hx-post="/api/delete-item/{{ project_name }}"
-                                    hx-vals='{"path": "{{ file_info.full_path }}"}'
-                                    hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
-                                    hx-target="#sidebar-content" hx-swap="innerHTML">
-                                <i data-lucide="x"></i>
-                            </button>
+                            <div class="file-actions">
+                                <button class="rename-btn" title="Rename File"
+                                        hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                        hx-target="#modal-container">
+                                    <i data-lucide="edit-2"></i>
+                                </button>
+                                <button class="delete-btn" title="Delete File"
+                                        hx-post="/api/delete-item/{{ project_name }}"
+                                        hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                        hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
                         </li>
                         {% endfor %}
                     </ul>

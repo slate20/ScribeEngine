@@ -1,0 +1,112 @@
+<!-- HTMX Rename File Modal -->
+<div id="rename-file-modal" class="modal show" style="display: flex !important;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3>Rename File</h3>
+            <button class="modal-close" hx-post="/modal/close" hx-target="#modal-container">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="rename-file-form">
+                <div class="form-group">
+                    <label for="current-file-path">Current Path:</label>
+                    <input type="text" id="current-file-path" class="form-control" readonly value="{{ current_path }}">
+                </div>
+
+                <div class="form-group">
+                    <label for="new-file-name">New Filename:</label>
+                    <input type="text" id="new-file-name" name="new_filename" class="form-control"
+                           placeholder="Enter new filename" value="{{ current_filename }}" required>
+                    <small class="form-hint">Enter filename without extension (will be added automatically)</small>
+                </div>
+
+                <input type="hidden" name="old_path" value="{{ current_path }}">
+                <input type="hidden" name="extension" value="{{ extension }}">
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" hx-post="/modal/close" hx-target="#modal-container">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="rename-file-btn">Rename File</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+// Initialize rename modal when it loads
+(function() {
+    // Focus the filename input after modal loads
+    setTimeout(() => {
+        const fileNameInput = document.getElementById('new-file-name');
+        if (fileNameInput) {
+            fileNameInput.focus();
+            // Select the filename part (without extension) for easy editing
+            const filename = fileNameInput.value;
+            fileNameInput.setSelectionRange(0, filename.length);
+        }
+    }, 100);
+
+    // Handle rename button click
+    document.getElementById('rename-file-btn').addEventListener('click', function(e) {
+        e.preventDefault();
+
+        const oldPath = document.querySelector('input[name="old_path"]').value;
+        const newFilename = document.getElementById('new-file-name').value.trim();
+        const extension = document.querySelector('input[name="extension"]').value;
+
+        if (!newFilename) {
+            alert('Please enter a filename');
+            return;
+        }
+
+        // Construct new path
+        const pathParts = oldPath.split('/');
+        pathParts[pathParts.length - 1] = newFilename + extension; // Replace filename with new name + extension
+        const newPath = pathParts.join('/');
+
+        // Submit via HTMX
+        const submitData = new FormData();
+        submitData.set('old_path', oldPath);
+        submitData.set('new_path', newPath);
+
+        htmx.ajax('POST', '/api/rename-item/{{ project_name }}', {
+            values: Object.fromEntries(submitData),
+            target: '#sidebar-content',
+            swap: 'innerHTML'
+        }).then(() => {
+            htmx.ajax('POST', '/modal/close', {target: '#modal-container'});
+            showNotification('File renamed successfully', 'success');
+        }).catch(() => {
+            showNotification('Failed to rename file', 'error');
+        });
+    });
+
+    // Handle Enter key in input field
+    document.getElementById('new-file-name').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            // Trigger the rename button click
+            document.getElementById('rename-file-btn').click();
+        }
+    });
+
+    // Prevent form submission (handle Enter key)
+    document.getElementById('rename-file-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Trigger the rename button click
+        document.getElementById('rename-file-btn').click();
+    });
+})();
+
+// Close modal when clicking outside
+document.addEventListener('click', function(event) {
+    const modal = document.getElementById('rename-file-modal');
+    if (event.target === modal) {
+        htmx.ajax('POST', '/modal/close', {target: '#modal-container'});
+    }
+});
+
+// Process HTMX on the entire modal
+htmx.process(document.getElementById('rename-file-modal'));
+</script>

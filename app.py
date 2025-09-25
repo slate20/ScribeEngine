@@ -724,6 +724,19 @@ def new_file_modal(project_name, category):
                          category=category,
                          config=config)
 
+@app.route('/modal/rename-file/<project_name>/<path:file_path>')
+def rename_file_modal(project_name, file_path):
+    """Show rename file modal with current file info."""
+    # Extract filename and extension from path
+    filename_with_ext = os.path.basename(file_path)
+    filename, extension = os.path.splitext(filename_with_ext)
+
+    return render_template('_fragments/_htmx_rename_file_modal.html',
+                         project_name=project_name,
+                         current_path=file_path,
+                         current_filename=filename,
+                         extension=extension)
+
 @app.route('/api/subdirectories/<project_name>/<category>')
 def get_subdirectories(project_name, category):
     """Get existing subdirectories for a specific category."""
@@ -767,11 +780,23 @@ def new_folder_modal(project_name):
     """Show new folder modal."""
     return render_template('_fragments/_htmx_new_folder_modal.html', project_name=project_name)
 
+@app.route('/game_theme.css')
+def serve_game_theme_css():
+    game_theme_css_path = os.path.join(game_engine.project_path, 'game_theme.css')
+    if os.path.exists(game_theme_css_path):
+        return send_file(game_theme_css_path, mimetype='text/css')
+    return '', 404
+
+# Backward compatibility route for existing projects
 @app.route('/custom.css')
 def serve_custom_css():
     custom_css_path = os.path.join(game_engine.project_path, 'custom.css')
     if os.path.exists(custom_css_path):
         return send_file(custom_css_path, mimetype='text/css')
+    # If custom.css doesn't exist, try game_theme.css as fallback
+    game_theme_css_path = os.path.join(game_engine.project_path, 'game_theme.css')
+    if os.path.exists(game_theme_css_path):
+        return send_file(game_theme_css_path, mimetype='text/css')
     return '', 404
 
 # GUI routes
@@ -1067,7 +1092,49 @@ def delete_item(project_name):
             shutil.rmtree(full_path)
     except Exception as e:
         print(f"ERROR: Could not delete item {full_path}. Reason: {e}")
-    
+
+    # After action, return the updated file list fragment
+    return list_files(project_name)
+
+@app.route('/api/rename-item/<project_name>', methods=['POST'])
+def rename_item(project_name):
+    """Rename a file or folder."""
+    project_root = config_manager.get_project_root()
+    old_path = request.form.get('old_path')
+    new_path = request.form.get('new_path')
+
+    if not all([old_path, new_path]):
+        return list_files(project_name)
+
+    # Basic security checks
+    for path in [old_path, new_path]:
+        if ".." in path or os.path.isabs(path):
+            print(f"SECURITY: Invalid path requested: {path}")
+            return list_files(project_name)
+
+    old_full_path = os.path.join(project_root, project_name, old_path)
+    new_full_path = os.path.join(project_root, project_name, new_path)
+
+    if not os.path.exists(old_full_path):
+        print(f"INFO: File to rename does not exist at {old_full_path}")
+        return list_files(project_name)
+
+    if os.path.exists(new_full_path):
+        print(f"INFO: Target filename already exists: {new_full_path}")
+        return list_files(project_name)
+
+    try:
+        # Create target directory if it doesn't exist
+        new_dir = os.path.dirname(new_full_path)
+        if new_dir and not os.path.exists(new_dir):
+            os.makedirs(new_dir)
+
+        # Perform the rename
+        os.rename(old_full_path, new_full_path)
+        print(f"INFO: Renamed {old_path} to {new_path}")
+    except Exception as e:
+        print(f"ERROR: Could not rename {old_path} to {new_path}. Reason: {e}")
+
     # After action, return the updated file list fragment
     return list_files(project_name)
 

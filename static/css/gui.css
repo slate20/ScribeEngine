@@ -389,6 +389,45 @@ body {
 	color: white;
 }
 
+.file-explorer-panel .file-actions {
+	display: flex;
+	gap: 4px;
+	align-items: center;
+}
+
+.file-explorer-panel .rename-btn {
+	background: none;
+	border: none;
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 0;
+	border-radius: 4px;
+	width: 20px;
+	height: 20px;
+	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	visibility: hidden;
+	opacity: 0;
+	transition: all 0.2s;
+}
+
+.file-explorer-panel .rename-btn svg {
+	width: 14px;
+	height: 14px;
+}
+
+.file-explorer-panel .file-item:hover .rename-btn {
+	visibility: visible;
+	opacity: 1;
+}
+
+.file-explorer-panel .rename-btn:hover {
+	background: var(--accent-color);
+	color: white;
+}
+
 .file-explorer-panel .file-item-empty {
 	font-size: 13px;
 	color: var(--text-muted);
@@ -576,6 +615,14 @@ body {
 	cursor: pointer;
 	opacity: 0;
 	transition: all 0.2s;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.tab-close svg {
+	width: 14px !important;
+	height: 14px !important;
 }
 
 .editor-tab:hover .tab-close {
