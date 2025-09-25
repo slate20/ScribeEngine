@@ -84,6 +84,19 @@ var scribeOverlay = {
             return isActionLink ? "link-action" : "link";
         }
 
+        // Highlight <<action buttons>> - Python code inside is handled by multiplexer
+        if (stream.match("<<")) {
+            let ch;
+            while ((ch = stream.next()) != null) {
+                // Check for the closing angle brackets
+                if (ch == ">" && stream.peek() == ">") {
+                    stream.next();
+                    break;
+                }
+            }
+            return "action-button";
+        }
+
         // Advance the stream if no custom Scribe token is found
         stream.next();
         return null;

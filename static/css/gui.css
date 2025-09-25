@@ -23,6 +23,7 @@
 	--syntax-tag: #c586c0;
 	--syntax-link: #4ec9b0;
 	--syntax-action: #ce9178;
+	--syntax-button: #f44747;
 	--syntax-jinja: #dcdcaa;
 	--syntax-comment: #6a9955;
 	--syntax-string: #ce9178;
@@ -440,7 +441,8 @@ body {
 .file-explorer-panel .file-tree {
 	overflow: hidden;
 	transition: max-height 0.25s ease, opacity 0.2s ease;
-	max-height: 1000px; /* Large enough for most content */
+	max-height: 1000px;
+	/* Large enough for most content */
 	opacity: 1;
 }
 
@@ -1075,6 +1077,11 @@ body {
 	font-weight: bold;
 }
 
+.cm-s-material-darker .cm-action-button {
+	color: var(--syntax-action);
+	font-weight: bold;
+}
+
 /* Light Theme */
 .theme-light {
 	--primary-bg: #ffffff;
@@ -1092,6 +1099,7 @@ body {
 	--syntax-tag: #ff00ff;
 	--syntax-link: #008000;
 	--syntax-action: #ff8c00;
+	--syntax-button: #d32f2f;
 	--syntax-jinja: #8b0000;
 	--syntax-comment: #808080;
 	--syntax-string: #a52a2a;
@@ -1129,6 +1137,11 @@ body {
 }
 
 .cm-s-default .cm-link-action {
+	color: var(--syntax-action);
+	font-weight: bold;
+}
+
+.cm-s-default .cm-action-button {
 	color: var(--syntax-action);
 	font-weight: bold;
 }
@@ -1434,6 +1447,7 @@ body {
 		opacity: 0;
 		transform: scale(0.9) translateY(-20px);
 	}
+
 	to {
 		opacity: 1;
 		transform: scale(1) translateY(0);
@@ -1568,8 +1582,13 @@ body {
 }
 
 @keyframes spin {
-	0% { transform: rotate(0deg); }
-	100% { transform: rotate(360deg); }
+	0% {
+		transform: rotate(0deg);
+	}
+
+	100% {
+		transform: rotate(360deg);
+	}
 }
 
 .build-info {
@@ -1681,9 +1700,17 @@ body {
 }
 
 @keyframes completedPulse {
-	0% { transform: scale(1); }
-	50% { transform: scale(1.02); }
-	100% { transform: scale(1); }
+	0% {
+		transform: scale(1);
+	}
+
+	50% {
+		transform: scale(1.02);
+	}
+
+	100% {
+		transform: scale(1);
+	}
 }
 
 /* Color Picker Modal Styles */

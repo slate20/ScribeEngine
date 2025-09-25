@@ -166,6 +166,23 @@ body {
 	/* background, color moved to theme.css */
 }
 
+/* Inline action buttons */
+.inline-action {
+	display: inline-block;
+	margin: 2px 5px;
+}
+
+.inline-action-btn {
+	padding: 6px 10px;
+	font-size: 13px;
+	border-radius: 3px;
+	cursor: pointer;
+	transition: all 0.2s;
+	border: 1px solid;
+	margin-left: 8px;
+	/* colors will be defined in theme.css */
+}
+
 .debug-error {
 	/* background, border, color moved to theme.css */
 	padding: 10px;
