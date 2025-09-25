@@ -146,9 +146,29 @@
         });
     });
 
+    // Handle Enter key in input fields
+    document.getElementById('file-name').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            // Trigger the create button click
+            document.getElementById('create-file-btn').click();
+        }
+    });
+
+    document.getElementById('new-folder-name').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            e.stopPropagation();
+            // Trigger the create button click
+            document.getElementById('create-file-btn').click();
+        }
+    });
+
     // Prevent form submission (handle Enter key)
     document.getElementById('new-file-form').addEventListener('submit', function(e) {
         e.preventDefault();
+        e.stopPropagation();
         // Trigger the create button click
         document.getElementById('create-file-btn').click();
     });

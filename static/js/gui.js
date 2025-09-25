@@ -456,7 +456,11 @@ function initEditor() {
 		mode: 'null',
 		theme: 'material-darker',
 		lineNumbers: true,
-		autoCloseBrackets: true,
+		autoCloseBrackets: {
+			pairs: "()[]{}<>''\"\"",
+			explode: "[]{}",
+			override: true
+		},
 		readOnly: true, // Start as read-only until a file is opened
 		lineWrapping: true, // Enable word wrapping
 		extraKeys: {
@@ -496,8 +500,6 @@ function initEditor() {
 					return;
 
 				} else if (textBeforeInline === '{%') {
-                    // The user typed '{%' then space. Replace it all with an inline block.
-                    // We replace from 3 chars back (to include '{%') up to the cursor (to include the space)
                     const textAfter = cm.getRange(pos, {line: pos.line, ch: pos.ch + 1});
                     const from = {line: pos.line, ch: pos.ch - 2};
                     const to = (textAfter === '}') ? {line: pos.line, ch: pos.ch + 1} : pos;
