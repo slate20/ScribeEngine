@@ -43,7 +43,15 @@ class ObfuscationUtils:
     @staticmethod
     def obfuscate_filename(filename: str, seed: int) -> str:
         """Create an obfuscated filename that can be reversed."""
-        # Simple XOR-based obfuscation
+        import hashlib
+
+        # For very long filenames, use hash instead of full encoding
+        if len(filename) > 100:  # Prevent filesystem limits
+            # Create a hash of the filename for very long names
+            filename_hash = hashlib.sha256(filename.encode('utf-8')).hexdigest()[:16]
+            return f"f{seed}_{filename_hash}"
+
+        # Simple XOR-based obfuscation for shorter names
         key = seed.to_bytes(4, 'big') * (len(filename) // 4 + 1)
         filename_bytes = filename.encode('utf-8')
 
@@ -52,8 +60,15 @@ class ObfuscationUtils:
         # Encode as base64-like but filesystem safe
         import base64
         encoded = base64.b64encode(obfuscated_bytes).decode('ascii')
-        # Make filesystem safe
+        # Make filesystem safe and limit length
         safe_encoded = encoded.replace('/', '_').replace('+', '-').rstrip('=')
+
+        # Ensure total filename length stays under filesystem limits (255 chars)
+        max_encoded_length = 200  # Leave room for seed prefix and .enc suffix
+        if len(safe_encoded) > max_encoded_length:
+            # Use hash for very long encoded names
+            filename_hash = hashlib.sha256(filename.encode('utf-8')).hexdigest()[:16]
+            return f"f{seed}_{filename_hash}"
 
         return f"f{seed}_{safe_encoded}"
 
@@ -237,29 +252,59 @@ class AssetPacker:
 
         files_to_pack = []
 
-        # Define what to include
-        include_patterns = [
-            '*.tgame',    # Story files
-            '*.py',       # Custom logic files
-            '*.json',     # Configuration files
-            '*.css',      # Custom styles
-            'assets/**/*' # All asset files
-        ]
+        # Define what to include (only game runtime files)
+        include_extensions = {
+            '.tgame',   # Story files
+            '.py',      # Custom logic files
+            '.json',    # Configuration files
+            '.css',     # Custom styles
+            '.js',      # JavaScript files
+            '.html',    # HTML templates
+            # Asset files
+            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.svg',  # Images
+            '.mp3', '.wav', '.ogg', '.m4a', '.flac',                   # Audio
+            '.mp4', '.webm', '.avi', '.mov',                           # Video
+            '.ttf', '.otf', '.woff', '.woff2',                         # Fonts
+            '.pdf'      # Documents (if actually used in game)
+        }
 
-        # Define what to exclude
-        exclude_patterns = {
-            'saves', 'temp_build', 'build', 'dist', 'spec',
-            '__pycache__', '.git', '.vscode', '.idea',
-            'venv', 'env', '*.pyc', '*.pyo'
+        # Define what to exclude (directories and file patterns)
+        exclude_directories = {
+            'saves', 'temp_build', 'build', 'builds', 'dist', 'spec',
+            '__pycache__', '.git', '.vscode', '.idea', '.vs',
+            'venv', 'env', 'node_modules', 'docs', 'documentation'
+        }
+
+        exclude_file_patterns = {
+            '.pyc', '.pyo', '.pyd', '.so', '.dll',  # Compiled files
+            '.md', '.txt', '.rst',                  # Documentation
+            '.gitignore', '.gitattributes',         # Git files
+            '.log', '.tmp', '.bak', '.swp',         # Temporary files
+            '.exe', '.msi', '.dmg', '.pkg',         # Installers
+            '.zip', '.tar', '.gz', '.7z', '.rar'    # Archives
         }
 
         for root, dirs, files in os.walk(project_path):
             # Skip excluded directories
-            dirs[:] = [d for d in dirs if d not in exclude_patterns]
+            dirs[:] = [d for d in dirs if d not in exclude_directories]
 
             for file in files:
-                if file.startswith('.') or any(file.endswith(ext) for ext in ['.pyc', '.pyo']):
+                # Skip hidden files and excluded patterns
+                if file.startswith('.'):
                     continue
+
+                file_ext = os.path.splitext(file)[1].lower()
+
+                # Skip excluded file types
+                if file_ext in exclude_file_patterns:
+                    continue
+
+                # Only include files with allowed extensions
+                if file_ext not in include_extensions:
+                    # Allow files in assets directory even without recognized extensions
+                    relative_root = os.path.relpath(root, project_path)
+                    if not relative_root.startswith('assets'):
+                        continue
 
                 file_path = os.path.join(root, file)
                 relative_path = os.path.relpath(file_path, project_path)
@@ -431,6 +476,36 @@ def load_game_archive(archive_path: str, project_name: str = None) -> Dict[str, 
     """Load a game archive and return file contents."""
     archive = GameArchive()
     return archive.load(archive_path, project_name)
+
+def load_game_archive_cached(archive_path: str, project_name: str = None) -> Tuple[Dict[str, bytes], 'SecureCache']:
+    """Load a game archive using secure caching for improved performance."""
+    from .secure_cache import SecureCache
+
+    cache = SecureCache()
+
+    # Check if cache is valid
+    if cache.is_cache_valid(archive_path):
+        immediate_files = cache.load_immediate_files(archive_path)
+        if immediate_files:
+            return immediate_files, cache
+
+    # Cache miss or invalid - load from archive and create cache
+    archive = GameArchive()
+    all_files = archive.load(archive_path, project_name)
+
+    # Get project config for caching
+    project_config = {}
+    if 'project.json' in all_files:
+        try:
+            import json
+            project_config = json.loads(all_files['project.json'].decode('utf-8'))
+        except Exception:
+            project_config = {'title': project_name or 'Game'}
+
+    # Cache the archive and get immediate files
+    archive_hash, immediate_files = cache.cache_archive(archive_path, all_files, project_config)
+
+    return immediate_files, cache
 
 def is_game_archive(file_path: str) -> bool:
     """Check if a file is a valid game archive."""

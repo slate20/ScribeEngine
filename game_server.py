@@ -496,29 +496,29 @@ def serve_project_asset(filename):
     """Serve assets from the game project."""
     if not game_engine:
         return '', 404
-    
-    # Look for assets in the bundled game_data directory structure
+
+    # Look for assets in the project directory (extracted from installation)
+    assets_path = os.path.join(game_engine.project_path, 'assets')
+    file_path = os.path.join(assets_path, filename)
+
+    # Check if file exists in extracted directory
+    if os.path.exists(file_path):
+        return send_file(file_path)
+
+    # For compatibility with older bundles - check bundled game_data structure
     if getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS'):
-        # In bundled executable, assets are in game_data/<project_name>/assets
         base_path = sys._MEIPASS
         game_data_path = os.path.join(base_path, 'game_data')
         if os.path.exists(game_data_path):
             project_dirs = [d for d in os.listdir(game_data_path) if os.path.isdir(os.path.join(game_data_path, d))]
             if project_dirs:
-                assets_path = os.path.join(game_data_path, project_dirs[0], 'assets')
-            else:
-                assets_path = os.path.join(game_engine.project_path, 'assets')
-        else:
-            assets_path = os.path.join(game_engine.project_path, 'assets')
-    else:
-        # Development mode
-        assets_path = os.path.join(game_engine.project_path, 'assets')
-    
-    file_path = os.path.join(assets_path, filename)
-    if os.path.exists(file_path):
-        return send_file(file_path)
-    else:
-        return '', 404
+                fallback_assets_path = os.path.join(game_data_path, project_dirs[0], 'assets')
+                fallback_file_path = os.path.join(fallback_assets_path, filename)
+                if os.path.exists(fallback_file_path):
+                    return send_file(fallback_file_path)
+
+    # File not found
+    return '', 404
 
 # --- Shutdown Route ---
 

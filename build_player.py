@@ -70,6 +70,9 @@ else:
 
 sys.path.insert(0, base_dir)
 
+# Global installer for on-demand loading
+game_installer = None
+
 # Import required modules
 try:
     import webview
@@ -98,8 +101,8 @@ def find_game_archive():
     return None
 
 
-def extract_game_to_temp():
-    """Extract game archive to temporary directory."""
+def setup_game_installation():
+    """Setup game installation - install if needed, then extract to temp directory."""
     archive_path = find_game_archive()
 
     if not archive_path:
@@ -107,24 +110,115 @@ def extract_game_to_temp():
         print(f"Expected in: {executable_dir}")
         return None
 
-    print(f"Loading game from: {archive_path}")
+    print(f"Found game archive: {archive_path}")
 
-    # Create temporary directory for extracted game
+    # Initialize installer
+    from engine.game_installer import GameInstaller
+    installer = GameInstaller(executable_dir, archive_path)
+
+    # Check if installation is needed
+    if not installer.is_installed() or installer.needs_reinstall():
+        print("First launch detected - installing game...")
+
+        try:
+            # Run installation with UI
+            success = installer.run_installation(show_ui=True)
+            if not success:
+                print("Installation failed or was cancelled.")
+                return None
+
+            print("Game installation completed successfully!")
+
+        except Exception as e:
+            print(f"Installation error: {e}")
+            return None
+
+    else:
+        print("Game already installed - validating installation...")
+
+        # Validate existing installation
+        if not installer.validate_installation():
+            print("Installation validation failed - repairing...")
+
+            try:
+                # Attempt repair with UI
+                root = installer.create_installer_ui()
+                installer.status_var.set("Repairing installation...")
+
+                # Repair in background thread
+                repair_success = False
+                repair_complete = False
+
+                def repair_thread():
+                    nonlocal repair_success, repair_complete
+                    try:
+                        repair_success = installer.repair_installation(installer.update_progress)
+                    finally:
+                        repair_complete = True
+
+                import threading
+                thread = threading.Thread(target=repair_thread, daemon=True)
+                thread.start()
+
+                # Wait for repair to complete
+                while not repair_complete:
+                    try:
+                        root.update_idletasks()
+                        root.update()
+                        time.sleep(0.05)
+                    except Exception:
+                        break
+
+                root.destroy()
+
+                if not repair_success:
+                    print("Installation repair failed.")
+                    return None
+
+                print("Installation repaired successfully!")
+
+            except Exception as e:
+                print(f"Repair error: {e}")
+                return None
+
+        else:
+            print("Installation validated successfully - loading game...")
+
+    # Store installer globally for file loading
+    global game_installer
+    game_installer = installer
+
+    # Now extract installed files to temp directory for the game engine
+    return extract_installed_files_to_temp(installer)
+
+
+def extract_installed_files_to_temp(installer):
+    """Extract installed files to temporary directory for game engine."""
     import tempfile
     temp_dir = tempfile.mkdtemp(prefix='scribe_game_')
 
     try:
-        # Load archive contents - clean_title is now embedded in the archive header
-        print("Loading game archive...")
-        files = load_game_archive(archive_path)
+        print("Loading installed game files...")
 
-        # Extract files to temp directory
-        for file_path, file_data in files.items():
-            full_path = os.path.join(temp_dir, file_path)
+        # Get file mapping from installation
+        file_mapping = installer.get_installed_files_mapping()
+
+        if not file_mapping:
+            print("Error: No installed files found!")
+            return None
+
+        # Load and extract each file
+        extracted_count = 0
+        for original_path in file_mapping.keys():
+            file_data = installer.load_installed_file(original_path)
+            if file_data is None:
+                continue
+
+            full_path = os.path.join(temp_dir, original_path)
             os.makedirs(os.path.dirname(full_path), exist_ok=True)
 
             # Determine write mode based on file extension
-            if file_path.endswith(('.tgame', '.json', '.py', '.css', '.txt', '.md')):
+            if original_path.endswith(('.tgame', '.json', '.py', '.css', '.txt', '.md')):
                 # Text files
                 with open(full_path, 'w', encoding='utf-8') as f:
                     f.write(file_data.decode('utf-8'))
@@ -133,14 +227,52 @@ def extract_game_to_temp():
                 with open(full_path, 'wb') as f:
                     f.write(file_data)
 
-        print(f"Extracted {len(files)} files to: {temp_dir}")
+            extracted_count += 1
+
+        print(f"Extracted {extracted_count} files from installation to: {temp_dir}")
         return temp_dir
 
     except Exception as e:
-        print(f"Error extracting game archive: {e}")
-        import shutil
-        shutil.rmtree(temp_dir, ignore_errors=True)
-        return None
+        print(f"Error extracting installed files: {e}")
+        print("Attempting fallback to direct archive extraction...")
+
+        # Fallback to direct archive loading
+        try:
+            archive_path = find_game_archive()
+            files = load_game_archive(archive_path)
+
+            for file_path, file_data in files.items():
+                full_path = os.path.join(temp_dir, file_path)
+                os.makedirs(os.path.dirname(full_path), exist_ok=True)
+
+                if file_path.endswith(('.tgame', '.json', '.py', '.css', '.txt', '.md')):
+                    with open(full_path, 'w', encoding='utf-8') as f:
+                        f.write(file_data.decode('utf-8'))
+                else:
+                    with open(full_path, 'wb') as f:
+                        f.write(file_data)
+
+            print(f"Fallback: Extracted {len(files)} files to: {temp_dir}")
+            return temp_dir
+
+        except Exception as fallback_e:
+            print(f"Fallback extraction also failed: {fallback_e}")
+            import shutil
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            return None
+
+
+def load_installed_file_on_demand(file_path):
+    """Load file on-demand from installation."""
+    global game_installer
+
+    if game_installer:
+        try:
+            return game_installer.load_installed_file(file_path)
+        except Exception:
+            pass
+
+    return None
 
 
 def start_game_server(project_path):
@@ -171,8 +303,8 @@ def main():
     print("ScribePlayer - Universal Scribe Engine Runtime")
     print("=" * 50)
 
-    # Extract game from archive
-    project_path = extract_game_to_temp()
+    # Setup game installation and extract to temp
+    project_path = setup_game_installation()
     if not project_path:
         input("Press Enter to exit...")
         sys.exit(1)
