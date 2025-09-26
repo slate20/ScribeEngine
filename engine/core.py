@@ -166,7 +166,7 @@ class GameEngine:
         else:
             return self.render_passage_content(passage_name, executor)
 
-    def render_main_passage(self, passage_name, _recursion_depth=0, include_oob_nav=True):
+    def render_main_passage(self, passage_name, _recursion_depth=0, include_oob_nav=True, include_oob_tags=True):
         """Render a main passage, handling silent passages and including Pre/Post passages."""
 
         # --- Last Passage Tracking ---
@@ -212,7 +212,7 @@ class GameEngine:
             next_passage_name = found_links[0][1]
 
             # Recursively call render_main_passage for the next passage
-            return self.render_main_passage(next_passage_name, _recursion_depth + 1, include_oob_nav)
+            return self.render_main_passage(next_passage_name, _recursion_depth + 1, include_oob_nav, include_oob_tags)
 
         # --- Regular Passage Rendering ---
         self.game_state['current_passage'] = passage_name
@@ -220,9 +220,10 @@ class GameEngine:
 
         html_parts = []
 
-        # Generate the OOB swap div ONCE, based on the MAIN passage's tags
-        tag_classes = ' '.join(tags)
-        html_parts.append(f'<div id="passage-tags-container" class="{tag_classes}" hx-swap-oob="outerHTML"></div>')
+        # Generate the OOB swap div ONCE, based on the MAIN passage's tags (only if requested)
+        if include_oob_tags:
+            tag_classes = ' '.join(tags)
+            html_parts.append(f'<div id="passage-tags-container" class="{tag_classes}" hx-swap-oob="outerHTML"></div>')
 
         if 'PrePassage' in self.passages:
             html_parts.append(self.render_special_passage('PrePassage', executor))
