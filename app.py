@@ -1058,9 +1058,9 @@ def save_file_content(project_name, filename):
             print("Game state restored after file save.") # For testing purposes
 
         # Render the current passage from the restored state and return it
-        # For IDE preview updates, exclude OOB navigation to prevent duplicate elements
+        # For IDE preview updates, exclude OOB navigation and tags to prevent duplicate elements
         current_passage = game_engine.game_state.get('current_passage', 'start')
-        passage_html = game_engine.render_main_passage(current_passage, include_oob_nav=False)
+        passage_html = game_engine.render_main_passage(current_passage, include_oob_nav=False, include_oob_tags=False)
 
         return jsonify({'status': 'success', 'message': f'{filename} saved successfully', 'passage_html': passage_html})
     except Exception as e:
