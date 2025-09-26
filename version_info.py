@@ -18,8 +18,8 @@ VERSION_INFO = {
     "minor": 3,
     "patch": 2,
     "version": "1.3.2",
-    "build_date": "2025-09-25T13:45:41.976465",
-    "commit_hash": "30e00fb",
+    "build_date": "2025-09-26T08:11:18.427800",
+    "commit_hash": "b4f3d20",
 }
 
 def get_version() -> str:
