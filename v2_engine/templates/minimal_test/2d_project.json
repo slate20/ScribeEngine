@@ -1,0 +1,32 @@
+{
+  "title": "Minimal Test Project",
+  "version": "1.0.0",
+  "engine_version": "2.0.0",
+
+  "window": {
+    "width": 800,
+    "height": 600,
+    "fullscreen": false,
+    "resizable": false,
+    "title": "Scribe Engine V2 - Minimal Test"
+  },
+
+  "physics": {
+    "gravity": {
+      "x": 0,
+      "y": 980
+    },
+    "pixels_per_meter": 100
+  },
+
+  "scenes": {
+    "entry_scene": "test_scene",
+    "scenes": [
+      {
+        "name": "test_scene",
+        "file": "scenes/test_scene.py",
+        "class": "TestScene"
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+Placeholder Assets for Platformer Demo
+
+This demo uses colored rectangles and circles as placeholder graphics.
+
+When creating your own game, replace these with actual sprite images:
+- Player sprite: 32x48px
+- Platform tiles: Variable sizes
+- Collectibles: 16x16px
+- Goal marker: 64x64px
+
+Supported formats: PNG, JPG, BMP, GIF
+
+Place your sprite images in: assets/sprites/
+Place your sounds in: assets/sounds/
+Place your music in: assets/music/

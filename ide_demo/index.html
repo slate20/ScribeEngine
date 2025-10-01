@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scribe Engine v2 - IDE Prototype</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Top Menu Bar -->
+    <div class="menu-bar">
+        <div class="menu-left">
+            <div class="logo">
+                <span class="logo-text">Scribe Engine v2</span>
+                <span class="version-badge">Prototype</span>
+            </div>
+            <div class="menu-items">
+                <button class="menu-btn">File</button>
+                <button class="menu-btn">Edit</button>
+                <button class="menu-btn">Scene</button>
+                <button class="menu-btn">Build</button>
+                <button class="menu-btn">Help</button>
+            </div>
+        </div>
+        <div class="menu-right">
+            <span class="project-name">MyPlatformer</span>
+            <button class="icon-btn" title="Settings">⚙️</button>
+        </div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Sidebar - Project & Assets -->
+        <div class="sidebar left-sidebar">
+            <div class="sidebar-header">
+                <h3>Project</h3>
+                <button class="icon-btn" title="Refresh">🔄</button>
+            </div>
+
+            <!-- File Tree -->
+            <div class="file-tree">
+                <div class="tree-section">
+                    <div class="tree-header" onclick="toggleSection(this)">
+                        <span class="tree-icon">📁</span>
+                        <span>Scenes</span>
+                        <span class="tree-toggle">▼</span>
+                    </div>
+                    <div class="tree-content">
+                        <div class="tree-item" onclick="selectFile(this, 'main_menu.py')">
+                            <span class="tree-icon">📄</span>
+                            <span>main_menu.py</span>
+                        </div>
+                        <div class="tree-item active" onclick="selectFile(this, 'level_1.py')">
+                            <span class="tree-icon">📄</span>
+                            <span>level_1.py</span>
+                        </div>
+                        <div class="tree-item" onclick="selectFile(this, 'level_2.py')">
+                            <span class="tree-icon">📄</span>
+                            <span>level_2.py</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tree-section">
+                    <div class="tree-header" onclick="toggleSection(this)">
+                        <span class="tree-icon">🎨</span>
+                        <span>Sprites</span>
+                        <span class="tree-toggle">▼</span>
+                    </div>
+                    <div class="tree-content">
+                        <div class="tree-folder">
+                            <div class="tree-header" onclick="toggleSection(this)">
+                                <span class="tree-icon">📁</span>
+                                <span>player</span>
+                                <span class="tree-toggle">▼</span>
+                            </div>
+                            <div class="tree-content">
+                                <div class="tree-item">
+                                    <span class="tree-icon">🖼️</span>
+                                    <span>idle.png</span>
+                                </div>
+                                <div class="tree-item">
+                                    <span class="tree-icon">🖼️</span>
+                                    <span>run_sheet.png</span>
+                                </div>
+                                <div class="tree-item">
+                                    <span class="tree-icon">🖼️</span>
+                                    <span>jump.png</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tree-folder">
+                            <div class="tree-header" onclick="toggleSection(this)">
+                                <span class="tree-icon">📁</span>
+                                <span>enemies</span>
+                                <span class="tree-toggle">▼</span>
+                            </div>
+                            <div class="tree-content">
+                                <div class="tree-item">
+                                    <span class="tree-icon">🖼️</span>
+                                    <span>slime.png</span>
+                                </div>
+                                <div class="tree-item">
+                                    <span class="tree-icon">🖼️</span>
+                                    <span>bat.png</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tree-section">
+                    <div class="tree-header" onclick="toggleSection(this)">
+                        <span class="tree-icon">🗺️</span>
+                        <span>Tilemaps</span>
+                        <span class="tree-toggle">▼</span>
+                    </div>
+                    <div class="tree-content">
+                        <div class="tree-item">
+                            <span class="tree-icon">📄</span>
+                            <span>level1.tmx</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tree-section">
+                    <div class="tree-header" onclick="toggleSection(this)">
+                        <span class="tree-icon">🔊</span>
+                        <span>Audio</span>
+                        <span class="tree-toggle">▼</span>
+                    </div>
+                    <div class="tree-content">
+                        <div class="tree-item">
+                            <span class="tree-icon">🎵</span>
+                            <span>bgm_forest.mp3</span>
+                        </div>
+                        <div class="tree-item">
+                            <span class="tree-icon">🔉</span>
+                            <span>jump.wav</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Content Area -->
+        <div class="center-content">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <button class="tab active" onclick="switchView('visual')">
+                        <span>🎨</span> Visual
+                    </button>
+                    <button class="tab" onclick="switchView('code')">
+                        <span>💻</span> Code
+                    </button>
+                    <button class="tab" onclick="switchView('split')">
+                        <span>⚡</span> Split
+                    </button>
+                </div>
+                <div class="toolbar-center">
+                    <span class="file-name">scenes/level_1.py</span>
+                </div>
+                <div class="toolbar-right">
+                    <button class="btn-primary" onclick="playScene()">
+                        <span>▶️</span> Play Scene
+                    </button>
+                    <button class="btn-secondary" onclick="stopScene()">
+                        <span>⏹️</span> Stop
+                    </button>
+                </div>
+            </div>
+
+            <!-- Split View Container -->
+            <div class="split-view">
+                <!-- Visual Scene Editor -->
+                <div class="visual-editor" id="visual-editor">
+                    <div class="canvas-toolbar">
+                        <div class="tool-group">
+                            <button class="tool-btn active" title="Select">
+                                <span>👆</span>
+                            </button>
+                            <button class="tool-btn" title="Move">
+                                <span>✋</span>
+                            </button>
+                            <button class="tool-btn" title="Add Sprite">
+                                <span>➕</span>
+                            </button>
+                        </div>
+                        <div class="tool-group">
+                            <label>
+                                <input type="checkbox" id="grid-toggle" checked onchange="toggleGrid()">
+                                Grid
+                            </label>
+                            <label>
+                                <input type="checkbox" id="collision-toggle" onchange="toggleCollision()">
+                                Collision
+                            </label>
+                            <label>
+                                <input type="checkbox" id="snap-toggle" checked>
+                                Snap
+                            </label>
+                        </div>
+                        <div class="tool-group">
+                            <button class="tool-btn" onclick="zoomIn()">🔍+</button>
+                            <span id="zoom-level">100%</span>
+                            <button class="tool-btn" onclick="zoomOut()">🔍-</button>
+                        </div>
+                    </div>
+
+                    <div class="canvas-container">
+                        <canvas id="scene-canvas" width="800" height="600"></canvas>
+                        <div class="canvas-overlay" id="canvas-overlay"></div>
+                    </div>
+
+                    <div class="canvas-status">
+                        <span>Scene: 800x600</span>
+                        <span id="mouse-pos">Mouse: (0, 0)</span>
+                        <span id="selected-sprite">Selected: None</span>
+                    </div>
+                </div>
+
+                <!-- Code Editor -->
+                <div class="code-editor" id="code-editor">
+                    <div class="code-header">
+                        <span>scenes/level_1.py</span>
+                    </div>
+                    <div class="code-content">
+<pre><code><span class="comment"># scenes/level_1.py</span>
+<span class="keyword">from</span> scribe.scene <span class="keyword">import</span> Scene
+
+<span class="keyword">class</span> <span class="class-name">Level1</span>(Scene):
+    <span class="string">"""First level - Forest area"""</span>
+
+    <span class="keyword">def</span> <span class="function">setup</span>(<span class="keyword">self</span>):
+        <span class="comment"># Set background</span>
+        <span class="keyword">self</span>.background = <span class="string">'forest_bg.png'</span>
+
+        <span class="comment"># Add player sprite</span>
+        <span class="keyword">self</span>.player = <span class="keyword">self</span>.add_sprite(
+            <span class="string">'player/idle.png'</span>,
+            x=<span class="number">100</span>,
+            y=<span class="number">400</span>,
+            collision=<span class="constant">True</span>
+        )
+        <span class="keyword">self</span>.player.gravity = <span class="constant">True</span>
+        <span class="keyword">self</span>.player.speed = <span class="number">200</span>
+
+        <span class="comment"># Add enemy</span>
+        <span class="keyword">self</span>.enemy = <span class="keyword">self</span>.add_sprite(
+            <span class="string">'enemies/slime.png'</span>,
+            x=<span class="number">300</span>,
+            y=<span class="number">400</span>,
+            ai=<span class="string">'patrol'</span>
+        )
+
+        <span class="comment"># Add collectible coin</span>
+        <span class="keyword">self</span>.coin = <span class="keyword">self</span>.add_sprite(
+            <span class="string">'items/coin.png'</span>,
+            x=<span class="number">200</span>,
+            y=<span class="number">350</span>,
+            on_collect=<span class="keyword">self</span>.collect_coin
+        )
+
+        <span class="comment"># Load tilemap for platforms</span>
+        <span class="keyword">self</span>.tilemap = <span class="keyword">self</span>.load_tilemap(<span class="string">'level1.tmx'</span>)
+
+        <span class="comment"># Background music</span>
+        <span class="keyword">self</span>.play_music(<span class="string">'bgm_forest.mp3'</span>, loop=<span class="constant">True</span>)
+
+    <span class="keyword">def</span> <span class="function">update</span>(<span class="keyword">self</span>, dt):
+        <span class="comment"># Handle player input</span>
+        <span class="keyword">if</span> <span class="keyword">self</span>.input.key(<span class="string">'right'</span>):
+            <span class="keyword">self</span>.player.x += <span class="keyword">self</span>.player.speed * dt
+            <span class="keyword">self</span>.player.play_animation(<span class="string">'run'</span>)
+        <span class="keyword">elif</span> <span class="keyword">self</span>.input.key(<span class="string">'left'</span>):
+            <span class="keyword">self</span>.player.x -= <span class="keyword">self</span>.player.speed * dt
+            <span class="keyword">self</span>.player.play_animation(<span class="string">'run'</span>)
+        <span class="keyword">else</span>:
+            <span class="keyword">self</span>.player.play_animation(<span class="string">'idle'</span>)
+
+        <span class="keyword">if</span> <span class="keyword">self</span>.input.key_pressed(<span class="string">'space'</span>) <span class="keyword">and</span> <span class="keyword">self</span>.player.on_ground:
+            <span class="keyword">self</span>.player.jump(<span class="number">500</span>)
+            <span class="keyword">self</span>.play_sound(<span class="string">'jump.wav'</span>)
+
+        <span class="comment"># Check collisions</span>
+        <span class="keyword">if</span> <span class="keyword">self</span>.player.collides_with(<span class="keyword">self</span>.enemy):
+            <span class="keyword">self</span>.game_state.health -= <span class="number">10</span>
+            <span class="keyword">self</span>.camera.shake(intensity=<span class="number">5</span>, duration=<span class="number">0.3</span>)
+
+            <span class="keyword">if</span> <span class="keyword">self</span>.game_state.health <= <span class="number">0</span>:
+                <span class="keyword">self</span>.switch_scene(<span class="string">'game_over'</span>)
+
+        <span class="comment"># Camera follows player</span>
+        <span class="keyword">self</span>.camera.follow(<span class="keyword">self</span>.player, smooth=<span class="constant">True</span>)
+
+    <span class="keyword">def</span> <span class="function">collect_coin</span>(<span class="keyword">self</span>, coin):
+        <span class="string">"""Called when player touches coin"""</span>
+        coin.remove()
+        <span class="keyword">self</span>.game_state.score += <span class="number">10</span>
+        <span class="keyword">self</span>.play_sound(<span class="string">'coin.wav'</span>)
+        <span class="keyword">self</span>.emit_particles(<span class="string">'sparkle'</span>, x=coin.x, y=coin.y, count=<span class="number">20</span>)
+</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Sidebar - Inspector & Hierarchy -->
+        <div class="sidebar right-sidebar">
+            <!-- Scene Hierarchy -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Scene Hierarchy</h3>
+                    <button class="icon-btn" title="Add Object">➕</button>
+                </div>
+                <div class="hierarchy">
+                    <div class="hierarchy-item">
+                        <span class="hierarchy-icon">🖼️</span>
+                        <span>Background</span>
+                    </div>
+                    <div class="hierarchy-item selected">
+                        <span class="hierarchy-icon">🧍</span>
+                        <span>Player</span>
+                    </div>
+                    <div class="hierarchy-item">
+                        <span class="hierarchy-icon">👾</span>
+                        <span>Enemy (Slime)</span>
+                    </div>
+                    <div class="hierarchy-item">
+                        <span class="hierarchy-icon">💰</span>
+                        <span>Coin</span>
+                    </div>
+                    <div class="hierarchy-item">
+                        <span class="hierarchy-icon">🗺️</span>
+                        <span>Tilemap</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Inspector -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h3>Inspector</h3>
+                </div>
+                <div class="inspector">
+                    <div class="inspector-group">
+                        <div class="inspector-label">Sprite</div>
+                        <div class="inspector-field">
+                            <label>File:</label>
+                            <input type="text" value="player/idle.png" readonly>
+                        </div>
+                    </div>
+
+                    <div class="inspector-group">
+                        <div class="inspector-label">Transform</div>
+                        <div class="inspector-field">
+                            <label>Position X:</label>
+                            <input type="number" value="100" id="pos-x" onchange="updateSpritePosition()">
+                        </div>
+                        <div class="inspector-field">
+                            <label>Position Y:</label>
+                            <input type="number" value="400" id="pos-y" onchange="updateSpritePosition()">
+                        </div>
+                        <div class="inspector-field">
+                            <label>Width:</label>
+                            <input type="number" value="32" readonly>
+                        </div>
+                        <div class="inspector-field">
+                            <label>Height:</label>
+                            <input type="number" value="48" readonly>
+                        </div>
+                    </div>
+
+                    <div class="inspector-group">
+                        <div class="inspector-label">Physics</div>
+                        <div class="inspector-field">
+                            <label>
+                                <input type="checkbox" checked>
+                                Gravity
+                            </label>
+                        </div>
+                        <div class="inspector-field">
+                            <label>
+                                <input type="checkbox" checked>
+                                Collision
+                            </label>
+                        </div>
+                        <div class="inspector-field">
+                            <label>Speed:</label>
+                            <input type="number" value="200">
+                        </div>
+                    </div>
+
+                    <div class="inspector-group">
+                        <div class="inspector-label">Layer</div>
+                        <div class="inspector-field">
+                            <label>Z-Index:</label>
+                            <input type="number" value="1">
+                        </div>
+                    </div>
+
+                    <div class="inspector-group">
+                        <div class="inspector-label">Animation</div>
+                        <div class="inspector-field">
+                            <label>Current:</label>
+                            <select>
+                                <option>idle</option>
+                                <option>run</option>
+                                <option>jump</option>
+                            </select>
+                        </div>
+                        <div class="inspector-field">
+                            <button class="btn-secondary full-width">Edit Animations</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+        <div class="status-left">
+            <span class="status-item">✅ Ready</span>
+            <span class="status-item">Scene: level_1.py</span>
+        </div>
+        <div class="status-right">
+            <span class="status-item">Python 3.12</span>
+            <span class="status-item">Pygame 2.5.0</span>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

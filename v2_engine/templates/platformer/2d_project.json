@@ -1,0 +1,44 @@
+{
+  "title": "Platformer Demo",
+  "version": "1.0.0",
+  "engine_version": "2.0.0",
+
+  "window": {
+    "width": 800,
+    "height": 600,
+    "fullscreen": false,
+    "resizable": false,
+    "title": "Scribe Engine V2 - Platformer Demo"
+  },
+
+  "physics": {
+    "gravity": {
+      "x": 0,
+      "y": 980
+    },
+    "pixels_per_meter": 100
+  },
+
+  "scenes": {
+    "entry_scene": "main_menu",
+    "scenes": [
+      {
+        "name": "main_menu",
+        "file": "scenes/main_menu.py",
+        "class": "MainMenuScene"
+      },
+      {
+        "name": "level_01",
+        "file": "scenes/level_01.py",
+        "class": "Level01Scene"
+      }
+    ]
+  },
+
+  "assets": {
+    "sprites": "assets/sprites/",
+    "sounds": "assets/sounds/",
+    "music": "assets/music/",
+    "fonts": "assets/fonts/"
+  }
+}
