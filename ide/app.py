@@ -1380,6 +1380,94 @@ def serve_project_asset(filename):
         from flask import abort
         return abort(404)
 
+# ============================================================================
+# V2 Engine Routes (Scene-Based 2D Game Engine)
+# ============================================================================
+
+from ide.project_utils import detect_project_type, get_project_metadata, list_projects, create_v2_project, ProjectType
+
+@app.route('/v2/editor/<project_name>')
+def v2_editor(project_name):
+    """V2 scene editor for 2D games."""
+    project_root = config_manager.get_project_root()
+    if not project_root:
+        return "No project root configured", 400
+
+    project_path = os.path.join(project_root, project_name)
+    if not os.path.exists(project_path):
+        return "Project not found", 404
+
+    # Verify it's a V2 project
+    project_type = detect_project_type(project_path)
+    if project_type != ProjectType.V2:
+        return f"Not a V2 project (detected type: {project_type})", 400
+
+    # Get project metadata
+    metadata = get_project_metadata(project_path)
+
+    return render_template(
+        'v2_editor/editor.html',
+        project_name=project_name,
+        project_path=project_path,
+        project_metadata=metadata
+    )
+
+@app.route('/api/v2/project/<project_name>/metadata')
+def v2_project_metadata(project_name):
+    """Get V2 project metadata."""
+    project_root = config_manager.get_project_root()
+    if not project_root:
+        return jsonify({'error': 'No project root configured'}), 400
+
+    project_path = os.path.join(project_root, project_name)
+    if not os.path.exists(project_path):
+        return jsonify({'error': 'Project not found'}), 404
+
+    metadata = get_project_metadata(project_path)
+    return jsonify(metadata)
+
+@app.route('/api/v2/projects')
+def v2_list_projects():
+    """List all V2 projects."""
+    project_root = config_manager.get_project_root()
+    if not project_root:
+        return jsonify([])
+
+    all_projects = list_projects(project_root)
+    v2_projects = [p for p in all_projects if p['type'] == ProjectType.V2]
+
+    return jsonify(v2_projects)
+
+@app.route('/api/v2/projects/create', methods=['POST'])
+def v2_create_project():
+    """Create a new V2 project."""
+    data = request.json
+    project_name = data.get('name')
+    project_title = data.get('title', project_name)
+
+    if not project_name:
+        return jsonify({'error': 'Project name required'}), 400
+
+    project_root = config_manager.get_project_root()
+    if not project_root:
+        return jsonify({'error': 'No project root configured'}), 400
+
+    project_path = os.path.join(project_root, project_name)
+
+    if os.path.exists(project_path):
+        return jsonify({'error': 'Project already exists'}), 400
+
+    success = create_v2_project(project_path, project_title)
+
+    if success:
+        return jsonify({
+            'success': True,
+            'project_name': project_name,
+            'project_path': project_path
+        })
+    else:
+        return jsonify({'error': 'Failed to create project'}), 500
+
 def shutdown_server_thread():
     global server
     time.sleep(0.1) # Give the request a moment to complete
