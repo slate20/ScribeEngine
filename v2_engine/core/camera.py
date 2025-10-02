@@ -55,19 +55,24 @@ class Camera:
         """
         Convert world position to screen coordinates.
 
+        Camera position represents the top-left corner of the viewport in world space.
+        World (0, 0) maps to screen (0, 0) when camera is at (0, 0).
+
         Args:
             world_pos: Position in world space
 
         Returns:
             Position in screen space
         """
-        screen_x = (world_pos.x - self.position.x) * self.zoom + self.width / 2
-        screen_y = (world_pos.y - self.position.y) * self.zoom + self.height / 2
+        screen_x = (world_pos.x - self.position.x) * self.zoom
+        screen_y = (world_pos.y - self.position.y) * self.zoom
         return Vector2(screen_x, screen_y)
 
     def screen_to_world(self, screen_pos: Vector2) -> Vector2:
         """
         Convert screen position to world coordinates.
+
+        Camera position represents the top-left corner of the viewport in world space.
 
         Args:
             screen_pos: Position in screen space
@@ -75,8 +80,8 @@ class Camera:
         Returns:
             Position in world space
         """
-        world_x = (screen_pos.x - self.width / 2) / self.zoom + self.position.x
-        world_y = (screen_pos.y - self.height / 2) / self.zoom + self.position.y
+        world_x = screen_pos.x / self.zoom + self.position.x
+        world_y = screen_pos.y / self.zoom + self.position.y
         return Vector2(world_x, world_y)
 
     def is_visible(self, sprite) -> bool:

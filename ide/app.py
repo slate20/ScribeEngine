@@ -14,6 +14,7 @@ from v1_engine.core import GameEngine
 from werkzeug.serving import make_server
 import threading
 import time # Needed for time.sleep
+import atexit
 
 # --- Flask App Setup ---
 
@@ -38,6 +39,8 @@ import logging
 app = Flask(__name__,
             template_folder=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             static_folder=os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Note: V2 webapp blueprint removed - using native PyGame + ImGui editor instead
 
 # Suppress Werkzeug access logs
 log = logging.getLogger('werkzeug')
@@ -812,9 +815,12 @@ def get_startup_screen():
 # New route to list projects as an HTMX fragment
 @app.route('/api/projects')
 def list_projects_fragment():
+    from ide.project_utils import list_projects
     project_root = config_manager.get_project_root()
-    projects = [d for d in os.listdir(project_root) if os.path.isdir(os.path.join(project_root, d))]
-    projects.sort()
+
+    # Get all projects with type detection
+    projects = list_projects(project_root)
+
     return render_template('ide/templates/v1_editor/_project_list.html', projects=projects)
 
 # New route for the project-specific menu fragment
@@ -822,10 +828,19 @@ def list_projects_fragment():
 def project_menu_fragment(project_name):
     return render_template('ide/templates/ide_base/_project_menu.html', project_name=project_name)
 
-# Route for the new project form
+# Route for project type selection
+@app.route('/api/new-project-type-selection')
+def new_project_type_selection():
+    return render_template('ide/templates/ide_base/_project_type_selection.html')
+
+# Route for the new project form (V1)
 @app.route('/api/new-project-form')
 def new_project_form():
-    return render_template('ide/templates/v1_editor/_new_project_form.html')
+    project_type = request.args.get('type', 'v1')
+    if project_type == 'v1':
+        return render_template('ide/templates/v1_editor/_new_project_form.html')
+    # V2 projects use native editor - no webapp form needed
+    return jsonify({'error': 'V2 projects use the native editor'}), 400
 
 # New route to handle project creation from the GUI
 @app.route('/api/new-project', methods=['POST'])
@@ -859,19 +874,36 @@ def open_editor(project_name):
     project_root = config_manager.get_project_root()
     active_project_path = os.path.join(project_root, project_name)
     set_game_project_path(active_project_path)
-    
-    # Initialize the game engine for the selected project
-    # Read project.json to get debug_mode for this project
-    project_config_path = os.path.join(active_project_path, 'project.json')
-    project_debug_mode = True
-    if os.path.exists(project_config_path):
-        with open(project_config_path, 'r') as f:
-            project_config = json.load(f)
-            project_debug_mode = project_config.get('debug_mode', False)
 
-    game_engine = GameEngine(active_project_path, debug_mode=project_debug_mode)
+    # Import at function level to avoid circular import
+    from ide.project_utils import detect_project_type, ProjectType
 
-    return render_template('ide/templates/v1_editor/editor.html', project_name=project_name, project_root=project_root)
+    # Detect project type
+    project_type = detect_project_type(active_project_path)
+
+    # Route to appropriate editor
+    if project_type == ProjectType.V2:
+        # 2D scene-based game project - route to V2 blueprint
+        # Use HX-Redirect header to tell HTMX to do a full page navigation
+        response = make_response('', 200)
+        response.headers['HX-Redirect'] = url_for('v2.editor', project_name=project_name)
+        return response
+    elif project_type == ProjectType.V1:
+        # Text-based adventure project
+        # Initialize the game engine for the selected project
+        # Read project.json to get debug_mode for this project
+        project_config_path = os.path.join(active_project_path, 'project.json')
+        project_debug_mode = True
+        if os.path.exists(project_config_path):
+            with open(project_config_path, 'r') as f:
+                project_config = json.load(f)
+                project_debug_mode = project_config.get('debug_mode', False)
+
+        game_engine = GameEngine(active_project_path, debug_mode=project_debug_mode)
+
+        return render_template('ide/templates/v1_editor/editor.html', project_name=project_name, project_root=project_root)
+    else:
+        return f"Unknown project type at {active_project_path}. Make sure it has either project.json (V1) or 2d_project.json (V2).", 400
 
 def group_files_by_directory(files):
     """Groups files by their directory structure, separating root files."""
@@ -1381,92 +1413,8 @@ def serve_project_asset(filename):
         return abort(404)
 
 # ============================================================================
-# V2 Engine Routes (Scene-Based 2D Game Engine)
+# Server Shutdown
 # ============================================================================
-
-from ide.project_utils import detect_project_type, get_project_metadata, list_projects, create_v2_project, ProjectType
-
-@app.route('/v2/editor/<project_name>')
-def v2_editor(project_name):
-    """V2 scene editor for 2D games."""
-    project_root = config_manager.get_project_root()
-    if not project_root:
-        return "No project root configured", 400
-
-    project_path = os.path.join(project_root, project_name)
-    if not os.path.exists(project_path):
-        return "Project not found", 404
-
-    # Verify it's a V2 project
-    project_type = detect_project_type(project_path)
-    if project_type != ProjectType.V2:
-        return f"Not a V2 project (detected type: {project_type})", 400
-
-    # Get project metadata
-    metadata = get_project_metadata(project_path)
-
-    return render_template(
-        'v2_editor/editor.html',
-        project_name=project_name,
-        project_path=project_path,
-        project_metadata=metadata
-    )
-
-@app.route('/api/v2/project/<project_name>/metadata')
-def v2_project_metadata(project_name):
-    """Get V2 project metadata."""
-    project_root = config_manager.get_project_root()
-    if not project_root:
-        return jsonify({'error': 'No project root configured'}), 400
-
-    project_path = os.path.join(project_root, project_name)
-    if not os.path.exists(project_path):
-        return jsonify({'error': 'Project not found'}), 404
-
-    metadata = get_project_metadata(project_path)
-    return jsonify(metadata)
-
-@app.route('/api/v2/projects')
-def v2_list_projects():
-    """List all V2 projects."""
-    project_root = config_manager.get_project_root()
-    if not project_root:
-        return jsonify([])
-
-    all_projects = list_projects(project_root)
-    v2_projects = [p for p in all_projects if p['type'] == ProjectType.V2]
-
-    return jsonify(v2_projects)
-
-@app.route('/api/v2/projects/create', methods=['POST'])
-def v2_create_project():
-    """Create a new V2 project."""
-    data = request.json
-    project_name = data.get('name')
-    project_title = data.get('title', project_name)
-
-    if not project_name:
-        return jsonify({'error': 'Project name required'}), 400
-
-    project_root = config_manager.get_project_root()
-    if not project_root:
-        return jsonify({'error': 'No project root configured'}), 400
-
-    project_path = os.path.join(project_root, project_name)
-
-    if os.path.exists(project_path):
-        return jsonify({'error': 'Project already exists'}), 400
-
-    success = create_v2_project(project_path, project_title)
-
-    if success:
-        return jsonify({
-            'success': True,
-            'project_name': project_name,
-            'project_path': project_path
-        })
-    else:
-        return jsonify({'error': 'Failed to create project'}), 500
 
 def shutdown_server_thread():
     global server
@@ -1476,6 +1424,7 @@ def shutdown_server_thread():
 
 @app.route('/shutdown', methods=['GET', 'POST'])
 def shutdown():
+    # V2 webapp cleanup removed - native editor handles its own lifecycle
     threading.Thread(target=shutdown_server_thread).start()
     return 'Server shutting down...'
 

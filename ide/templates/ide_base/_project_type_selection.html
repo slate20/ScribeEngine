@@ -1,0 +1,121 @@
+<div class="project-type-selection">
+    <h2>Choose Project Type</h2>
+    <p class="selection-hint">Select the type of game you want to create</p>
+
+    <div class="project-type-cards">
+        <!-- V1 Text-Based -->
+        <div class="type-card" hx-get="/api/new-project-form?type=v1" hx-target="#startup-actions" hx-swap="innerHTML">
+            <div class="type-icon">📖</div>
+            <h3>Text-Based Game (V1)</h3>
+            <p>Interactive fiction, visual novels, text RPGs</p>
+            <ul class="type-features">
+                <li>Passage-based storytelling</li>
+                <li>Turn-based narrative flow</li>
+                <li>HTML/CSS rendering</li>
+                <li>Player stats & inventory</li>
+            </ul>
+            <button class="btn btn-primary">Create V1 Project</button>
+        </div>
+
+        <!-- V2 2D Visual -->
+        <div class="type-card" hx-get="/v2/api/new-project-form" hx-target="#startup-actions" hx-swap="innerHTML">
+            <div class="type-icon">🎮</div>
+            <h3>2D Visual Game (V2)</h3>
+            <p>Platformers, action games, 2D adventures</p>
+            <ul class="type-features">
+                <li>Scene-based gameplay</li>
+                <li>Real-time input & physics</li>
+                <li>Sprite rendering & animation</li>
+                <li>Visual scene editor</li>
+            </ul>
+            <button class="btn btn-primary">Create V2 Project</button>
+        </div>
+    </div>
+
+    <div class="form-actions">
+        <button type="button" class="btn btn-secondary" hx-get="/api/startup-screen" hx-target="#startup-actions" hx-swap="innerHTML">
+            ← Back
+        </button>
+    </div>
+</div>
+
+<style>
+.project-type-selection {
+    padding: 20px;
+}
+
+.project-type-selection h2 {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.selection-hint {
+    text-align: center;
+    color: #888;
+    margin-bottom: 30px;
+}
+
+.project-type-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 24px;
+    margin-bottom: 24px;
+}
+
+.type-card {
+    background: #2d2d30;
+    border: 2px solid #3e3e42;
+    border-radius: 8px;
+    padding: 24px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.type-card:hover {
+    border-color: #0e639c;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.type-icon {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.type-card h3 {
+    text-align: center;
+    margin-bottom: 8px;
+    color: #cccccc;
+}
+
+.type-card > p {
+    text-align: center;
+    color: #888;
+    margin-bottom: 16px;
+    font-size: 14px;
+}
+
+.type-features {
+    list-style: none;
+    padding: 0;
+    margin: 16px 0;
+}
+
+.type-features li {
+    padding: 6px 0;
+    color: #aaa;
+    font-size: 13px;
+}
+
+.type-features li:before {
+    content: "✓ ";
+    color: #0e639c;
+    margin-right: 8px;
+}
+
+.type-card .btn {
+    width: 100%;
+    margin-top: 16px;
+}
+</style>

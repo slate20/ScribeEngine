@@ -177,9 +177,13 @@ class Level01Scene(Scene):
         self.score = 0
         self.level_complete = False
 
-        # Sprite groups
-        self.all_sprites = SpriteGroup("all")
-        self.solid_sprites = SpriteGroup("solid")  # Sprites with collision
+        # Sprite groups (using base Scene sprite_groups dictionary for editor compatibility)
+        self.sprite_groups['all'] = SpriteGroup("all")
+        self.sprite_groups['solid'] = SpriteGroup("solid")  # Sprites with collision
+
+        # Convenience references
+        self.all_sprites = self.sprite_groups['all']
+        self.solid_sprites = self.sprite_groups['solid']
 
     def on_enter(self):
         """Initialize level when scene loads."""
@@ -192,7 +196,10 @@ class Level01Scene(Scene):
         self.camera.set_bounds(0, 0, 1600, 600)  # Level bounds
 
         # Create player
+        # [SCRIBE_SPRITE_START: player]
         self.player = Player(100, 300)
+        # Properties: {"x": 150, "y": 300}
+        # [SCRIBE_SPRITE_END: player]
         self.all_sprites.add(self.player)
         self.solid_sprites.add(self.player)
 

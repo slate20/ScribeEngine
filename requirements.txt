@@ -6,3 +6,5 @@ pyinstaller
 requests
 watchdog
 Pillow
+pygame
+PyQt6

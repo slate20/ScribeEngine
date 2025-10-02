@@ -22,18 +22,20 @@ class Game:
     and core engine services.
     """
 
-    def __init__(self, project_path: str):
+    def __init__(self, project_path: str, editor_mode: bool = False):
         """
         Initialize the game engine.
 
         Args:
             project_path: Path to the game project directory
+            editor_mode: If True, game is running inside the editor
         """
         self.project_path = os.path.abspath(project_path)
         self.project_config = None
         self.screen = None
         self.clock = None
         self.running = False
+        self.editor_mode = editor_mode
 
         # Core systems
         self.scene_manager = None
@@ -41,6 +43,8 @@ class Game:
         self.time_manager = None
 
         print(f"[Game] Initialized with project: {self.project_path}")
+        if editor_mode:
+            print("[Game] Running in editor mode")
 
     def initialize(self) -> bool:
         """
@@ -66,24 +70,29 @@ class Game:
             print(f"[Game] Error initializing pygame: {e}")
             return False
 
-        # Create game window
-        try:
-            window_config = self.project_config.get('window', {})
-            width = window_config.get('width', 800)
-            height = window_config.get('height', 600)
-            title = window_config.get('title', 'Scribe Engine V2 Game')
-            fullscreen = window_config.get('fullscreen', False)
+        # Create game window (unless in editor mode, where editor controls the window)
+        if not self.editor_mode:
+            try:
+                window_config = self.project_config.get('window', {})
+                width = window_config.get('width', 800)
+                height = window_config.get('height', 600)
+                title = window_config.get('title', 'Scribe Engine V2 Game')
+                fullscreen = window_config.get('fullscreen', False)
 
-            flags = pygame.DOUBLEBUF
-            if fullscreen:
-                flags |= pygame.FULLSCREEN
+                flags = pygame.DOUBLEBUF
+                if fullscreen:
+                    flags |= pygame.FULLSCREEN
 
-            self.screen = pygame.display.set_mode((width, height), flags)
-            pygame.display.set_caption(title)
-            print(f"[Game] Created window: {width}x{height} - {title}")
-        except Exception as e:
-            print(f"[Game] Error creating window: {e}")
-            return False
+                self.screen = pygame.display.set_mode((width, height), flags)
+                pygame.display.set_caption(title)
+                print(f"[Game] Created window: {width}x{height} - {title}")
+            except Exception as e:
+                print(f"[Game] Error creating window: {e}")
+                return False
+        else:
+            # In editor mode, use the editor's screen
+            self.screen = pygame.display.get_surface()
+            print(f"[Game] Using editor's window")
 
         # Initialize clock
         self.clock = pygame.time.Clock()
@@ -270,3 +279,36 @@ class Game:
             self.scene_manager.load_scene(entry_scene)
         else:
             print("[Game] Warning: No entry scene specified")
+
+
+def main():
+    """CLI entry point for running a game."""
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Scribe Engine V2 Game Runner')
+    parser.add_argument('project_path', help='Path to the game project directory')
+
+    args = parser.parse_args()
+
+    # Create and run game
+    game = Game(args.project_path)
+
+    if not game.initialize():
+        print("[Game] Failed to initialize game")
+        sys.exit(1)
+
+    try:
+        game.run()
+    except KeyboardInterrupt:
+        print("\n[Game] Interrupted by user")
+    except Exception as e:
+        print(f"[Game] Error during game execution: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
+    finally:
+        game.quit()
+
+
+if __name__ == '__main__':
+    main()

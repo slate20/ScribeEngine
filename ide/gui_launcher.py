@@ -38,8 +38,12 @@ class Api:
                 return result[0]
 
 def start_flask_app():
-    """Starts the Flask server in a separate thread."""
+    """Starts the main Flask server (V1 + launcher)."""
     flask_app.run(host='127.0.0.1', port=5000, debug=False, use_reloader=False)
+
+def start_v2_flask_app():
+    """Starts the V2 2D editor Flask server on port 5001."""
+    v2_flask_app.run(host='127.0.0.1', port=5001, debug=False, use_reloader=False)
 
 def handle_update_gui(update_info):
     """Handle update notification in GUI mode."""

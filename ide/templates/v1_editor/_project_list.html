@@ -2,10 +2,15 @@
 	<h2>Existing Projects</h2>
 	<ul class="file-tree">
 		{% for project in projects %}
-		<li>
-			<a hx-get="/api/open-editor/{{ project }}" hx-target="body" hx-swap="innerHTML">
-				{{ project }}
+		<li style="display: flex; align-items: center; gap: 8px;">
+			<a hx-get="/api/open-editor/{{ project.name }}" hx-target="body" hx-swap="innerHTML" style="flex: 1;">
+				{{ project.title or project.name }}
 			</a>
+			{% if project.type == 'v2' %}
+			<span style="background: #0e639c; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">2D</span>
+			{% elif project.type == 'v1' %}
+			<span style="background: #4caf50; color: #fff; padding: 2px 6px; border-radius: 3px; font-size: 10px; font-weight: 600;">TEXT</span>
+			{% endif %}
 		</li>
 		{% else %}
 		<li>No projects found.</li>

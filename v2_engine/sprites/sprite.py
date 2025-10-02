@@ -32,6 +32,10 @@ class Sprite:
         self.rotation = 0.0  # degrees
         self.scale = Vector2(1.0, 1.0)
 
+        # Origin/Pivot point (normalized 0-1)
+        # (0.5, 0.5) = center (default), (0, 0) = top-left, (0.5, 1) = bottom-center
+        self.origin = Vector2(0.5, 0.5)
+
         # Visual
         self.image = None  # pygame Surface
         self.color = (255, 255, 255)
@@ -140,9 +144,18 @@ class Sprite:
         else:
             render_image = self.image
 
-        # Center the image on the position
+        # Calculate render position using origin point
+        # Position represents where the origin point is in world space
+        # Offset the image so the origin point appears at the position
         rect = render_image.get_rect()
-        rect.center = (int(screen_pos.x), int(screen_pos.y))
+        image_width = rect.width
+        image_height = rect.height
+
+        # Calculate top-left position based on origin
+        topleft_x = screen_pos.x - (self.origin.x * image_width)
+        topleft_y = screen_pos.y - (self.origin.y * image_height)
+
+        rect.topleft = (int(topleft_x), int(topleft_y))
 
         # Render
         screen.blit(render_image, rect)
@@ -161,9 +174,13 @@ class Sprite:
             width = 32  # Default size
             height = 32
 
+        # Calculate top-left position using origin point
+        topleft_x = self.position.x - (self.origin.x * width)
+        topleft_y = self.position.y - (self.origin.y * height)
+
         return pygame.Rect(
-            self.position.x - width / 2,
-            self.position.y - height / 2,
+            topleft_x,
+            topleft_y,
             width,
             height
         )
