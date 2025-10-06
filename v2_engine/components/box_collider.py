@@ -62,8 +62,8 @@ class BoxCollider(Component):
         # Auto-detect size from sprite image if not explicitly set
         if self.width == 0 or self.height == 0:
             if hasattr(self.sprite, 'image') and self.sprite.image:
-                width = self.sprite.image.get_width()
-                height = self.sprite.image.get_height()
+                width = self.sprite.image.get_width() * self.sprite.scale.x
+                height = self.sprite.image.get_height() * self.sprite.scale.y
             else:
                 width = 32  # Default size
                 height = 32
