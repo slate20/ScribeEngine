@@ -2,14 +2,14 @@
 Sprite groups for batch operations and rendering.
 """
 
-from v2_engine.sprites.sprite import Sprite
+from v2_engine.core.game_object import GameObject
 
 
 class SpriteGroup:
     """
-    Container for sprites with batch update and render.
+    Container for game objects (sprites and logic objects) with batch operations.
 
-    Sprite groups organize sprites and provide efficient
+    Sprite groups organize game objects and provide efficient
     batch operations for updating and rendering.
     """
 
@@ -21,24 +21,24 @@ class SpriteGroup:
             name: Group identifier
         """
         self.name = name
-        self.sprites = []
+        self.sprites = []  # Note: name kept as 'sprites' for backward compat
 
-    def add(self, sprite: Sprite):
+    def add(self, sprite: GameObject):
         """
-        Add sprite to group.
+        Add game object to group.
 
         Args:
-            sprite: Sprite to add
+            sprite: GameObject (SpriteObject or LogicObject) to add
         """
         if sprite not in self.sprites:
             self.sprites.append(sprite)
 
-    def remove(self, sprite: Sprite):
+    def remove(self, sprite: GameObject):
         """
-        Remove sprite from group.
+        Remove game object from group.
 
         Args:
-            sprite: Sprite to remove
+            sprite: GameObject to remove
         """
         if sprite in self.sprites:
             self.sprites.remove(sprite)

@@ -12,6 +12,8 @@ import pygame
 from v2_engine.core.scene import SceneManager
 from v2_engine.core.input import InputHandler
 from v2_engine.core.time import TimeManager
+from v2_engine.core.debug_overlay import DebugOverlay
+from v2_engine.core.game_state import GameState, get_game_state
 
 
 class Game:
@@ -41,6 +43,13 @@ class Game:
         self.scene_manager = None
         self.input_handler = None
         self.time_manager = None
+        self.debug_overlay = None
+        self.game_state = None
+
+        # UI systems
+        self.save_menu = None
+        self.load_menu = None
+        self.paused = False
 
         print(f"[Game] Initialized with project: {self.project_path}")
         if editor_mode:
@@ -98,10 +107,19 @@ class Game:
         self.clock = pygame.time.Clock()
 
         # Initialize core systems
+        self.game_state = get_game_state()  # Singleton instance
         self.scene_manager = SceneManager(self)
         self.input_handler = InputHandler()
         self.time_manager = TimeManager(target_fps=60)
+        self.debug_overlay = DebugOverlay()
         print("[Game] Core systems initialized")
+
+        # Initialize UI systems (only if not in editor mode)
+        if not self.editor_mode:
+            from v2_engine.ui.save_menu import SaveMenu
+            self.save_menu = SaveMenu(self, mode='save')
+            self.load_menu = SaveMenu(self, mode='load')
+            print("[Game] UI systems initialized")
 
         # Add project directory to Python path for scene imports
         if self.project_path not in sys.path:
@@ -178,6 +196,16 @@ class Game:
         self.running = False
         pygame.quit()
 
+    def pause(self):
+        """Pause game execution."""
+        self.paused = True
+        print("[Game] Paused")
+
+    def unpause(self):
+        """Resume game execution."""
+        self.paused = False
+        print("[Game] Unpaused")
+
     # Internal methods
 
     def _process_events(self):
@@ -190,13 +218,78 @@ class Game:
                 self.quit()
                 return
 
-            # Handle ESC key to quit
+            # Check if save/load menu handles event first
+            if self.save_menu and self.save_menu.handle_event(event):
+                continue  # Menu consumed this event, skip to next event
+            if self.load_menu and self.load_menu.handle_event(event):
+                continue  # Menu consumed this event, skip to next event
+
+            # Handle ESC key - Save menu
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
-                self.quit()
+                # If not in editor mode, toggle save menu instead of quitting
+                if not self.editor_mode and self.save_menu:
+                    self.save_menu.toggle()
+                    return
+                else:
+                    self.quit()
+                    return
+
+            # Handle L key - Load menu (Ctrl+L)
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_l:
+                mods = pygame.key.get_mods()
+                if not self.editor_mode and (mods & pygame.KMOD_CTRL) and self.load_menu:
+                    self.load_menu.toggle()
+                    return
+
+            # Handle F5 key - Quick save (Ctrl+F5) or debug console
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F5:
+                mods = pygame.key.get_mods()
+                if not self.editor_mode and (mods & pygame.KMOD_CTRL) and self.save_menu:
+                    # Quick save to slot 0
+                    from v2_engine.core.game_state import get_game_state
+                    game_state = get_game_state()
+                    scene_name = self.scene_manager.current_scene if self.scene_manager else "unknown"
+                    result = game_state.save_to_file(0, scene_name, "Quick Save", self.project_path)
+                    if result:
+                        print("[Game] Quick saved to slot 1")
+                    return
+                elif self.debug_overlay:
+                    self.debug_overlay.toggle_console()
+                    status = "enabled" if self.debug_overlay.show_console else "disabled"
+                    self.debug_overlay.add_console_line(f"[Game] Console {status}")
+                    return
+
+            # Handle F9 key - Quick load
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F9:
+                if not self.editor_mode and self.load_menu:
+                    # Quick load from slot 0
+                    from v2_engine.core.game_state import get_game_state
+                    game_state = get_game_state()
+                    success = game_state.load_from_file(0, self.project_path)
+                    if success:
+                        print("[Game] Quick loaded from slot 1")
+                        if self.scene_manager:
+                            self.scene_manager.reload_current_scene()
+                    return
+
+            # Handle F3 key to toggle debug overlay
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F3:
+                if self.debug_overlay:
+                    self.debug_overlay.toggle()
+                    status = "enabled" if self.debug_overlay.enabled else "disabled"
+                    print(f"[Game] Debug overlay {status}")
                 return
 
-            # Pass event to scene
-            if self.scene_manager:
+            # Handle F4 key to toggle frame logging
+            if event.type == pygame.KEYDOWN and event.key == pygame.K_F4:
+                if self.debug_overlay:
+                    self.debug_overlay.toggle_frame_log()
+                    status = "enabled" if self.debug_overlay.show_frame_log else "disabled"
+                    self.debug_overlay.add_console_line(f"[Game] Frame logging {status}")
+                return
+
+            # Pass event to scene (only if not paused)
+            if not self.paused and self.scene_manager:
                 self.scene_manager.handle_event(event)
 
         # Update input handler
@@ -210,8 +303,15 @@ class Game:
         Args:
             dt: Delta time in seconds
         """
-        if self.scene_manager:
+        # Update scene (only if not paused)
+        if not self.paused and self.scene_manager:
             self.scene_manager.update(dt)
+
+        # Update UI overlays (always update, even when paused)
+        if self.save_menu:
+            self.save_menu.update(dt)
+        if self.load_menu:
+            self.load_menu.update(dt)
 
     def _render(self):
         """Render current scene to screen."""
@@ -224,6 +324,19 @@ class Game:
         # Render scene
         if self.scene_manager:
             self.scene_manager.render(self.screen)
+
+        # Render debug overlay (on top of everything)
+        if self.debug_overlay:
+            current_scene = None
+            if self.scene_manager and self.scene_manager.current_scene:
+                current_scene = self.scene_manager.scenes[self.scene_manager.current_scene]
+            self.debug_overlay.render(self.screen, current_scene, self.time_manager.fps)
+
+        # Render save/load menus (on top of debug overlay)
+        if self.save_menu:
+            self.save_menu.render(self.screen)
+        if self.load_menu:
+            self.load_menu.render(self.screen)
 
         # Display FPS in window title (debug)
         fps = self.time_manager.fps

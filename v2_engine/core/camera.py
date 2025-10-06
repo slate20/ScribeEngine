@@ -55,8 +55,8 @@ class Camera:
         """
         Convert world position to screen coordinates.
 
-        Camera position represents the top-left corner of the viewport in world space.
-        World (0, 0) maps to screen (0, 0) when camera is at (0, 0).
+        Camera position represents the CENTER of the viewport in world space.
+        The viewport shows from (camera.x - width/2) to (camera.x + width/2).
 
         Args:
             world_pos: Position in world space
@@ -64,15 +64,21 @@ class Camera:
         Returns:
             Position in screen space
         """
-        screen_x = (world_pos.x - self.position.x) * self.zoom
-        screen_y = (world_pos.y - self.position.y) * self.zoom
+        # Camera position is at center of viewport
+        # Calculate top-left corner of viewport in world space
+        viewport_left = self.position.x - (self.width / (2 * self.zoom))
+        viewport_top = self.position.y - (self.height / (2 * self.zoom))
+
+        # Convert world position to screen coordinates
+        screen_x = (world_pos.x - viewport_left) * self.zoom
+        screen_y = (world_pos.y - viewport_top) * self.zoom
         return Vector2(screen_x, screen_y)
 
     def screen_to_world(self, screen_pos: Vector2) -> Vector2:
         """
         Convert screen position to world coordinates.
 
-        Camera position represents the top-left corner of the viewport in world space.
+        Camera position represents the CENTER of the viewport in world space.
 
         Args:
             screen_pos: Position in screen space
@@ -80,13 +86,21 @@ class Camera:
         Returns:
             Position in world space
         """
-        world_x = screen_pos.x / self.zoom + self.position.x
-        world_y = screen_pos.y / self.zoom + self.position.y
+        # Camera position is at center of viewport
+        # Calculate top-left corner of viewport in world space
+        viewport_left = self.position.x - (self.width / (2 * self.zoom))
+        viewport_top = self.position.y - (self.height / (2 * self.zoom))
+
+        # Convert screen position to world coordinates
+        world_x = screen_pos.x / self.zoom + viewport_left
+        world_y = screen_pos.y / self.zoom + viewport_top
         return Vector2(world_x, world_y)
 
     def is_visible(self, sprite) -> bool:
         """
         Check if sprite is within camera viewport (for culling).
+
+        Camera position represents the center of the viewport.
 
         Args:
             sprite: Sprite to check
@@ -97,10 +111,11 @@ class Camera:
         # Get sprite bounds
         sprite_rect = sprite.get_rect()
 
-        # Calculate camera viewport in world space
+        # Calculate camera viewport in world space (camera.position is at center)
         half_width = self.width / (2 * self.zoom)
         half_height = self.height / (2 * self.zoom)
 
+        # Viewport rect (top-left corner calculated from center position)
         viewport = pygame.Rect(
             self.position.x - half_width,
             self.position.y - half_height,
@@ -112,15 +127,21 @@ class Camera:
         return viewport.colliderect(sprite_rect)
 
     def apply_bounds(self):
-        """Clamp camera position to bounds if set."""
+        """
+        Clamp camera position to bounds if set.
+
+        Camera position represents the center of viewport, so we clamp
+        to ensure the viewport edges don't go outside the bounds.
+        """
         if not self.bounds:
             return
 
-        # Calculate how much of the world is visible
+        # Calculate how much of the world is visible from center
         half_width = self.width / (2 * self.zoom)
         half_height = self.height / (2 * self.zoom)
 
-        # Clamp position
+        # Clamp camera center position to keep viewport within bounds
+        # Camera can't be closer to edge than half viewport size
         self.position.x = max(self.bounds.left + half_width,
                               min(self.position.x, self.bounds.right - half_width))
         self.position.y = max(self.bounds.top + half_height,

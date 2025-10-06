@@ -31,8 +31,11 @@ class Button(Widget):
         self.bg_color = (70, 70, 70)
         self.hover_color = (100, 100, 100)
         self.active_color = (50, 50, 50)
+        self.disabled_color = (40, 40, 40)
         self.text_color = (255, 255, 255)
+        self.disabled_text_color = (100, 100, 100)
         self.border_color = (150, 150, 150)
+        self.disabled_border_color = (80, 80, 80)
         self.border_width = 2
 
         # State
@@ -66,21 +69,31 @@ class Button(Widget):
 
         rect = self.get_rect()
 
-        # Choose background color based on state
-        if self.is_pressed:
+        # Choose colors based on enabled state
+        if not self.enabled:
+            bg_color = self.disabled_color
+            border_color = self.disabled_border_color
+            text_color = self.disabled_text_color
+        elif self.is_pressed:
             bg_color = self.active_color
+            border_color = self.border_color
+            text_color = self.text_color
         elif self.is_hovered:
             bg_color = self.hover_color
+            border_color = self.border_color
+            text_color = self.text_color
         else:
             bg_color = self.bg_color
+            border_color = self.border_color
+            text_color = self.text_color
 
         # Draw background
         pygame.draw.rect(screen, bg_color, rect)
 
         # Draw border
-        pygame.draw.rect(screen, self.border_color, rect, self.border_width)
+        pygame.draw.rect(screen, border_color, rect, self.border_width)
 
         # Draw text centered
-        text_surface = self.font.render(self.text, True, self.text_color)
+        text_surface = self.font.render(self.text, True, text_color)
         text_rect = text_surface.get_rect(center=rect.center)
         screen.blit(text_surface, text_rect)

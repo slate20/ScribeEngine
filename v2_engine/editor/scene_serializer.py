@@ -53,25 +53,60 @@ class SceneSerializer:
         lines.append('')
 
         # Imports
+        lines.append('import os')
         lines.append('import pygame')
         lines.append('from v2_engine.core.scene import Scene')
         lines.append('from v2_engine.core.camera import Camera')
         lines.append('from v2_engine.utils.math import Vector2')
         lines.append('')
 
-        # Collect sprite classes that need importing
+        # Collect sprite classes and component classes that need importing
         sprite_classes = set()
+        component_classes = set()
         if hasattr(scene, 'sprite_groups'):
             for group in scene.sprite_groups.values():
                 for sprite in group.sprites:
                     sprite_classes.add(sprite.__class__.__name__)
+                    # Collect component classes
+                    if hasattr(sprite, 'components'):
+                        for component in sprite.components.values():
+                            component_classes.add(component.__class__.__name__)
 
         # Import sprite classes
         if sprite_classes:
             lines.append('# Sprite imports')
             for sprite_class in sorted(sprite_classes):
-                # TODO: Determine proper import path dynamically
-                lines.append(f'from v2_engine.sprites.sprite import {sprite_class}')
+                # Import from correct module based on class type
+                if sprite_class == 'SpriteObject':
+                    lines.append('from v2_engine.sprites.sprite_object import SpriteObject')
+                elif sprite_class == 'LogicObject':
+                    lines.append('from v2_engine.core.logic_object import LogicObject')
+                else:
+                    # Backward compatibility: old Sprite class
+                    lines.append(f'from v2_engine.sprites.sprite import {sprite_class}')
+            lines.append('')
+
+        # Import component classes
+        if component_classes:
+            lines.append('# Component imports')
+
+            # Map component classes to their import paths
+            component_import_map = {
+                'RigidBody': 'from v2_engine.components.rigidbody import RigidBody',
+                'BoxCollider': 'from v2_engine.components.box_collider import BoxCollider',
+                'PlatformerController': 'from v2_engine.components.platformer_controller import PlatformerController',
+                'SceneTrigger': 'from v2_engine.components.scene_trigger import SceneTrigger',
+                'CameraFollow': 'from v2_engine.components.camera_follow import CameraFollow',
+                'SpawnPoint': 'from v2_engine.components.spawn_point import SpawnPoint',
+                # Add more components here as they're created
+            }
+
+            for component_class in sorted(component_classes):
+                if component_class in component_import_map:
+                    lines.append(component_import_map[component_class])
+                else:
+                    # Default: try v2_engine.components package
+                    lines.append(f'from v2_engine.components.{component_class.lower()} import {component_class}')
             lines.append('')
 
         # Class definition
@@ -102,10 +137,39 @@ class SceneSerializer:
         lines.append('        """Called when scene becomes active."""')
         lines.append('        super().on_enter()')
         lines.append('')
+        lines.append('        # Clear existing sprites to prevent duplicates when re-entering scene')
+        lines.append('        for group_name, group in self.sprite_groups.items():')
+        lines.append('            sprite_count_before = len(group.sprites)')
+        lines.append('            group.sprites.clear()')
+        lines.append('            if sprite_count_before > 0:')
+        lines.append('                print(f"[Scene] Cleared {sprite_count_before} sprites from group \'{group_name}\'")')
+        lines.append('')
         lines.append('        # Initialize camera')
         lines.append('        screen_width = self.game.screen.get_width()')
         lines.append('        screen_height = self.game.screen.get_height()')
         lines.append('        self.camera = Camera(screen_width, screen_height)')
+        lines.append('        # Position camera at center of viewport (center-based positioning)')
+        lines.append('        self.camera.position = Vector2(screen_width / 2, screen_height / 2)')
+        lines.append('')
+
+        # Serialize background settings
+        if hasattr(scene, 'background_color') and scene.background_color:
+            bg_color = scene.background_color
+            lines.append('        # Background settings')
+            lines.append(f'        self.background_color = ({bg_color[0]}, {bg_color[1]}, {bg_color[2]})')
+
+        if hasattr(scene, 'background_image') and scene.background_image:
+            lines.append(f'        self.background_image = "{scene.background_image}"')
+            lines.append('        # Load background image')
+            lines.append('        bg_image_path = os.path.join(self.game.project_path, self.background_image)')
+            lines.append('        try:')
+            lines.append('            self.background_surface = pygame.image.load(bg_image_path)')
+            lines.append('            # Scale to screen size')
+            lines.append('            self.background_surface = pygame.transform.scale(self.background_surface, (screen_width, screen_height))')
+            lines.append('        except (FileNotFoundError, pygame.error) as e:')
+            lines.append('            print(f"[Scene] Warning: Could not load background image {bg_image_path}: {e}")')
+            lines.append('            self.background_surface = None')
+
         lines.append('')
 
         # Serialize sprites
@@ -116,6 +180,11 @@ class SceneSerializer:
                     lines.append(f'        # {group_name} group')
 
                     for i, sprite in enumerate(sprites):
+                        # Skip sprites that were added by spawn points (not original to this scene)
+                        if getattr(sprite, '_spawned_by_spawn_point', False):
+                            print(f"[SceneSerializer] Skipping spawned entity: {getattr(sprite, 'name', sprite.__class__.__name__)}")
+                            continue
+
                         sprite_var = f"{sprite.__class__.__name__.lower()}_{i}"
                         sprite_lines = self._serialize_sprite(sprite, sprite_var, group_name)
                         lines.extend(sprite_lines)
@@ -123,11 +192,80 @@ class SceneSerializer:
 
         lines.append('')
 
+        # Add update method
+        lines.append('    def update(self, dt):')
+        lines.append('        """Update all sprites and components."""')
+        lines.append('        super().update(dt)')
+        lines.append('')
+        lines.append('        from v2_engine.components.rigidbody import RigidBody')
+        lines.append('        from v2_engine.components.platformer_controller import PlatformerController')
+        lines.append('        from v2_engine.components.scene_trigger import SceneTrigger')
+        lines.append('        from v2_engine.components.camera_follow import CameraFollow')
+        lines.append('        from v2_engine.components.spawn_point import SpawnPoint')
+        lines.append('')
+        lines.append('        # Clear grounded state for non-resting objects')
+        if hasattr(scene, 'sprite_groups'):
+            for group_name in scene.sprite_groups.keys():
+                lines.append(f'        for sprite in self.sprite_groups["{group_name}"].sprites:')
+                lines.append(f'            rb = sprite.get_component(RigidBody)')
+                lines.append(f'            if rb and not rb.is_kinematic:')
+                lines.append(f'                # Only clear grounded if object has VERTICAL velocity')
+                lines.append(f'                # Horizontal movement doesn\'t affect grounded state')
+                lines.append(f'                if abs(rb.velocity.y) > 0.01:')
+                lines.append(f'                    rb.grounded = False')
+        lines.append('')
+        lines.append('        # Update physics components (RigidBody) - uses was_grounded from PREVIOUS frame')
+        if hasattr(scene, 'sprite_groups'):
+            for group_name in scene.sprite_groups.keys():
+                lines.append(f'        for sprite in self.sprite_groups["{group_name}"].sprites:')
+                lines.append(f'            rb = sprite.get_component(RigidBody)')
+                lines.append(f'            if rb and rb.enabled:')
+                lines.append(f'                rb.update(dt)')
+        lines.append('')
+        lines.append('        # Collision detection and resolution (sets grounded=True where appropriate)')
+        lines.append('        from v2_engine.physics.collision_system import CollisionSystem')
+        lines.append('        collision_system = CollisionSystem()')
+        lines.append('        collisions = collision_system.check_collisions(self.sprite_groups)')
+        lines.append('        collision_system.resolve_collisions(collisions)')
+        lines.append('')
+        lines.append('        # Update control components (PlatformerController, etc.)')
+        if hasattr(scene, 'sprite_groups'):
+            for group_name in scene.sprite_groups.keys():
+                lines.append(f'        for sprite in self.sprite_groups["{group_name}"].sprites:')
+                lines.append(f'            controller = sprite.get_component(PlatformerController)')
+                lines.append(f'            if controller and controller.enabled:')
+                lines.append(f'                controller.update(dt)')
+        lines.append('')
+        lines.append('        # Update scene triggers and other components')
+        if hasattr(scene, 'sprite_groups'):
+            for group_name in scene.sprite_groups.keys():
+                lines.append(f'        for sprite in self.sprite_groups["{group_name}"].sprites:')
+                lines.append(f'            for component in sprite.components.values():')
+                lines.append(f'                # Skip already updated components')
+                lines.append(f'                if isinstance(component, (RigidBody, PlatformerController)):')
+                lines.append(f'                    continue')
+                lines.append(f'                if component.enabled:')
+                lines.append(f'                    component.update(dt)')
+        lines.append('')
+        lines.append('        # Save grounded state for NEXT frame (do this at the END of update)')
+        if hasattr(scene, 'sprite_groups'):
+            for group_name in scene.sprite_groups.keys():
+                lines.append(f'        for sprite in self.sprite_groups["{group_name}"].sprites:')
+                lines.append(f'            rb = sprite.get_component(RigidBody)')
+                lines.append(f'            if rb:')
+                lines.append(f'                rb.was_grounded = rb.grounded')
+        lines.append('')
+
         # Add render method
         lines.append('    def render(self, screen):')
         lines.append('        """Render all sprites with camera."""')
-        lines.append('        # Clear screen')
-        lines.append('        screen.fill((40, 40, 50))  # Dark gray background')
+        lines.append('        # Draw background')
+        lines.append('        if self.background_surface:')
+        lines.append('            # Draw background image')
+        lines.append('            screen.blit(self.background_surface, (0, 0))')
+        lines.append('        else:')
+        lines.append('            # Draw background color')
+        lines.append('            screen.fill(self.background_color)')
         lines.append('')
         lines.append('        # Render all sprite groups')
         if hasattr(scene, 'sprite_groups'):
@@ -161,31 +299,126 @@ class SceneSerializer:
         # Set origin
         lines.append(f'        {var_name}.origin = Vector2({sprite.origin.x}, {sprite.origin.y})')
 
+        # Set rotation if non-zero
+        if hasattr(sprite, 'rotation') and sprite.rotation != 0:
+            lines.append(f'        {var_name}.rotation = {sprite.rotation}')
+
+        # Set scale if not default
+        if hasattr(sprite, 'scale') and (sprite.scale.x != 1.0 or sprite.scale.y != 1.0):
+            lines.append(f'        {var_name}.scale = Vector2({sprite.scale.x}, {sprite.scale.y})')
+
         # Set name if it exists
         if hasattr(sprite, 'name') and sprite.name:
             # Escape quotes in name string
             escaped_name = sprite.name.replace("'", "\\'")
             lines.append(f"        {var_name}.name = '{escaped_name}'")
 
-        # Set image (create colored surface for now - TODO: handle actual image assets)
+        # Set image (load from file if available, otherwise create colored surface)
         if sprite.image:
-            width = sprite.image.get_width()
-            height = sprite.image.get_height()
-            # Get the color from the center pixel
-            try:
-                color = sprite.image.get_at((width // 2, height // 2))
-                lines.append(f'        {var_name}.image = pygame.Surface(({width}, {height}))')
-                lines.append(f'        {var_name}.image.fill(({color.r}, {color.g}, {color.b}))')
-            except:
-                lines.append(f'        {var_name}.image = pygame.Surface(({width}, {height}))')
-                lines.append(f'        {var_name}.image.fill((255, 255, 255))')
+            if hasattr(sprite, 'image_path') and sprite.image_path:
+                # Load from asset file - use game.project_path to resolve correctly
+                width = sprite.image.get_width()
+                height = sprite.image.get_height()
+                lines.append(f"        asset_path = os.path.join(self.game.project_path, '{sprite.image_path}')")
+                lines.append(f"        try:")
+                lines.append(f"            {var_name}.image = pygame.image.load(asset_path)")
+                lines.append(f"            {var_name}.image = pygame.transform.scale({var_name}.image, ({width}, {height}))")
+                lines.append(f"        except (FileNotFoundError, pygame.error) as e:")
+                lines.append(f"            # Missing asset - create magenta placeholder")
+                lines.append(f"            print(f'[Scene] Warning: Could not load asset {{asset_path}}: {{e}}')")
+                lines.append(f"            {var_name}.image = pygame.Surface(({width}, {height}))")
+                lines.append(f"            {var_name}.image.fill((255, 0, 255))  # Magenta for missing texture")
+                lines.append(f"        {var_name}.image_path = '{sprite.image_path}'")
+            else:
+                # Create colored surface (for sprites without assigned assets)
+                width = sprite.image.get_width()
+                height = sprite.image.get_height()
+                # Get the color from the center pixel
+                try:
+                    color = sprite.image.get_at((width // 2, height // 2))
+                    lines.append(f'        {var_name}.image = pygame.Surface(({width}, {height}))')
+                    lines.append(f'        {var_name}.image.fill(({color.r}, {color.g}, {color.b}))')
+                except:
+                    lines.append(f'        {var_name}.image = pygame.Surface(({width}, {height}))')
+                    lines.append(f'        {var_name}.image.fill((255, 255, 255))')
 
         # Set layer if it exists
         if hasattr(sprite, 'layer'):
             lines.append(f'        {var_name}.layer = {sprite.layer}')
 
-        # Add to sprite group
+        # Set visibility if not default (True)
+        if hasattr(sprite, 'visible') and not sprite.visible:
+            lines.append(f'        {var_name}.visible = False')
+
+        # Set persistence properties
+        if hasattr(sprite, 'is_persistent') and sprite.is_persistent:
+            lines.append(f'        {var_name}.is_persistent = True')
+            if hasattr(sprite, 'entity_id') and sprite.entity_id:
+                lines.append(f'        {var_name}.entity_id = \'{sprite.entity_id}\'')
+
+        # Serialize components
+        if hasattr(sprite, 'components') and sprite.components:
+            lines.append(f'        # Add components')
+            for component_type, component in sprite.components.items():
+                comp_lines = self._serialize_component(component, var_name)
+                lines.extend(comp_lines)
+
+        # Set scene reference and add to sprite group
+        lines.append(f'        {var_name}.scene = self  # Reference to scene for input access')
         lines.append(f'        self.sprite_groups["{group_name}"].add({var_name})')
+
+        return lines
+
+    def _serialize_component(self, component, sprite_var: str) -> list:
+        """
+        Generate Python code for a component.
+
+        Args:
+            component: Component instance
+            sprite_var: Variable name of the sprite
+
+        Returns:
+            List of code lines
+        """
+        lines = []
+
+        component_class = component.__class__.__name__
+        component_var = f"{sprite_var}_{component_class.lower()}"
+
+        # Import component class (collect these for header)
+        # For now, assume components are in v2_engine.components
+        # TODO: Track imports and add to header
+
+        # Create component instance
+        lines.append(f'        {component_var} = {component_class}({sprite_var})')
+
+        # Set component properties
+        for attr_name in dir(component):
+            # Skip private/protected attributes and methods
+            if attr_name.startswith('_') or callable(getattr(component, attr_name)):
+                continue
+            # Skip base attributes
+            if attr_name in ['sprite', 'enabled']:
+                continue
+
+            attr_value = getattr(component, attr_name)
+
+            # Serialize based on type
+            if isinstance(attr_value, bool):
+                lines.append(f'        {component_var}.{attr_name} = {attr_value}')
+            elif isinstance(attr_value, (int, float)):
+                lines.append(f'        {component_var}.{attr_name} = {attr_value}')
+            elif isinstance(attr_value, str):
+                # Escape quotes in string
+                escaped_value = attr_value.replace("'", "\\'")
+                lines.append(f"        {component_var}.{attr_name} = '{escaped_value}'")
+            elif hasattr(attr_value, 'x') and hasattr(attr_value, 'y'):
+                # Vector2 type
+                lines.append(f'        {component_var}.{attr_name} = Vector2({attr_value.x}, {attr_value.y})')
+            # TODO: Handle lists, dicts, etc.
+
+        # Add component to sprite
+        lines.append(f'        {sprite_var}.add_component({component_var})')
 
         return lines
 

@@ -1,635 +1,733 @@
-# Scribe Engine v2: Vision & Development Plan
+# Scribe Engine V2 - Vision & Design Philosophy
 
-**Status**: Prototype/MVP Phase
-**Branch**: v2-development
-**Target**: Scene-based 2D game engine with Python-first approach
-**Last Updated**: 2025-09-30
-
----
-
-## Core Vision
-
-Scribe Engine v2 is a **scene-based 2D game engine** that bridges the gap between text-based engines and complex tools like Godot. It maintains the Scribe Engine philosophy: **approachable for beginners, powerful for advanced users, with Python at its core.**
-
-### Design Principles
-
-1. **Python-First**: If you can write it in Python, you can build it
-2. **Visual + Code**: Visual editor for layout, Python for logic
-3. **No Setup Required**: Web IDE with one-click distribution
-4. **Transparent Architecture**: No magic, readable generated code
-5. **Flexible & Extensible**: From simple games to open-world 2D RPGs
-
-### What Makes v2 Different from v1
-
-| Aspect | v1 (Text-Based) | v2 (Scene-Based) |
-|--------|----------------|------------------|
-| **Structure** | Passage-based | Scene-based |
-| **Flow** | Turn-based narrative | Frame-based gameplay |
-| **Rendering** | HTML/CSS | 2D sprite rendering |
-| **Interaction** | Click/choose | Real-time input |
-| **Game Types** | IF, VN, text RPGs | Platformers, action, adventure, RPGs |
-| **Physics** | None | Optional 2D physics |
-
-**Note**: v1 remains available and supported - no compatibility needed between versions.
+**Last Updated**: 2025-10-04
+**Status**: Living Document - Source of Truth for Design Direction
+**Branch**: `v2-native-editor-poc`
 
 ---
 
-## Technical Architecture
+## Mission Statement
 
-### Scene System (Core Concept)
+Create an **approachable 2D game engine** that abstracts Pygame complexity into intuitive visual tooling while remaining powerful enough for advanced developers. The engine should enable rapid game creation through a component-based architecture and professional IDE workflow.
 
-Scenes replace passages as the fundamental building block:
+---
 
-```python
-# scenes/forest_level.py
-class ForestLevel(Scene):
-    """
-    Scenes are Python classes that run in a game loop.
-    Engine provides helpers to make this accessible.
-    """
+## Core Design Principles
 
-    def setup(self):
-        """Called once when scene loads"""
-        # Simple sprite creation
-        self.player = self.add_sprite(
-            'player.png',
-            x=100, y=100,
-            collision=True
-        )
+### 1. **Approachable for Beginners**
+- **Visual-First Workflow**: Drag-drop sprites, point-click editing
+- **Game-Friendly Terminology**: Use "Behavior" instead of "Component", "Entity" instead of "GameObject"
+- **Clean, Modern UI**: Thoughtful tool placement, clear visual hierarchy
+- **Discoverable Features**: Everything visible in the interface, no hidden shortcuts required
+- **Contextual Help**: Inline tooltips and documentation
 
-        self.enemy = self.add_sprite(
-            'enemy.png',
-            x=300, y=100,
-            ai='patrol'  # Built-in AI behaviors
-        )
+### 2. **Powerful for Advanced Users**
+- **Component-Based Architecture**: Composition over inheritance
+- **Custom Component Creation**: Full Python scripting access when needed
+- **Component Inheritance/Templates**: Reusable entity templates (prefabs)
+- **Direct Code Editing**: Code editor alongside visual tools
+- **Extensibility**: Modify engine behavior without fighting the system
 
-        # Background
-        self.background = 'forest_bg.png'
+### 3. **Professional Workflow**
+- **Fast Iteration Cycles**: Live preview, hot-reload scripts
+- **Keyboard Shortcuts**: Power-user efficiency
+- **Undo/Redo Throughout**: Non-destructive editing
+- **Asset Management Built-In**: Visual asset browser and organization
+- **One-Click Build & Test**: Instant playable builds
 
-        # Physics (opt-in)
-        self.player.gravity = True
-        self.player.speed = 200
+---
 
-    def update(self, dt):
-        """Called every frame (~60 FPS)"""
-        # Handle input
-        if self.input.key_down('space') and self.player.on_ground:
-            self.player.jump()
+## Architecture Philosophy
 
-        # Check collisions
-        if self.player.collides_with(self.enemy):
-            self.game_state.health -= 1
-            self.switch_scene('game_over')
+### Component-Based Design
+
+**Composition over Inheritance**: Instead of creating objects that *are* things (e.g., `Player` class inheriting from `PhysicsObject`), you create simple objects and *give them* behaviors by attaching components.
+
+**Hierarchy**:
+```
+Game (master controller)
+  └── Scene (container for game objects)
+      └── Sprite (entity with transform)
+          └── Component (modular behavior)
 ```
 
-### Rendering Backend (TBD)
-
-**Options Under Consideration:**
-- **Pygame 2.x** (OpenGL support, well-documented, large community)
-- **Pyglet** (Pure OpenGL, lighter weight, good performance)
-- **Arcade** (Built on Pyglet, higher-level API, excellent for 2D)
-
-**Selection Criteria:**
-- Performance (60 FPS for complex scenes)
-- Ease of distribution (bundling, cross-platform)
-- API simplicity (matches our accessible philosophy)
-- Community/documentation
-- OpenGL support for future features
-
-**Decision**: To be made during prototyping phase
-
-### Project Structure
-
-```
-MyGame/
-├── project.json              # Game configuration
-├── scenes/                   # Scene Python files
-│   ├── __init__.py
-│   ├── main_menu.py
-│   ├── level_1.py
-│   └── level_2.py
-├── sprites/                  # Sprite images
-│   ├── player/
-│   │   ├── idle.png
-│   │   └── run_sheet.png
-│   └── enemies/
-├── tilemaps/                 # Level data (Tiled format)
-│   └── level1.tmx
-├── audio/
-│   ├── music/
-│   └── sfx/
-├── scripts/                  # Shared Python code
-│   ├── player_controller.py
-│   └── enemy_ai.py
-└── builds/                   # Distribution outputs
-```
+**Example Entity Construction**:
+- Create blank Sprite
+- Add RigidBody component → gives physics
+- Add BoxCollider component → enables collision
+- Add PlatformerController component → adds player input
+- Result: Functional player character, zero custom classes needed
 
 ---
 
-## Core Systems (MVP Scope)
+## Critical Features Roadmap
 
-### 1. Scene Management
-- **Scene Loading**: Load/unload scenes dynamically
-- **Scene Transitions**: Fade, slide, instant
-- **Scene Stack**: Support for overlays (pause menus, dialogs)
-- **Persistent State**: game_state carries across scenes
+### Phase 1: Foundation (Current)
 
-### 2. Sprite System
-- **Sprite Loading**: Load images, sprite sheets
-- **Transform**: Position, rotation, scale
-- **Rendering**: Layer support, z-ordering
-- **Animation**: Frame-based animation from sprite sheets
-- **Collision**: AABB, circle, pixel-perfect options
+**P1.1: Game State System** ✅ **COMPLETE**
+- Global state management
+- Persistent entities across scenes
+- Spawn point system
+- Scene transition state preservation
 
-### 3. Input Handling
-- **Keyboard**: Key press, hold, release
-- **Mouse**: Click, position, drag
-- **Gamepad**: Basic support (stretch goal)
-- **Input Mapping**: Customizable key bindings
+**P1.2: Save/Load System** 🔄 **IN PROGRESS**
+- Pygame-based save menu (runtime UI overlay)
+- 6-slot save system with metadata display
+- Component serialization/deserialization
+- Quick save/load keyboard shortcuts (Ctrl+F5/F9)
+- Game pause/unpause integration
+- Export/import save files
+- SaveData base class system (Python dataclasses)
+- SaveData Designer visual tool (after editor UI overhaul)
 
-### 4. Camera System
-- **Follow**: Auto-follow target (player)
-- **Bounds**: Constrain to level boundaries
-- **Zoom**: Dynamic zoom in/out
-- **Shake**: Screen shake effects
-- **Manual Control**: Direct position control
+**P1.3: Behavior/Template System** ⏳ **PLANNED**
+- Component metadata (categories, descriptions, icons)
+- Template/Prefab system (save sprite + components as reusable templates)
+- Behavior library panel with search/filter
+- Drag-drop template instantiation
 
-### 5. Physics (Optional Per-Scene)
-- **Gravity**: Configurable strength
-- **Velocity**: Movement with acceleration
-- **Collision Response**: Bounce, slide, stop
-- **Ground Detection**: For platformer mechanics
-- **Presets**: "platformer", "topdown", "spaceship"
+**P1.4: Script Integration** ⏳ **PLANNED**
+- Attach custom Python scripts to sprites (Godot-style)
+- Hot-reload script changes without restart
+- Split view: code editor + scene view
+- Script templates for common patterns
 
-### 6. Audio System
-- **Music**: Background music with looping
-- **SFX**: Sound effects with volume/pitch control
-- **Channels**: Multiple simultaneous sounds
-- **Fade**: Fade in/out transitions
-
-### 7. Tilemap Support
-- **Tiled Integration**: Import .tmx files
-- **Layer Rendering**: Background, foreground, collision layers
-- **Object Layers**: Spawn points, triggers from Tiled
-- **Tile Properties**: Custom properties for game logic
+**P1.5: Custom Tools - Dialogue System** ⏳ **PLANNED**
+- Node-based dialogue tree editor
+- Visual conversation flow creation
+- Variable substitution and conditional branches
+- Runtime dialogue manager integration
 
 ---
 
-## Visual Editor (IDE Integration)
+### Phase 2: Essential Systems
 
-### Scene Editor Interface
+**Animation System**
+- Sprite sheet importer (grid-based slicing)
+- Animation editor (frame sequences, timing)
+- Animation state machine (idle → walk → jump transitions)
+- Animator component with visual state graph
+
+**Audio System**
+- Audio asset browser (music, SFX)
+- AudioSource component (positional audio support)
+- Audio mixer (volume, ducking, effects)
+- Music playlist/crossfade system
+
+**UI System**
+- UI canvas system (screen-space overlay)
+- UI components (Button, Text, Image, Panel, ProgressBar)
+- Layout groups (horizontal, vertical, grid)
+- UI editor mode (separate from gameplay viewport)
+- Event system (onClick, onHover)
+
+**Tilemap System**
+- Tiled (.tmx) import support
+- Built-in tilemap editor (paint tiles like Tiled)
+- Automatic collision from tilemap layers
+- Tileset management
+- Multiple layers (background, collision, foreground)
+
+---
+
+### Phase 3: Advanced Features
+
+**Particle System**
+- Particle emitter component
+- Visual particle editor with real-time preview
+- Presets (fire, smoke, sparkles, rain)
+- Custom particle sprites
+
+**Visual Scripting OR Enhanced Python Workflow**
+- Node-based behavior editor (optional)
+- Advanced Python editor integration
+- Debugger with breakpoints
+- Variable inspection
+
+**Advanced Game State Management**
+- Visual variable inspector
+- Data binding (UI shows game variables)
+- Quest/flag management system
+
+---
+
+## IDE Vision
+
+### Launcher & Project Creation
+
+**Welcome Screen**:
+- New Project (prominent)
+- Open Existing Project
+- Browse Example Projects
+- Recent projects list
+- Tutorials/Documentation links
+
+**New Project Wizard**:
+1. **Template Selection** (visual cards with previews):
+   - Blank Project (empty scene)
+   - Platformer Starter (player, platforms, example level)
+   - Top-Down RPG (character, tilemap, basic movement)
+   - Puzzle Game (grid system, example mechanics)
+
+2. **Project Settings**:
+   - Project name
+   - Location (file browser)
+   - Resolution presets (720p, 1080p, custom)
+   - Target platform (Desktop, Web, Both)
+
+3. **Create & Open**:
+   - Progress indicator
+   - Auto-open in editor when complete
+
+---
+
+### Editor Layout
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ Scene: level_1.py                          [▶ Play] [⏹ Stop]   │
+│ [Logo] File Edit Scene GameObject Component Build  [Play ▶] [?] │ ← Simplified menu
+├─────────┬───────────────────────────────────────┬───────────────┤
+│ PROJECT │         VIEWPORT                      │  INSPECTOR    │
+│         │                                       │               │
+│ Scenes  │  ┌─────────────────────────────────┐ │ [Sprite Name] │
+│  ├ Main │  │                                 │ │               │
+│  └ Level│  │     [Game View]                 │ │ Transform:    │
+│         │  │                                 │ │  Position X:  │
+│ Assets  │  │                                 │ │  Position Y:  │
+│  ├ Spr..│  │                                 │ │               │
+│  ├ Snd..│  │                                 │ │ Components:   │
+│  └ Mus..│  └─────────────────────────────────┘ │  + Add        │
+│         │  [Tools: Select Move Rotate Scale]  │               │
+│ Prefabs │                                       │               │
+│  + New  │  Scene: Main         FPS: 60         │               │
+├─────────┴───────────────────────────────────────┴───────────────┤
+│ CONSOLE                                         [Clear] [Filter]│
+│ [Game] Initialized...                                           │
+│ [SceneManager] Loaded scene: main                               │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Areas**:
+- **Top Toolbar**: Simplified, icon-based, big Play button, help access
+- **Left Panel**: Unified project browser (scenes, assets, prefabs)
+- **Center Viewport**: Game view with tool palette
+- **Right Panel**: Inspector (component editor)
+- **Bottom Console**: Collapsible debug output
+
+---
+
+### Component Inspector Vision
+
+**Inspector Panel** (when sprite selected):
+```
+Selected: Player
+
+Transform
+  Position: (100, 200)
+  Rotation: 0°
+  Scale: (1.0, 1.0)
+
+Components:
+┌─────────────────────────┐
+│ ⚙️ RigidBody         [×]│
+│  Mass: 1.0              │
+│  Gravity Scale: 1.0     │
+│  Is Kinematic: □        │
+└─────────────────────────┘
+┌─────────────────────────┐
+│ 📦 BoxCollider       [×]│
+│  Width: 32              │
+│  Height: 32             │
+│  Is Trigger: □          │
+└─────────────────────────┘
+┌─────────────────────────┐
+│ 🎮 PlatformerController [×]│
+│  Speed: 300             │
+│  Jump Force: 500        │
+│  Double Jump: ☑         │
+└─────────────────────────┘
+
+[+ Add Component ▼]
+```
+
+**Features**:
+- Component headers with icons (visual recognition)
+- Collapsible sections
+- Color-coded by type (physics=orange, rendering=blue, gameplay=green)
+- Inline value sliders (not just text input)
+- Visual property editors (color picker, sprite preview, etc.)
+- Help icon (?) next to properties (tooltip on hover)
+
+---
+
+### Behavior Browser Vision
+
+**Concept**: Modern, visual browser for discovering and adding behaviors to sprites. Replaces traditional dropdown menus with an intuitive, filterable card-based interface.
+
+**Triggered by**: Clicking [+ Add Behavior] button in Inspector panel
+
+**Interface Layout**:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Add Behavior                           [Behaviors] [Templates] [×]│
+├─────────────────────────────────────────────────────────────────┤
+│ [🔍 Search...]                                                   │
+│                                                                  │
+│ Filters: [Physics] [Rendering] [Gameplay] [AI] [Audio] [Custom] │
+│          ^^^^^^^^   ^^^^^^^^^^  ^^^^^^^^^  ^^^^  ^^^^^^^  ^^^^^^ │
+│          Orange     Blue        Green      Purple Yellow  Gray   │
+│          (active pills with colored text, transparent background)│
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│  Canvas (Visual)          │  Code (Python)                      │
-│  ┌──────────────────────┐ │                                     │
-│  │                      │ │  class Level1(Scene):               │
-│  │  [Grid/Visual View]  │ │      def setup(self):               │
-│  │  [Drag sprites here] │ │          self.player = ...          │
-│  │  [Click to select]   │ │                                     │
-│  │                      │ │      def update(self, dt):          │
-│  │                      │ │          if self.input.key('right'):│
-│  └──────────────────────┘ │              self.player.x += 5     │
-│                            │                                     │
-├────────────────────────────┴─────────────────────────────────────┤
-│ Assets        │ Sprite Inspector    │ Scene Hierarchy           │
-├───────────────┼────────────────────┼───────────────────────────┤
-│ Sprites       │ Selected: player   │ - Background              │
-│  📁 player    │ Position: (100,100)│ - Player                  │
-│  📁 enemies   │ Size: (32, 32)     │ - Enemies                 │
-│  📄 coin.png  │ ☑ Collision        │   - Guard1                │
-│               │ ☑ Physics          │   - Guard2                │
-│ Tilemaps      │ Layer: 1           │ - Items                   │
-│  📄 level1    │ Animation: idle    │   - Coin1                 │
-│               │                    │   - Coin2                 │
-└───────────────┴────────────────────┴───────────────────────────┘
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ ⚙️ RigidBody  │  │ 📦 BoxCollider│  │ 🎮 Platformer│          │
+│  │              │  │              │  │  Controller  │          │
+│  │ Physics      │  │ Physics      │  │ Gameplay     │          │
+│  │ simulation   │  │ AABB         │  │ Player       │          │
+│  │ with gravity │  │ collision    │  │ movement     │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐          │
+│  │ 📷 Camera    │  │ 🎯 Scene     │  │ 💚 Health    │          │
+│  │  Follow      │  │  Trigger     │  │  System      │          │
+│  │              │  │              │  │              │          │
+│  │ Gameplay     │  │ Gameplay     │  │ Gameplay     │          │
+│  │ Smooth       │  │ Level        │  │ Damage &     │          │
+│  │ tracking     │  │ transitions  │  │ death        │          │
+│  └──────────────┘  └──────────────┘  └──────────────┘          │
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐                             │
+│  │ 🔊 Audio     │  │ ⭐ My Custom │                             │
+│  │  Source      │  │  Behavior    │                             │
+│  │              │  │              │                             │
+│  │ Audio        │  │ Custom       │  ← User-created behaviors  │
+│  │ Playback     │  │ Project      │                             │
+│  │ & effects    │  │ specific     │                             │
+│  └──────────────┘  └──────────────┘                             │
+│                                                                  │
+│                                                [Cancel] [Add]    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Editor Features
+**Templates Tab**:
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Add Behavior                           [Behaviors] [Templates] [×]│
+├─────────────────────────────────────────────────────────────────┤
+│ [🔍 Search templates...]                                         │
+│                                                                  │
+│ Quick-start entity configurations with common behavior sets      │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────────────────┐  ┌──────────────────────────┐     │
+│  │ 🎮 Platformer Player     │  │ 👾 Flying Enemy          │     │
+│  │                          │  │                          │     │
+│  │ • PlatformerController   │  │ • FlyingMovement         │     │
+│  │ • RigidBody              │  │ • ChasePlayer (AI)       │     │
+│  │ • BoxCollider            │  │ • Health                 │     │
+│  │ • CameraFollow           │  │ • ContactDamage          │     │
+│  │ • Health                 │  │ • Sprite Animator        │     │
+│  │                          │  │                          │     │
+│  │         [Add Template]   │  │         [Add Template]   │     │
+│  └──────────────────────────┘  └──────────────────────────┘     │
+│                                                                  │
+│  ┌──────────────────────────┐  ┌──────────────────────────┐     │
+│  │ 🚪 Scene Transition      │  │ 💰 Collectible Item      │     │
+│  │                          │  │                          │     │
+│  │ • BoxCollider (trigger)  │  │ • Collectible            │     │
+│  │ • SceneTrigger           │  │ • SpinAnimation          │     │
+│  │                          │  │ • AudioOnPickup          │     │
+│  │                          │  │ • ParticleEffect         │     │
+│  │                          │  │                          │     │
+│  │         [Add Template]   │  │         [Add Template]   │     │
+│  └──────────────────────────┘  └──────────────────────────┘     │
+│                                                                  │
+│  ┌──────────────────────────┐  ┌──────────────────────────┐     │
+│  │ 💬 Interactive NPC       │  │ ⭐ My Custom Template    │     │
+│  │                          │  │                          │     │
+│  │ • DialogueComponent      │  │ • CustomBehavior1        │     │
+│  │ • InteractionTrigger     │  │ • CustomBehavior2        │  ← User-saved │
+│  │ • SpriteAnimator         │  │ • RigidBody              │  templates   │
+│  │ • AudioSource            │  │                          │     │
+│  │                          │  │                          │     │
+│  │         [Add Template]   │  │         [Add Template]   │     │
+│  └──────────────────────────┘  └──────────────────────────┘     │
+│                                                                  │
+│                                                [Cancel]          │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-**Canvas View:**
-- Visual scene preview with grid
-- Drag-and-drop sprite placement
-- Multi-select and transform tools
-- Snap to grid option
-- Zoom/pan controls
+**Features**:
 
-**Code Synchronization:**
-- Visual changes update Python code
-- Code changes update visual view
-- Two-way binding (bidirectional sync)
+**Behaviors Tab**:
+- **Card Grid Layout**: Visual cards instead of dropdown list
+- **Category Color Coding**: Physics (Orange), Rendering (Blue), Gameplay (Green), AI (Purple), Audio (Yellow), Custom (Gray)
+- **Pill-Shaped Filters**: Clickable category buttons at top
+  - Active: Colored text, transparent background, pill border
+  - Inactive (excluded): Greyed out with reduced opacity
+  - Click to toggle category visibility
+- **Search Bar**: Real-time filtering by behavior name/description
+- **Card Content**: Icon, name, category badge, short description
+- **Hover Preview**: Expanded description and property list
+- **Custom Behaviors**: User-created behaviors appear with "Custom" badge
 
-**Asset Management:**
-- Thumbnail previews
-- Drag from asset panel to canvas
-- Auto-import on file drop
-- Sprite sheet splitter tool
+**Templates Tab**:
+- **Template Cards**: Larger cards showing behavior bundles
+- **Behavior List**: Shows all behaviors included in template
+- **One-Click Add**: Adds all behaviors at once
+- **Built-in Templates**: Engine-provided common configurations
+- **User Templates**: Developers can save current sprite's behavior set as custom template
+- **Template Management**: Right-click to edit/delete custom templates
 
-**Live Preview:**
-- Play scene directly in editor
-- Hot-reload on code changes
-- Debug overlay (FPS, collision boxes, etc.)
+**Discoverability Benefits**:
+- New users can **browse** to learn what's available
+- Visual layout is more approachable than text lists
+- Category filters help narrow down relevant behaviors
+- Templates provide starting points for common entity types
+- Custom behaviors/templates encourage project-specific reusability
+
+**Technical Implementation**:
+- Behaviors registered with metadata (name, description, category, icon)
+- Templates stored as JSON (list of behavior names + default property values)
+- User templates saved to `project/templates/` directory
+- Custom behaviors auto-discovered from `project/behaviors/` directory
+- Browser is a modal dialog (PyQt6 QDialog) with card widgets
 
 ---
 
-## Built-In Systems & Helpers
+## Custom Tool Concepts
 
-### Smart Sprite System
+### 0. SaveData Designer (P1.2)
 
-**Beginner-Friendly API:**
-```python
-# Simple sprite creation
-self.player = self.add_sprite('player.png', x=100, y=100)
+**Vision**: Visual tool for designing game save data structures
 
-# Automatic movement
-self.player.move_to(x=200, y=100, speed=100)
+**Purpose**: Help developers define what data should be saved without writing serialization code
 
-# Built-in animations
-self.player.play_animation('run', loop=True)
+**Interface**:
+```
+┌────────────────────────────────────────────────────┐
+│ SaveData Designer - PlayerSaveData                 │
+├────────────────────────────────────────────────────┤
+│ [Add Field] [Generate Code] [Preview]             │
+├─────────────┬──────────────────────────────────────┤
+│ Fields      │  Preview                             │
+│             │                                      │
+│ + health    │  @dataclass                          │
+│   int       │  class PlayerSaveData(SaveData):     │
+│   default:  │      health: int = 100               │
+│   [100]     │      max_health: int = 100           │
+│             │      position: Vector2 = Vector2()   │
+│ + max_health│      inventory: List[str] = []       │
+│   int       │                                      │
+│   default:  │      def to_dict(self) -> dict:      │
+│   [100]     │          return asdict(self)         │
+│             │                                      │
+│ + position  │      @classmethod                    │
+│   Vector2   │      def from_dict(cls, data):       │
+│   default:  │          return cls(**data)          │
+│   [0, 0]    │                                      │
+│             │                                      │
+│ + inventory │  [Copy Code] [Save to File]          │
+│   List[str] │                                      │
+│   default:  │                                      │
+│   [[]]      │                                      │
+└─────────────┴──────────────────────────────────────┘
 ```
 
-**Advanced Control:**
-```python
-# Component-based for complex behavior
-self.player.add_component(PlatformerController(
-    jump_force=500,
-    double_jump=True,
-    wall_slide=True
-))
+**Features**:
+- Visual field editor (add/remove/reorder fields)
+- Type selection dropdown (int, float, str, bool, Vector2, List, Dict)
+- Default value configuration
+- Auto-generates Python dataclass code
+- Preview pane shows generated code
+- One-click copy or save to project file
+- Validation (ensures SaveData base class compliance)
 
-# Custom collision response
-self.player.on_collision = self.handle_player_collision
+**Technical Approach**:
+- Python dataclasses as base system (not custom Resource classes)
+- SaveData base class provides to_dict/from_dict
+- Generated classes automatically work with GameState serialization
+- No manual serialization code needed by developers
 
-def handle_player_collision(self, other):
-    if other.tag == 'enemy':
-        self.take_damage(10)
-    elif other.tag == 'powerup':
-        self.apply_powerup(other.powerup_type)
-```
-
-### State Machine Helper
-
-```python
-class Enemy(Sprite):
-    def __init__(self):
-        super().__init__('enemy.png')
-
-        # Built-in state machine
-        self.states.add('idle', self.idle_state)
-        self.states.add('patrol', self.patrol_state)
-        self.states.add('chase', self.chase_state)
-        self.states.start('idle')
-
-    def idle_state(self, dt):
-        if self.sees_player():
-            self.states.switch('chase')
-
-    def chase_state(self, dt):
-        self.move_towards(self.player, speed=150)
-```
-
-### Physics Presets
-
-```python
-# One-line physics configuration
-self.player.apply_physics('platformer')
-# Includes: gravity, jump, ground detection, slope handling
-
-self.car.apply_physics('topdown')
-# Includes: friction, acceleration, rotation
-
-self.bullet.apply_physics('projectile')
-# Includes: constant velocity, lifetime, no gravity
-```
-
-### Particle System
-
-```python
-# Simple particle effects
-self.emit_particles('explosion', x=100, y=100, count=50)
-
-# Custom particle configuration
-self.create_particle_emitter(
-    texture='particle.png',
-    rate=10,  # Particles per second
-    lifetime=2.0,
-    velocity_range=(50, 150),
-    direction_range=(0, 360),
-    color_fade=(255,255,255) -> (255,0,0)
-)
-```
+**Benefits**:
+- Beginner-friendly (no boilerplate code)
+- Type-safe (uses Python type hints)
+- Auto-complete friendly (real Python classes)
+- Extensible (advanced users can edit generated code)
 
 ---
 
-## Game State Management (Reuse from v1)
+### 1. Dialogue Tool
 
-The v1 state management system works well and can be adapted:
+**Vision**: Visual node-based dialogue tree editor
 
-```python
-# Global game state (persistent across scenes)
-game_state = {
-    'player_name': 'Hero',
-    'health': 100,
-    'max_health': 100,
-    'inventory': [],
-    'current_level': 1,
-    'score': 0,
-}
-
-# Access in any scene
-class Level1(Scene):
-    def update(self, dt):
-        if self.game_state.health <= 0:
-            self.switch_scene('game_over')
+**Interface**:
+```
+┌─────────────────────────────────────────────┐
+│ Dialogue Editor - NPC_Merchant              │
+├─────────────────────────────────────────────┤
+│ [Save] [Test] [Export]                      │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ┌─────────────┐                            │
+│  │   START     │                            │
+│  └──────┬──────┘                            │
+│         │                                   │
+│  ┌──────▼──────────────┐                    │
+│  │ "Hello traveler!"   │                    │
+│  │ [NPC speaks]        │                    │
+│  └──────┬──────────────┘                    │
+│         │                                   │
+│    ┌────┴────┐                              │
+│    │         │                              │
+│ ┌──▼──┐   ┌─▼──┐                            │
+│ │Buy  │   │Leave│                           │
+│ └──┬──┘   └────┘                            │
+│    │                                        │
+│ ┌──▼─────────────┐                          │
+│ │ [Check: Gold]  │                          │
+│ │ if gold >= 100 │                          │
+│ └────┬────┬──────┘                          │
+│      │    │                                 │
+│   [Yes] [No]                                │
 ```
 
-**Reusable from v1:**
-- State serialization (JSON)
-- Save/load system (with metadata)
-- Object restoration (custom classes)
-- Browser/server storage modes
+**Features**:
+- Node types: NPC speech, player choice, conditional, action
+- Bezier curve connections
+- Inline conditions (check inventory, flags, stats)
+- Actions (give item, set flag, start quest)
+- Variable insertion `{player.name}` in text
+- Preview/test mode
 
 ---
 
-## Distribution & Build System (Leverage v1)
+### 2. UI Builder
 
-**Reuse from v1:**
-- Asset packer (obfuscated game.dat)
-- One-click build system
-- ScribePlayer architecture (universal runtime)
-- Update checker system
-- Version management
+**Vision**: WYSIWYG editor for in-game UI
 
-**Adaptations for v2:**
-- Include rendering library in player bundle
-- Larger ScribePlayer (~250-300MB due to pygame/pyglet)
-- Same encryption/obfuscation for assets
-- Scene files bundled like passage files
+**Interface**:
+```
+┌──────────────────────────────────────────────────────┐
+│ UI Canvas Editor - MainHUD                           │
+├──────────────────────────────────────────────────────┤
+│ [Elements] [Layouts] [Preview]                       │
+├─────────────┬────────────────────────┬───────────────┤
+│ UI Elements │  [1280x720 Canvas]     │  Properties   │
+│             │                        │               │
+│ Text        │  ┌─────────────────┐   │  Text:        │
+│ Image       │  │ HP: 100/100     │   │  "HP: {hp}"   │
+│ Button      │  └─────────────────┘   │               │
+│ ProgressBar │                        │  Font: Arial  │
+│ Panel       │        ╔═══════╗       │  Size: 24     │
+│ Slider      │        ║       ║       │  Color: #FFF  │
+│             │        ║ PLAY  ║       │               │
+│ Drag →      │        ╚═══════╝       │  Anchor:      │
+│             │                        │  [Top-Left ▼] │
+│             │  ▓▓▓▓▓▓▓▓░░░░░░        │               │
+│             │  [Progress Bar]        │  Data Binding:│
+│             │                        │  player.hp    │
+└─────────────┴────────────────────────┴───────────────┘
+```
 
-**Distribution Targets:**
-- Desktop (Windows, Linux, macOS) - Day 1
-- Web (Pygbag or similar) - Phase 2
-- Mobile (Android/iOS) - Future consideration
-
----
-
-## Example Game Types
-
-### Achievable with MVP:
-
-**Platformer:**
-- Side-scrolling levels
-- Jump mechanics
-- Enemy AI (patrol, chase)
-- Collectibles
-- Simple combat
-
-**Top-Down Adventure:**
-- 8-directional movement
-- Room-based exploration
-- NPC interactions
-- Inventory system
-- Puzzle mechanics
-
-**Puzzle Game:**
-- Grid-based gameplay
-- Object manipulation
-- Win/lose conditions
-- Level progression
-
-### Achievable with Advanced Features:
-
-**Action RPG:**
-- Stats and leveling
-- Equipment system
-- Quest tracking
-- Multiple abilities
-- Save/load progression
-
-**Metroidvania:**
-- Interconnected world
-- Ability-gated progression
-- Map system
-- Upgrades and unlocks
-
-**Open-World 2D RPG:**
-- Large tiled maps
-- Dynamic world state
-- Multiple NPCs
-- Quest systems
-- Crafting/trading
+**Features**:
+- Drag UI elements onto canvas
+- Anchor system (top-left, center, bottom-right, etc.)
+- Layout groups (auto-arrange children)
+- Data binding (`{player.hp}` updates in real-time)
+- Preview mode (test different resolutions)
+- Event binding (button → pause game)
 
 ---
 
-## Development Phases
+### 3. Split Scene/Code View
 
-### Phase 1: Core Engine (Prototype/MVP)
-**Goal**: Prove the concept works
+**Vision**: Code editor attached to selected entity (Godot-inspired)
 
-- [ ] Select rendering backend (Pygame/Pyglet/Arcade)
-- [ ] Implement Scene base class
-- [ ] Sprite loading and rendering
-- [ ] Basic input handling
-- [ ] Scene transitions
-- [ ] Simple collision detection
-- [ ] Game loop with fixed timestep
-- [ ] Asset loading system
-- [ ] Demo: Simple platformer prototype
+**Interface**:
+```
+┌────────────────────────────────────────────────────────────┐
+│ Scene View                                                 │
+├──────────────────┬─────────────────────────────────────────┤
+│ Hierarchy        │  Viewport                               │
+│                  │                                         │
+│ ├─ Player ◄──────┼─  [Selected: Player sprite]            │
+│ │  └─ Scripts    │                                         │
+│ │     └─ player..│                                         │
+│ ├─ Enemy         │                                         │
+│ └─ Platform      │                                         │
+├──────────────────┴─────────────────────────────────────────┤
+│ Code Editor - player_controller.py                         │
+├────────────────────────────────────────────────────────────┤
+│ 1  class PlayerController(Component):                      │
+│ 2      def __init__(self, sprite):                         │
+│ 3          super().__init__(sprite)                        │
+│ 4          self.speed = 300                                │
+│ 5                                                          │
+│ 6      def update(self, dt):                               │
+│ 7          # Handle input                                  │
+│ 8          if self.sprite.scene.input.key_held('a'):       │
+│ 9              self.sprite.position.x -= self.speed * dt   │
+│ 10                                                         │
+│    [Save] [Run] [Debug]                                    │
+└────────────────────────────────────────────────────────────┘
+```
 
-**Success Criteria**: Can create a playable platformer level with sprites, collision, and input
-
-### Phase 2: Visual Editor Integration
-**Goal**: Web IDE for scene creation
-
-- [ ] Extend existing Scribe Engine IDE
-- [ ] Canvas view for sprite placement
-- [ ] Drag-and-drop scene building
-- [ ] Property inspector
-- [ ] Live scene preview/testing
-- [ ] Code ↔ Visual synchronization
-- [ ] Asset manager integration
-
-**Success Criteria**: Can create a scene visually without writing code, then enhance with Python
-
-### Phase 3: Advanced Systems
-**Goal**: Production-ready features
-
-- [ ] Animation system (sprite sheets)
-- [ ] Tilemap support (Tiled integration)
-- [ ] Camera system (follow, zoom, shake)
-- [ ] Physics presets
-- [ ] Particle system
-- [ ] Audio management
-- [ ] State machine helpers
-- [ ] Save/load adaptation from v1
-
-**Success Criteria**: Can create a polished game demo (e.g., small Metroidvania)
-
-### Phase 4: Distribution & Polish
-**Goal**: Ship-ready engine
-
-- [ ] Build system integration
-- [ ] One-click distribution
-- [ ] Template projects (platformer, puzzle, RPG)
-- [ ] Comprehensive documentation
-- [ ] Tutorial series
-- [ ] Community assets/behaviors library
-
-**Success Criteria**: External user can create and distribute a complete game
+**Features**:
+- Select sprite → shows attached scripts
+- Click script → opens in code panel
+- Auto-complete aware of sprite/scene context
+- Inline documentation (hover over methods)
+- Breakpoint support (click line numbers)
+- Hot-reload (save → immediately updates running game)
 
 ---
 
-## Code Reuse from v1
+## Terminology Philosophy
 
-### Directly Reusable:
-✅ **Asset Packer** (`engine/asset_packer.py`)
-✅ **Build System** (`build_player.py`, `build_engine.py`)
-✅ **Storage System** (`engine/storage.py`, `engine/browser_storage.py`)
-✅ **State Management** (`engine/state.py`)
-✅ **Update Checker** (`update_checker.py`)
-✅ **Version Management** (`version_info.py`)
-✅ **Config Manager** (`config_manager.py`)
-✅ **Loading Window** (`loading_window.py`)
+**Use game-familiar terms, not programmer jargon**:
 
-### Adaptable with Modifications:
-🔄 **Game Server** - Needs scene rendering instead of passage rendering
-🔄 **Web Layer** - Different templates, same HTMX approach
-🔄 **Executor** - Scene update() instead of passage code blocks
+| Instead of... | Use... | Why? |
+|---------------|--------|------|
+| GameObject | **Sprite** or **Entity** | "GameObject" feels Unity-specific |
+| Component | **Behavior** | More intuitive ("what does it do?") |
+| Prefab | **Template** | Clearer for beginners |
+| Transform | **Position/Rotation/Scale** | Don't hide behind technical term |
+| Rigidbody | **Physics Behavior** | Descriptive, not jargon |
 
-### Not Applicable:
-❌ **Parser** - Scenes are Python classes, not .tgame files
-❌ **Passage System** - Replaced by Scene system
+**In UI**:
+- Inspector panel → **Properties** panel
+- Hierarchy → **Scene Objects** or **Objects**
+- Add Component button → **Add Behavior**
 
-**Estimated Code Reuse**: ~40-50% of v1 codebase directly applicable
+**Progressive Disclosure**: Advanced users can toggle "Show Technical Names" in preferences
 
 ---
 
-## Open Questions & Decisions Needed
+## Genre-Specific Features
 
-### Technical Decisions:
-1. **Rendering Backend**: Pygame 2.x vs Pyglet vs Arcade library?
-   - Prototype with all three to evaluate?
-   - Performance benchmarks needed
+### Top-Down RPG Needs
+- Pathfinding (NPCs navigate around obstacles)
+- Dialogue System (conversation trees, choice branches)
+- Inventory System (item management, equipment slots)
+- Quest System (objectives, tracking, rewards)
+- Turn-Based Combat (if applicable)
 
-2. **Tilemap Format**: Tiled (.tmx) or custom format?
-   - Tiled is industry standard, good tools
-   - Adds dependency but worth it?
+### Side-Scroller Adventure Needs
+- Checkpoints (respawn points)
+- Moving Platforms (waypoint-based movement)
+- Ladders/Ropes (climbable surfaces)
+- Water/Swimming (physics zones)
+- Cutscene System (camera control, scripted events)
 
-3. **Physics Engine**: Built-in simple physics or integrate library (Pymunk)?
-   - Simple: Easier, lighter, limited
-   - Pymunk: Complex, more realistic, heavier
+### Puzzle Game Needs
+- Grid System (snap-to-grid movement)
+- Undo/Redo for Moves (gameplay undo, not just editor)
+- Win Condition System (level complete detection)
+- Level Select (progression, unlocking)
 
-4. **Scene File Format**: Pure Python or custom format that generates Python?
-   - Pure Python: Transparent, flexible
-   - Custom format: More beginner-friendly?
+---
 
-5. **Web IDE Architecture**: Extend v1 IDE or separate app?
-   - Extend: Code reuse, unified experience
-   - Separate: Cleaner separation, different needs
+## Open Design Questions
 
-### Design Decisions:
-1. **Visual Editor Scope**: How much can be done without code?
-   - 80/20 rule: 80% visual, 20% code for advanced features?
+### 1. Visual Scripting vs. Python-First?
+- **Option A**: Build node-graph system (Unreal Blueprints style)
+- **Option B**: Embrace Python with better editor integration (autocomplete, debugging)
+- **Option C**: Both (visual generates Python)
 
-2. **Template Projects**: Which game types to prioritize?
-   - Platformer, top-down adventure, puzzle game?
+### 2. Web Export Priority?
+- How important is "Play in Browser" vs. desktop-only?
+- Pygame → Pygbag for web export (is this viable?)
 
-3. **Beginner Path**: Tutorial structure?
-   - Interactive tutorial game?
-   - Video series?
-   - Documentation-first?
+### 3. 3D Support in Future?
+- Keep it 2D forever?
+- Or plan architecture for eventual 2.5D/3D?
 
-4. **Advanced Features**: What's in v2.0 vs v2.x?
-   - Multiplayer?
-   - Advanced shaders?
-   - Dialogue system (bridge to v1)?
+### 4. Target Audience Clarity?
+- Hobbyists making first game?
+- Educators teaching game dev?
+- Indie studios prototyping?
+- All of the above?
+
+### 5. Component Marketplace?
+- Should users be able to share/sell components?
+- Built-in asset store?
 
 ---
 
 ## Success Metrics
 
-### For MVP:
-- [ ] Can create a playable platformer in < 1 hour (for experienced user)
-- [ ] Generated Python code is readable and modifiable
-- [ ] 60 FPS performance with 100+ sprites on screen
-- [ ] One-click build produces working executable
+### MVP Success (Phase 1 Complete)
+- ✅ Multi-scene games with persistent player state
+- ✅ Reusable entity templates (prefabs)
+- ✅ Custom behaviors via Python scripts
+- ✅ Dialogue system without coding
+- ✅ Professional save/load system
+- ✅ One-click build to executable
 
-### For v2.0 Release:
-- [ ] 3 complete template projects
-- [ ] Full documentation coverage
-- [ ] 10+ community-created games
-- [ ] Build time < 30 seconds for typical game
-- [ ] Cross-platform builds (Windows, Linux, macOS)
-
----
-
-## Next Steps
-
-1. **Prototype Rendering Backends** (Week 1-2)
-   - Create simple demos with Pygame, Pyglet, Arcade
-   - Benchmark performance
-   - Evaluate API ergonomics
-   - Make selection
-
-2. **Design Scene API** (Week 2-3)
-   - Define Scene base class
-   - Design sprite/collision API
-   - Create example scenes
-   - Validate against use cases
-
-3. **Build Core Engine** (Week 3-6)
-   - Implement scene management
-   - Sprite system
-   - Input handling
-   - Basic collision
-   - Create platformer demo
-
-4. **Document & Iterate** (Ongoing)
-   - Update this vision document
-   - Document API decisions
-   - Create dev blog/changelog
-   - Gather feedback
+### Production Ready
+- Can build complete platformer game in under 1 hour
+- Can build top-down RPG with dialogue/quests in under 3 hours
+- Can build puzzle game with custom mechanics in under 2 hours
+- 60+ FPS with 100+ sprites on screen
+- Comprehensive documentation and tutorials
+- Example games demonstrating all features
 
 ---
 
-## Resources & References
+## Architecture Requirements for Tools
 
-### Inspiration:
-- **Pygame**: Python game development baseline
-- **LÖVE**: Lua-based 2D engine (excellent API design)
-- **Phaser**: JavaScript 2D engine (web-based workflow)
-- **GDevelop**: Visual + code approach
-- **Ren'Py**: Python-based, accessible (our v1 peer)
+To support the vision, we need:
 
-### Technical References:
-- **Game Programming Patterns** (Robert Nystrom)
-- **Pygame Documentation**: https://www.pygame.org/docs/
-- **Pyglet Documentation**: https://pyglet.readthedocs.io/
-- **Arcade Documentation**: https://api.arcade.academy/
-- **Tiled Documentation**: https://doc.mapeditor.org/
+### 1. Plugin/Tool API
+- Tools register with editor
+- Access to scene data
+- Can spawn windows/panels
+- Event system (onSpriteSelected, onSceneSaved)
+
+### 2. Data Formats
+- `.template` files (JSON sprite + component configurations)
+- `.dialogue` files (JSON dialogue trees)
+- `.ui` files (UI canvas layouts)
+- `.anim` files (animation data)
+
+### 3. Component Metadata
+- Behaviors need descriptions (for tooltips)
+- Categories (Movement, Combat, AI, Interaction)
+- Icons (visual recognition)
+- Example usage snippets
+
+### 4. Hot-Reload System
+- File watcher for scripts
+- Module reloading without restart
+- State preservation during reload
+
+### 5. Data Binding System
+- UI elements → game variables
+- Two-way binding (game changes → UI updates)
+- Expression evaluation (`{player.hp}/{player.max_hp}`)
 
 ---
 
-## Community & Feedback
+## Development Philosophy
 
-This is a living document. As prototyping progresses, decisions will be documented here.
+### Core Tenets
 
-**Discussion Topics:**
-- Rendering backend selection
-- Scene API design
-- Visual editor capabilities
-- Template project ideas
+1. **Components are First-Class Citizens**: Everything visible in inspector
+2. **Inspector Drives Everything**: If it's not in inspector, it doesn't exist to users
+3. **No Code Required for Basics**: Physics, collision, triggers should be visual
+4. **Code is for Advanced Users**: Custom components, complex logic
+5. **Templates Enable Reuse**: Don't make users rebuild same sprite 20 times
+6. **Visual-First, Code When Needed**: Start with visual tools, drop to code for power
 
-**Feedback Channels:**
-- GitHub Issues (for v2-development branch)
-- Community Discord (future)
-- Development blog (future)
+### Design Patterns
+
+- **Composition over Inheritance**: Use components, not class hierarchies
+- **Data-Driven Design**: Game content in JSON, not hard-coded
+- **Immediate Feedback**: Live preview, instant updates
+- **Discoverability**: Browse components to learn what's possible
+- **Progressive Complexity**: Simple by default, powerful when needed
 
 ---
 
-**Last Updated**: 2025-09-30
-**Current Phase**: Planning → Prototyping
-**Next Milestone**: Rendering backend selection
+*This vision document is the source of truth for design direction. Implementation status is tracked separately in V2_DEVELOPMENT_STATUS.md*

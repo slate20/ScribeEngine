@@ -62,3 +62,61 @@ def update_setting(key, value):
         config['update_settings'] = get_update_settings()
     config['update_settings'][key] = value
     save_config(config)
+
+def get_recent_projects(max_count=10):
+    """
+    Get list of recently opened projects.
+
+    Returns:
+        list: List of recent project paths (most recent first)
+    """
+    config = load_config()
+    return config.get('recent_projects', [])[:max_count]
+
+def add_recent_project(project_path):
+    """
+    Add a project to recent projects list.
+
+    Args:
+        project_path: Absolute path to project directory
+    """
+    config = load_config()
+    recent = config.get('recent_projects', [])
+
+    # Normalize path
+    project_path = os.path.abspath(project_path)
+
+    # Remove if already in list
+    if project_path in recent:
+        recent.remove(project_path)
+
+    # Add to front
+    recent.insert(0, project_path)
+
+    # Keep only last 10
+    recent = recent[:10]
+
+    config['recent_projects'] = recent
+    save_config(config)
+
+def remove_recent_project(project_path):
+    """
+    Remove a project from recent projects list.
+
+    Args:
+        project_path: Project path to remove
+    """
+    config = load_config()
+    recent = config.get('recent_projects', [])
+
+    project_path = os.path.abspath(project_path)
+    if project_path in recent:
+        recent.remove(project_path)
+        config['recent_projects'] = recent
+        save_config(config)
+
+def clear_recent_projects():
+    """Clear all recent projects."""
+    config = load_config()
+    config['recent_projects'] = []
+    save_config(config)

@@ -8,3 +8,4 @@ watchdog
 Pillow
 pygame
 PyQt6
+PyQt6-QScintilla

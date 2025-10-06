@@ -14,6 +14,8 @@ class EditorCamera:
         self.zoom = 1.0
         self.grid_size = 32
         self.snap_to_grid = True
+        self.grid_visible = True
+        self.editor_mode = True  # Flag for sprite rendering to enable ghosting
 
     def screen_to_world(self, screen_pos: Vector2) -> Vector2:
         """Convert screen coordinates to world coordinates."""
