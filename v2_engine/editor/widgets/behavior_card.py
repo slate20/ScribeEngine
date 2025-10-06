@@ -24,6 +24,7 @@ class BehaviorCard(QFrame):
 
     clicked = pyqtSignal(object)  # Emits ComponentMetadata when clicked
     double_clicked = pyqtSignal(object)  # Emits ComponentMetadata when double-clicked
+    multi_select_clicked = pyqtSignal(object)  # Emits ComponentMetadata for multi-select toggle
 
     def __init__(self, metadata: ComponentMetadata, theme: EditorTheme, parent=None):
         super().__init__(parent)
@@ -142,9 +143,18 @@ class BehaviorCard(QFrame):
             self._setup_styling()
 
     def mousePressEvent(self, event):
-        """Handle mouse click."""
+        """Handle mouse click with Ctrl modifier for multi-select."""
         if event.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit(self.metadata)
+            # Check if Ctrl/Cmd is held for multi-select
+            modifiers = event.modifiers()
+            ctrl_held = modifiers & Qt.KeyboardModifier.ControlModifier
+
+            if ctrl_held:
+                # Multi-select mode: toggle this card's selection
+                self.multi_select_clicked.emit(self.metadata)
+            else:
+                # Single select mode: clear other selections
+                self.clicked.emit(self.metadata)
         super().mousePressEvent(event)
 
     def mouseDoubleClickEvent(self, event):

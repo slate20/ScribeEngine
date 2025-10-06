@@ -97,6 +97,13 @@ class PygameWidget(QLabel):
             self.middle_mouse_pressed = True
             self.last_mouse_pos = Vector2(event.pos().x(), event.pos().y())
 
+    def mouseDoubleClickEvent(self, event):
+        """Handle mouse double-click events."""
+        if event.button() == Qt.MouseButton.LeftButton:
+            # Notify editor window of double-click
+            if self.editor_window and hasattr(self.editor_window, 'on_viewport_double_click'):
+                self.editor_window.on_viewport_double_click(event.pos().x(), event.pos().y())
+
     def mouseMoveEvent(self, event):
         """Handle mouse move events."""
         current_pos = Vector2(event.pos().x(), event.pos().y())
@@ -222,6 +229,9 @@ class EditorWindow(QMainWindow):
         self.selected_sprites = []  # List of all selected sprites (for multi-select)
         self.copied_sprite = None  # For copy/paste
 
+        # Scene file tracking
+        self.current_scene_file = None  # Path to currently loaded scene file
+
         # Box selection state
         self.box_select_start = None  # Screen position where box selection started
         self.box_select_dragging = False  # Whether currently box selecting
@@ -279,28 +289,80 @@ class EditorWindow(QMainWindow):
 
         tab_bar.addTab(visual_container, "Visual")
 
-        # Code tab - Professional code editor with QsciScintilla
+        # Code tab - Professional code editor with file navigator
+        code_container = QWidget()
+        code_layout = QHBoxLayout(code_container)
+        code_layout.setContentsMargins(0, 0, 0, 0)
+        code_layout.setSpacing(0)
+
+        # Create splitter for resizable panels
+        code_splitter = QSplitter(Qt.Orientation.Horizontal)
+
+        # File navigator on the left
+        from v2_engine.editor.widgets.file_navigator import FileNavigator
+        self.file_navigator = FileNavigator(self.theme, self.project_path)
+        self.file_navigator.file_selected.connect(self.on_navigator_file_selected)
+        self.file_navigator.setMinimumWidth(150)
+        code_splitter.addWidget(self.file_navigator)
+
+        # Code editor on the right
         self.code_editor = CodeEditor(self.theme)
         self.code_editor.file_saved.connect(self.on_code_saved)
         self.code_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
+        code_splitter.addWidget(self.code_editor)
 
-        tab_bar.addTab(self.code_editor, "Code")
+        # Set initial sizes (250px for navigator, rest for editor)
+        code_splitter.setSizes([250, 800])
 
-        # Split tab - Both views side by side
+        code_layout.addWidget(code_splitter)
+        tab_bar.addTab(code_container, "Code")
+
+        # Split tab - Scene view and code editor side by side with file navigator
         split_widget = QWidget()
         split_layout = QHBoxLayout(split_widget)
         split_layout.setContentsMargins(0, 0, 0, 0)
+        split_layout.setSpacing(0)
+
+        # Create main splitter for scene and code sections
+        main_split_splitter = QSplitter(Qt.Orientation.Horizontal)
 
         # Create second pygame widget for split view
         self.pygame_widget_split = PygameWidget(editor_window=self)
-        split_layout.addWidget(self.pygame_widget_split, 1)
+        main_split_splitter.addWidget(self.pygame_widget_split)
 
-        # Create second code editor for split view
-        self.code_editor_split = CodeEditor(self.theme)
-        self.code_editor_split.file_saved.connect(self.on_code_saved)
-        self.code_editor_split.file_saved_and_reload.connect(self.on_code_saved_and_reload)
-        split_layout.addWidget(self.code_editor_split, 1)
+        # Code editor section with CodeTabBar
+        code_split_container = QWidget()
+        code_split_layout = QVBoxLayout(code_split_container)
+        code_split_layout.setContentsMargins(0, 0, 0, 0)
+        code_split_layout.setSpacing(0)
 
+        # Import CodeTabBar and EditScopeIndicator
+        from v2_engine.editor.widgets.code_tab_bar import CodeTabBar
+        from v2_engine.editor.widgets.edit_scope_indicator import EditScopeIndicator
+
+        # Code tab bar with instance and behavior tabs
+        self.split_code_tabs = CodeTabBar(self.theme)
+        self.split_code_tabs.switch_to_instance_edit.connect(self.on_split_switch_to_instance)
+        self.split_code_tabs.currentChanged.connect(self.on_split_tab_changed)
+
+        # Create placeholder code editors
+        self.split_instance_editor = CodeEditor(self.theme)
+        self.split_instance_editor.file_saved.connect(self.on_code_saved)
+        self.split_instance_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
+
+        # Add placeholder tab
+        self.split_code_tabs.addTab(
+            QLabel("Select a sprite to edit its code", alignment=Qt.AlignmentFlag.AlignCenter),
+            "No Selection"
+        )
+
+        code_split_layout.addWidget(self.split_code_tabs)
+        main_split_splitter.addWidget(code_split_container)
+
+        # Set initial sizes for main splitter (50/50 split)
+        main_split_splitter.setSizes([500, 500])
+
+        split_layout.addWidget(main_split_splitter)
         tab_bar.addTab(split_widget, "Split")
 
         # Store tab bar reference for view mode switching
@@ -987,10 +1049,10 @@ class EditorWindow(QMainWindow):
                     QTreeWidgetItem(object_item, [key, value_str])
 
     def refresh_code_view(self):
-        """Load and display the current scene file in all code views."""
+        """Load and display the current scene file in code view."""
         if not self.game.scene_manager or not self.game.scene_manager.current_scene:
             self.code_editor.setPlainText("# No scene loaded")
-            self.code_editor_split.setPlainText("# No scene loaded")
+            self.current_scene_file = None
             return
 
         scene_name = self.game.scene_manager.current_scene
@@ -1010,20 +1072,24 @@ class EditorWindow(QMainWindow):
                     break
 
             if scene_file and os.path.exists(scene_file):
-                with open(scene_file, 'r') as f:
-                    code = f.read()
-                # Update all code editor instances
-                self.code_editor.setPlainText(code)
-                self.code_editor_split.setPlainText(code)
+                # Store current scene file path
+                self.current_scene_file = scene_file
+
+                # Load scene file in Code view
+                self.code_editor.load_file(scene_file)
+
+                # Update file navigator to highlight scene file
+                if hasattr(self, 'file_navigator'):
+                    self.file_navigator.set_current_file(scene_file)
             else:
+                self.current_scene_file = None
                 error_msg = f"# Scene file not found: {scene_file}"
                 self.code_editor.setPlainText(error_msg)
-                self.code_editor_split.setPlainText(error_msg)
 
         except Exception as e:
+            self.current_scene_file = None
             error_msg = f"# Error loading scene file: {e}"
             self.code_editor.setPlainText(error_msg)
-            self.code_editor_split.setPlainText(error_msg)
 
     def save_code_and_reload(self):
         """Save code editor contents to file and reload the scene."""
@@ -2486,12 +2552,16 @@ if __name__ == '__main__':
         else:
             self.update_properties_panel(None)
 
+        # Update split view code tabs
+        self.update_split_view_code_tabs()
+
     def deselect_all(self):
         """Deselect all sprites."""
         self.selected_sprites = []
         self.selected_sprite = None
         self.state.selected_sprite = None
         self.update_properties_panel(None)
+        self.update_split_view_code_tabs()  # Update split view
         print("[Editor] Deselected all sprites")
 
     def get_selected_sprites(self):
@@ -2718,6 +2788,35 @@ if __name__ == '__main__':
                     # If Ctrl not held, deselect everything
                     if not ctrl_held:
                         self.deselect_all()
+
+    def on_viewport_double_click(self, x, y):
+        """Handle double-click in viewport - opens split view with selected sprite."""
+        # Convert screen coords to world coords
+        screen_pos = Vector2(x, y)
+        world_pos = self.state.camera.screen_to_world(screen_pos)
+
+        # Find sprite at position
+        if self.game.scene_manager and self.game.scene_manager.current_scene:
+            scene = self.game.scene_manager.scenes[self.game.scene_manager.current_scene]
+
+            if hasattr(scene, 'sprite_groups'):
+                all_sprites = []
+                for group_name, sprite_group in scene.sprite_groups.items():
+                    all_sprites.extend(sprite_group.sprites)
+
+                # Find sprite at position (check in reverse layer order - top to bottom)
+                all_sprites.sort(key=lambda s: getattr(s, 'layer', 0), reverse=True)
+
+                for sprite in all_sprites:
+                    if self.select_tool._point_in_sprite(world_pos, sprite):
+                        # Select the sprite
+                        self.select_sprite(sprite, add_to_selection=False)
+
+                        # Switch to Split view
+                        self.view_tab_bar.setCurrentIndex(2)  # 0=Visual, 1=Code, 2=Split
+
+                        print(f"[Editor] Double-clicked sprite: {getattr(sprite, 'name', sprite.__class__.__name__)}")
+                        return
 
     def on_viewport_mouse_drag(self, x, y):
         """Handle mouse drag in viewport."""
@@ -3362,11 +3461,161 @@ if __name__ == '__main__':
         """Handle new behavior created event - open it in code editor."""
         print(f"[Editor] Opening new behavior in code editor: {file_path}")
 
+        # Refresh file navigators to show new file
+        if hasattr(self, 'file_navigator'):
+            self.file_navigator.refresh()
+        if hasattr(self, 'file_navigator_split'):
+            self.file_navigator_split.refresh()
+
         # Switch to Code view tab
         self.view_tab_bar.setCurrentIndex(1)  # 0=Visual, 1=Code, 2=Split
 
         # Load the file in the code editor
         self.code_editor.load_file(file_path)
+
+        # Update file navigator highlighting
+        if hasattr(self, 'file_navigator'):
+            self.file_navigator.set_current_file(file_path)
+        if hasattr(self, 'file_navigator_split'):
+            self.file_navigator_split.set_current_file(file_path)
+
+    def on_navigator_file_selected(self, file_path: str):
+        """Handle file selection from file navigator."""
+        import os
+
+        if not os.path.exists(file_path):
+            QMessageBox.warning(
+                self,
+                "File Not Found",
+                f"Cannot find file:\n{file_path}"
+            )
+            return
+
+        print(f"[Editor] Opening file from navigator: {file_path}")
+
+        # Load the file in the appropriate code editor based on current view
+        current_view = self.view_tab_bar.currentIndex()
+
+        if current_view == 1:  # Code view
+            self.code_editor.load_file(file_path)
+        elif current_view == 2:  # Split view
+            self.code_editor_split.load_file(file_path)
+        else:  # Visual view - switch to Code view
+            self.view_tab_bar.setCurrentIndex(1)
+            self.code_editor.load_file(file_path)
+
+        # Update file navigator highlighting
+        if hasattr(self, 'file_navigator'):
+            self.file_navigator.set_current_file(file_path)
+        if hasattr(self, 'file_navigator_split'):
+            self.file_navigator_split.set_current_file(file_path)
+
+    def update_split_view_code_tabs(self):
+        """Update split view code tabs when sprite selection changes."""
+        if not hasattr(self, 'split_code_tabs'):
+            return
+
+        # Clear existing tabs
+        self.split_code_tabs.clear_tabs()
+
+        if not self.selected_sprite:
+            # No selection - show full scene code
+            scene_editor = CodeEditor(self.theme)
+            scene_editor.file_saved.connect(self.on_code_saved)
+            scene_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
+
+            scene_path = self.get_current_scene_file_path()
+            if scene_path and os.path.exists(scene_path):
+                scene_editor.load_file(scene_path)
+
+            self.split_code_tabs.addTab(scene_editor, "Scene Code")
+            return
+
+        sprite = self.selected_sprite
+        sprite_name = getattr(sprite, 'name', sprite.__class__.__name__)
+
+        # Create instance code editor
+        instance_editor = CodeEditor(self.theme)
+        instance_editor.file_saved.connect(self.on_code_saved)
+        instance_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
+
+        # Load scene file and extract sprite section
+        scene_path = self.get_current_scene_file_path()
+        if scene_path and os.path.exists(scene_path):
+            from v2_engine.editor.scene_code_extractor import SceneCodeExtractor
+
+            extractor = SceneCodeExtractor(scene_path)
+            section_info = extractor.find_sprite_section(sprite_name)
+
+            print(f"[SplitView] Looking for sprite: '{sprite_name}' in {scene_path}")
+            print(f"[SplitView] Extraction result: {section_info is not None}")
+
+            if section_info:
+                start_line, end_line, code_section = section_info
+
+                # Show extracted section with context
+                context_lines = 2
+                context_start = max(0, start_line - context_lines)
+                context_end = min(extractor.get_line_count() - 1, end_line + context_lines)
+
+                # Get full context
+                full_lines = extractor.scene_code.split('\n')
+                context_code = '\n'.join(full_lines[context_start:context_end + 1])
+
+                # Add helpful comment at top
+                header = f"# Sprite: {sprite_name} (Lines {start_line + 1}-{end_line + 1})\n"
+                header += "# Edit this sprite's instance code below:\n\n"
+
+                instance_editor.setPlainText(header + context_code)
+
+                # Detect overrides
+                has_overrides = extractor.has_custom_overrides(sprite_name)
+            else:
+                # Couldn't find sprite - show full scene
+                instance_editor.load_file(scene_path)
+                has_overrides = False
+        else:
+            has_overrides = False
+
+        # Add instance tab
+        self.split_code_tabs.set_instance_tab(instance_editor, has_overrides)
+
+        # Add behavior class tabs
+        if hasattr(sprite, 'components'):
+            for component in sprite.components.values():
+                behavior_name = component.__class__.__name__
+
+                # Create behavior editor
+                behavior_editor = CodeEditor(self.theme)
+                behavior_editor.file_saved.connect(self.on_code_saved)
+                behavior_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
+
+                # Load behavior file
+                import inspect
+                try:
+                    behavior_file = inspect.getfile(component.__class__)
+                    if os.path.exists(behavior_file):
+                        behavior_editor.load_file(behavior_file)
+                        self.split_code_tabs.add_behavior_tab(behavior_editor, behavior_name, behavior_file)
+                except:
+                    pass
+
+    def get_current_scene_file_path(self) -> str:
+        """Get the file path of the currently loaded scene."""
+        if not hasattr(self, 'current_scene_file'):
+            return ""
+        return self.current_scene_file if self.current_scene_file else ""
+
+    def on_split_switch_to_instance(self):
+        """Handle switch to instance editing in split view."""
+        # Switch to first tab (instance code)
+        if hasattr(self, 'split_code_tabs'):
+            self.split_code_tabs.setCurrentIndex(0)
+
+    def on_split_tab_changed(self, index: int):
+        """Handle split view tab change."""
+        # Could add additional logic here if needed in the future
+        pass
 
     def on_edit_behavior_code(self, component):
         """Handle edit code button click for a behavior."""
@@ -3392,6 +3641,12 @@ if __name__ == '__main__':
 
             # Load the file in the code editor
             self.code_editor.load_file(source_file)
+
+            # Update file navigator highlighting
+            if hasattr(self, 'file_navigator'):
+                self.file_navigator.set_current_file(source_file)
+            if hasattr(self, 'file_navigator_split'):
+                self.file_navigator_split.set_current_file(source_file)
 
         except Exception as e:
             QMessageBox.critical(

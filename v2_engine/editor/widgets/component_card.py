@@ -114,28 +114,27 @@ class ComponentCard(QWidget):
         self.collapse_indicator.setAlignment(Qt.AlignmentFlag.AlignCenter)
         header_layout.addWidget(self.collapse_indicator)
 
-        # Edit Code button (only for custom behaviors)
-        if self.is_custom_behavior():
-            self.edit_code_btn = QPushButton("📝")
-            self.edit_code_btn.setFixedSize(26, 26)
-            self.edit_code_btn.setStyleSheet(f"""
-                QPushButton {{
-                    background-color: {self.theme.accent_primary};
-                    color: white;
-                    font-weight: bold;
-                    font-size: 14px;
-                    border: none;
-                    border-radius: 13px;
-                    padding: 0px;
-                    text-align: center;
-                }}
-                QPushButton:hover {{
-                    background-color: {self.theme.accent_hover};
-                }}
-            """)
-            self.edit_code_btn.setToolTip("Edit behavior code")
-            self.edit_code_btn.clicked.connect(self.on_edit_code_clicked)
-            header_layout.addWidget(self.edit_code_btn)
+        # Edit Code button (available for all behaviors)
+        self.edit_code_btn = QPushButton("📝")
+        self.edit_code_btn.setFixedSize(26, 26)
+        self.edit_code_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {self.theme.accent_primary};
+                color: white;
+                font-weight: bold;
+                font-size: 14px;
+                border: none;
+                border-radius: 13px;
+                padding: 0px;
+                text-align: center;
+            }}
+            QPushButton:hover {{
+                background-color: {self.theme.accent_hover};
+            }}
+        """)
+        self.edit_code_btn.setToolTip("Edit behavior code")
+        self.edit_code_btn.clicked.connect(self.on_edit_code_clicked)
+        header_layout.addWidget(self.edit_code_btn)
 
         # Remove button
         self.remove_btn = QPushButton("×")
@@ -356,30 +355,3 @@ class ComponentCard(QWidget):
     def on_edit_code_clicked(self):
         """Handle edit code button click."""
         self.edit_code_requested.emit(self.component)
-
-    def is_custom_behavior(self) -> bool:
-        """
-        Check if this is a custom (user-created) behavior.
-
-        Custom behaviors are defined in project/behaviors/ directory,
-        while engine behaviors are in v2_engine/components/.
-
-        Returns:
-            True if custom behavior, False if engine behavior
-        """
-        import inspect
-        import os
-
-        # Get the file path where the component class is defined
-        try:
-            source_file = inspect.getfile(self.component.__class__)
-
-            # Check if it's in the project behaviors directory
-            # Custom behaviors will have 'behaviors' in their path but NOT 'v2_engine'
-            is_in_behaviors = 'behaviors' in source_file
-            is_engine_component = 'v2_engine' in source_file
-
-            return is_in_behaviors and not is_engine_component
-        except:
-            # If we can't determine, assume it's an engine component
-            return False

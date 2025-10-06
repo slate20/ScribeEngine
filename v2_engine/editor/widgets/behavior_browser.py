@@ -52,7 +52,7 @@ class BehaviorBrowserDialog(QDialog):
         self.theme = theme
         self.project_path = project_path
         self.registry = get_component_registry()
-        self.selected_metadata = None
+        self.selected_metadata = []  # Changed to list for multi-select
         self.current_cards = []
 
         # Initialize registry
@@ -271,6 +271,7 @@ class BehaviorBrowserDialog(QDialog):
             card = BehaviorCard(metadata, self.theme)
             card.clicked.connect(self._on_card_clicked)
             card.double_clicked.connect(self._on_card_double_clicked)
+            card.multi_select_clicked.connect(self._on_card_multi_select_clicked)
 
             # Disable if already has component
             if already_has:
@@ -293,13 +294,13 @@ class BehaviorBrowserDialog(QDialog):
                 row += 1
 
     def _on_card_clicked(self, metadata: ComponentMetadata):
-        """Handle card selection."""
+        """Handle single card selection (clears other selections)."""
         # Deselect all cards
         for card in self.current_cards:
             card.set_selected(False)
 
         # Select clicked card
-        self.selected_metadata = metadata
+        self.selected_metadata = [metadata]
         for card in self.current_cards:
             if card.metadata == metadata:
                 card.set_selected(True)
@@ -307,10 +308,39 @@ class BehaviorBrowserDialog(QDialog):
 
         # Enable add button
         self.add_btn.setEnabled(True)
+        self._update_add_button_text()
+
+    def _on_card_multi_select_clicked(self, metadata: ComponentMetadata):
+        """Handle multi-select toggle (Ctrl+Click)."""
+        # Toggle selection for this metadata
+        if metadata in self.selected_metadata:
+            self.selected_metadata.remove(metadata)
+        else:
+            self.selected_metadata.append(metadata)
+
+        # Update card visual states
+        for card in self.current_cards:
+            if card.metadata == metadata:
+                card.set_selected(metadata in self.selected_metadata)
+                break
+
+        # Enable/disable add button based on selection
+        self.add_btn.setEnabled(len(self.selected_metadata) > 0)
+        self._update_add_button_text()
+
+    def _update_add_button_text(self):
+        """Update add button text to show count."""
+        count = len(self.selected_metadata)
+        if count == 0:
+            self.add_btn.setText("Add")
+        elif count == 1:
+            self.add_btn.setText("Add")
+        else:
+            self.add_btn.setText(f"Add ({count})")
 
     def _on_card_double_clicked(self, metadata: ComponentMetadata):
         """Handle double-click to immediately add component."""
-        self.selected_metadata = metadata
+        self.selected_metadata = [metadata]
         self._on_add_clicked()
 
     def _on_search_changed(self, query: str):
@@ -348,16 +378,21 @@ class BehaviorBrowserDialog(QDialog):
         if not self.selected_metadata:
             return
 
-        # Check if sprite already has this component
-        if self.sprite.has_component(self.selected_metadata.class_ref):
+        # Check if sprite already has any of the selected components
+        duplicates = []
+        for metadata in self.selected_metadata:
+            if self.sprite.has_component(metadata.class_ref):
+                duplicates.append(metadata.name)
+
+        if duplicates:
             QMessageBox.warning(
                 self,
                 'Component Already Exists',
-                f'Sprite already has a {self.selected_metadata.name} component.'
+                f'Sprite already has the following component(s):\n' + '\n'.join(f'• {name}' for name in duplicates)
             )
             return
 
-        # Component will be added by parent dialog handler
+        # Components will be added by parent dialog handler
         self.accept()
 
     def get_selected_components(self) -> list[tuple]:
@@ -368,7 +403,7 @@ class BehaviorBrowserDialog(QDialog):
             List of (component_class, properties_dict) tuples
         """
         if self.selected_metadata:
-            return [(self.selected_metadata.class_ref, {})]
+            return [(metadata.class_ref, {}) for metadata in self.selected_metadata]
         return []
 
     def _on_new_behavior_clicked(self):
