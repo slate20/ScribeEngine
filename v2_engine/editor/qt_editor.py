@@ -29,6 +29,14 @@ from v2_engine.editor.command import (
     SetOriginCommand, DeleteSpriteCommand, AddSpriteCommand, ModifyPropertyCommand
 )
 from v2_engine.editor.code_editor import CodeEditor
+from v2_engine.editor.panels.hierarchy_panel import HierarchyPanel
+from v2_engine.editor.panels.gamestate_panel import GameStatePanel
+from v2_engine.editor.panels.properties_panel import PropertiesPanel
+from v2_engine.editor.panels.viewport_panel import ViewportPanel
+from v2_engine.editor.panels.code_panel import CodePanel, SplitCodePanel
+from v2_engine.editor.managers.selection_manager import SelectionManager
+from v2_engine.editor.managers.playback_manager import PlaybackManager
+from v2_engine.editor.managers.scene_manager_ui import SceneManagerUI
 
 # Add shared utils to path
 import sys
@@ -182,6 +190,21 @@ class EditorWindow(QMainWindow):
         # Command history for undo/redo
         self.command_history = CommandHistory(max_history=50)
 
+        # Selection manager
+        self.selection_manager = SelectionManager(self)
+        self.selection_manager.selection_changed.connect(self._on_selection_changed)
+
+        # Playback manager
+        self.playback_manager = PlaybackManager(self)
+        self.playback_manager.playback_started.connect(self._on_playback_started)
+        self.playback_manager.playback_stopped.connect(self._on_playback_stopped)
+
+        # Scene manager UI
+        self.scene_manager_ui = SceneManagerUI(self)
+        self.scene_manager_ui.scene_switched.connect(self._on_scene_switched)
+        self.scene_manager_ui.scene_created.connect(self._on_scene_created)
+        self.scene_manager_ui.scene_saved.connect(self._on_scene_saved)
+
         # Gizmo interaction state
         self.gizmo_dragging = False
         self.gizmo_drag_start = None
@@ -257,9 +280,9 @@ class EditorWindow(QMainWindow):
         self.create_center_panel()
 
         # Create docked panels
-        self.create_hierarchy_panel()
-        self.create_properties_panel()
-        self.create_gamestate_panel()
+        self._create_hierarchy_panel_new()  # New modular version
+        self._create_properties_panel_new()  # New modular version
+        self._create_gamestate_panel_new()  # New modular version
 
     def create_center_panel(self):
         """Create the center panel with Visual/Code/Split tabs."""
@@ -274,50 +297,51 @@ class EditorWindow(QMainWindow):
         tab_bar.setTabPosition(QTabWidget.TabPosition.North)
         tab_bar.currentChanged.connect(self.on_view_mode_changed)
 
-        # Visual tab - Pygame viewport with toolbar
-        visual_container = QWidget()
-        visual_layout = QVBoxLayout(visual_container)
-        visual_layout.setContentsMargins(0, 0, 0, 0)
-        visual_layout.setSpacing(0)
-
-        # Scene editor toolbar
-        self.create_scene_toolbar(visual_layout)
-
-        # Pygame viewport
+        # Visual tab - Pygame viewport with toolbar (using ViewportPanel)
+        # Create pygame widget first
         self.pygame_widget = PygameWidget(editor_window=self)
-        visual_layout.addWidget(self.pygame_widget)
 
-        tab_bar.addTab(visual_container, "Visual")
+        # Create viewport panel with pygame widget
+        self.viewport_panel = ViewportPanel(self, self.pygame_widget, self.theme)
 
-        # Code tab - Professional code editor with file navigator
-        code_container = QWidget()
-        code_layout = QHBoxLayout(code_container)
-        code_layout.setContentsMargins(0, 0, 0, 0)
-        code_layout.setSpacing(0)
+        # Wire up signals
+        self.viewport_panel.transform_tool_changed.connect(self.set_transform_tool)
+        self.viewport_panel.grid_visibility_changed.connect(self.toggle_grid_visibility)
+        self.viewport_panel.grid_size_changed.connect(self._on_grid_size_changed_from_panel)
+        self.viewport_panel.snap_to_grid_changed.connect(self._on_snap_to_grid_changed_from_panel)
+        self.viewport_panel.play_requested.connect(self.play_scene)
+        self.viewport_panel.stop_requested.connect(self.stop_play)
 
-        # Create splitter for resizable panels
-        code_splitter = QSplitter(Qt.Orientation.Horizontal)
+        # Keep backward compatible references for existing code
+        self.grid_visible_checkbox = self.viewport_panel.grid_visible_checkbox
+        self.grid_size_combo = self.viewport_panel.grid_size_combo
+        self.snap_checkbox = self.viewport_panel.snap_checkbox
+        self.move_tool_btn = self.viewport_panel.move_tool_btn
+        self.rotate_tool_btn = self.viewport_panel.rotate_tool_btn
+        self.scale_tool_btn = self.viewport_panel.scale_tool_btn
+        self.play_btn = self.viewport_panel.play_btn
+        self.stop_btn = self.viewport_panel.stop_btn
+        self.fps_label = self.viewport_panel.fps_label
+        self.zoom_label = self.viewport_panel.zoom_label
+        self.cursor_pos_label = self.viewport_panel.cursor_pos_label
 
-        # File navigator on the left
-        from v2_engine.editor.widgets.file_navigator import FileNavigator
-        self.file_navigator = FileNavigator(self.theme, self.project_path)
-        self.file_navigator.file_selected.connect(self.on_navigator_file_selected)
-        self.file_navigator.setMinimumWidth(150)
-        code_splitter.addWidget(self.file_navigator)
+        tab_bar.addTab(self.viewport_panel, "Visual")
 
-        # Code editor on the right
-        self.code_editor = CodeEditor(self.theme)
-        self.code_editor.file_saved.connect(self.on_code_saved)
-        self.code_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
-        code_splitter.addWidget(self.code_editor)
+        # Code tab - Professional code editor with file navigator (using CodePanel)
+        self.code_panel = CodePanel(self, self.theme, self.project_path)
 
-        # Set initial sizes (250px for navigator, rest for editor)
-        code_splitter.setSizes([250, 800])
+        # Wire up signals
+        self.code_panel.file_saved.connect(self.on_code_saved)
+        self.code_panel.file_saved_and_reload.connect(self.on_code_saved_and_reload)
+        self.code_panel.file_selected.connect(self.on_navigator_file_selected)
 
-        code_layout.addWidget(code_splitter)
-        tab_bar.addTab(code_container, "Code")
+        # Keep backward compatible references
+        self.file_navigator = self.code_panel.file_navigator
+        self.code_editor = self.code_panel.code_editor
 
-        # Split tab - Scene view and code editor side by side with file navigator
+        tab_bar.addTab(self.code_panel, "Code")
+
+        # Split tab - Scene view and code editor side by side (using SplitCodePanel)
         split_widget = QWidget()
         split_layout = QHBoxLayout(split_widget)
         split_layout.setContentsMargins(0, 0, 0, 0)
@@ -330,34 +354,18 @@ class EditorWindow(QMainWindow):
         self.pygame_widget_split = PygameWidget(editor_window=self)
         main_split_splitter.addWidget(self.pygame_widget_split)
 
-        # Code editor section with CodeTabBar
-        code_split_container = QWidget()
-        code_split_layout = QVBoxLayout(code_split_container)
-        code_split_layout.setContentsMargins(0, 0, 0, 0)
-        code_split_layout.setSpacing(0)
+        # Split code panel
+        self.split_code_panel = SplitCodePanel(self, self.theme, self.project_path)
 
-        # Import CodeTabBar and EditScopeIndicator
-        from v2_engine.editor.widgets.code_tab_bar import CodeTabBar
-        from v2_engine.editor.widgets.edit_scope_indicator import EditScopeIndicator
+        # Wire up signals
+        self.split_code_panel.file_saved.connect(self.on_code_saved)
+        self.split_code_panel.file_saved_and_reload.connect(self.on_code_saved_and_reload)
+        self.split_code_panel.switch_to_instance_requested.connect(self.on_split_switch_to_instance)
 
-        # Code tab bar with instance and behavior tabs
-        self.split_code_tabs = CodeTabBar(self.theme)
-        self.split_code_tabs.switch_to_instance_edit.connect(self.on_split_switch_to_instance)
-        self.split_code_tabs.currentChanged.connect(self.on_split_tab_changed)
+        # Keep backward compatible references
+        self.split_code_tabs = self.split_code_panel.split_code_tabs
 
-        # Create placeholder code editors
-        self.split_instance_editor = CodeEditor(self.theme)
-        self.split_instance_editor.file_saved.connect(self.on_code_saved)
-        self.split_instance_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
-
-        # Add placeholder tab
-        self.split_code_tabs.addTab(
-            QLabel("Select a sprite to edit its code", alignment=Qt.AlignmentFlag.AlignCenter),
-            "No Selection"
-        )
-
-        code_split_layout.addWidget(self.split_code_tabs)
-        main_split_splitter.addWidget(code_split_container)
+        main_split_splitter.addWidget(self.split_code_panel)
 
         # Set initial sizes for main splitter (50/50 split)
         main_split_splitter.setSizes([500, 500])
@@ -370,8 +378,7 @@ class EditorWindow(QMainWindow):
 
         layout.addWidget(tab_bar)
 
-        # Status bar
-        self.create_status_bar(layout)
+        # Note: Status bar is now part of ViewportPanel (Visual tab only)
 
         self.setCentralWidget(container)
 
@@ -675,176 +682,69 @@ class EditorWindow(QMainWindow):
         # Track selected asset
         self.selected_asset_path = None
 
-    def create_scene_toolbar(self, parent_layout):
-        """Create toolbar for scene editor controls."""
-        from PyQt6.QtWidgets import QToolBar, QCheckBox, QComboBox, QLabel
+    def _create_hierarchy_panel_new(self):
+        """Create the hierarchy panel using the new modular HierarchyPanel class."""
+        # Create the new panel
+        self.hierarchy_panel = HierarchyPanel(self, self.theme)
 
-        toolbar = QWidget()
-        toolbar_layout = QHBoxLayout(toolbar)
-        toolbar_layout.setContentsMargins(self.theme.spacing_small, self.theme.spacing_small,
-                                         self.theme.spacing_small, self.theme.spacing_small)
-        toolbar_layout.setSpacing(self.theme.spacing_medium)
+        # Wire up signals
+        self.hierarchy_panel.sprite_selected.connect(self.on_hierarchy_item_clicked_new)
+        self.hierarchy_panel.sprite_delete_requested.connect(lambda: self.delete_selected_sprite(confirm=True))
+        self.hierarchy_panel.asset_selected.connect(self._on_asset_selected)
+        self.hierarchy_panel.asset_assign_requested.connect(self.assign_asset_to_sprite)
+        self.hierarchy_panel.scene_selected.connect(self.switch_to_scene)
+        self.hierarchy_panel.add_object_requested.connect(self.show_add_object_dialog)
+        self.hierarchy_panel.create_scene_requested.connect(self.create_new_scene)
 
-        # Grid visibility toggle
-        self.grid_visible_checkbox = QCheckBox("Show Grid (G)")
-        self.grid_visible_checkbox.setChecked(self.state.camera.grid_visible)
-        self.grid_visible_checkbox.stateChanged.connect(
-            lambda state: self.toggle_grid_visibility(state == Qt.CheckState.Checked.value)
-        )
-        toolbar_layout.addWidget(self.grid_visible_checkbox)
+        # Add to main window
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.hierarchy_panel)
 
-        # Grid size selector
-        grid_size_label = QLabel("Grid Size:")
-        toolbar_layout.addWidget(grid_size_label)
+        # Initialize data
+        self.hierarchy_panel.update_hierarchy(self.game)
+        self.hierarchy_panel.update_scenes(self._get_scenes_config(), self.game.scene_manager.current_scene if self.game.scene_manager else None)
+        self.hierarchy_panel.update_assets(self.project_path)
 
-        self.grid_size_combo = QComboBox()
-        grid_sizes = [8, 16, 24, 32, 48, 64, 128]
-        for size in grid_sizes:
-            self.grid_size_combo.addItem(f"{size}px", size)
+        # Keep references for backward compatibility
+        self.hierarchy_tree = self.hierarchy_panel.hierarchy_tree
+        self.asset_tree = self.hierarchy_panel.asset_tree
+        self.asset_preview = self.hierarchy_panel.asset_preview
+        self.assign_asset_btn = self.hierarchy_panel.assign_asset_btn
+        self.scene_list = self.hierarchy_panel.scene_list
+        self.scene_section_header = self.hierarchy_panel.scene_section_header
 
-        # Set current grid size
-        index = self.grid_size_combo.findData(self.state.camera.grid_size)
-        if index >= 0:
-            self.grid_size_combo.setCurrentIndex(index)
+    def _get_scenes_config(self):
+        """Get scenes configuration from project config."""
+        return self.scene_manager_ui.get_scenes_config()
 
-        self.grid_size_combo.currentIndexChanged.connect(self.on_grid_size_changed)
-        toolbar_layout.addWidget(self.grid_size_combo)
+    def on_hierarchy_item_clicked_new(self, sprite):
+        """Handle sprite selection from new hierarchy panel."""
+        self.selected_sprite = sprite
+        self.state.selected_sprite = sprite
+        self.update_properties_panel(sprite)
 
-        # Snap to grid toggle
-        self.snap_checkbox = QCheckBox("Snap to Grid")
-        self.snap_checkbox.setChecked(self.state.camera.snap_to_grid)
-        self.snap_checkbox.stateChanged.connect(
-            lambda state: setattr(self.state.camera, 'snap_to_grid', state == Qt.CheckState.Checked.value)
-        )
-        toolbar_layout.addWidget(self.snap_checkbox)
+    def _on_asset_selected(self, file_path):
+        """Handle asset selection from new hierarchy panel."""
+        self.selected_asset_path = file_path
+        # Enable assign button if sprite is selected
+        if self.selected_sprite:
+            self.hierarchy_panel.enable_asset_assign(True)
+        else:
+            self.hierarchy_panel.enable_asset_assign(False)
 
-        # Separator
-        separator1 = QFrame()
-        separator1.setFrameShape(QFrame.Shape.VLine)
-        separator1.setFrameShadow(QFrame.Shadow.Sunken)
-        toolbar_layout.addWidget(separator1)
-
-        # Transform tools label
-        tools_label = QLabel("Transform:")
-        toolbar_layout.addWidget(tools_label)
-
-        # Move tool button (W)
-        self.move_tool_btn = QPushButton("⇱ Move (W)")
-        self.move_tool_btn.setCheckable(True)
-        self.move_tool_btn.setChecked(True)  # Default tool
-        self.move_tool_btn.setMinimumHeight(32)
-        self.move_tool_btn.clicked.connect(lambda: self.set_transform_tool('move'))
-        toolbar_layout.addWidget(self.move_tool_btn)
-
-        # Rotate tool button (E)
-        self.rotate_tool_btn = QPushButton("↻ Rotate (E)")
-        self.rotate_tool_btn.setCheckable(True)
-        self.rotate_tool_btn.setMinimumHeight(32)
-        self.rotate_tool_btn.clicked.connect(lambda: self.set_transform_tool('rotate'))
-        toolbar_layout.addWidget(self.rotate_tool_btn)
-
-        # Scale tool button (R)
-        self.scale_tool_btn = QPushButton("⇲ Scale (R)")
-        self.scale_tool_btn.setCheckable(True)
-        self.scale_tool_btn.setMinimumHeight(32)
-        self.scale_tool_btn.clicked.connect(lambda: self.set_transform_tool('scale'))
-        toolbar_layout.addWidget(self.scale_tool_btn)
-
-        # Separator
-        separator2 = QFrame()
-        separator2.setFrameShape(QFrame.Shape.VLine)
-        separator2.setFrameShadow(QFrame.Shadow.Sunken)
-        toolbar_layout.addWidget(separator2)
-
-        # Play button
-        self.play_btn = QPushButton("▶ Play (F5)")
-        self.play_btn.setProperty("primary", "true")
-        self.play_btn.setMinimumHeight(32)
-        self.play_btn.clicked.connect(self.play_scene)
-        toolbar_layout.addWidget(self.play_btn)
-
-        # Stop button
-        self.stop_btn = QPushButton("⏹ Stop (Shift+F5)")
-        self.stop_btn.setMinimumHeight(32)
-        self.stop_btn.setEnabled(False)  # Disabled until game is running
-        self.stop_btn.clicked.connect(self.stop_play)
-        toolbar_layout.addWidget(self.stop_btn)
-
-        toolbar_layout.addStretch()
-
-        # Add toolbar to parent layout
-        parent_layout.addWidget(toolbar)
-
-    def create_status_bar(self, parent_layout):
-        """Create status bar for displaying FPS, zoom, and cursor position."""
-        status_bar = QWidget()
-        status_layout = QHBoxLayout(status_bar)
-        status_layout.setContentsMargins(self.theme.spacing_small, self.theme.spacing_small,
-                                        self.theme.spacing_small, self.theme.spacing_small)
-        status_layout.setSpacing(self.theme.spacing_medium)
-
-        # Apply subtle background
-        status_bar.setStyleSheet(f"""
-            QWidget {{
-                background-color: {self.theme.background_mid};
-                border-top: 1px solid {self.theme.border_subtle};
-            }}
-        """)
-
-        # FPS label
-        self.fps_label = QLabel("FPS: 60")
-        self.fps_label.setMinimumWidth(80)
-        status_layout.addWidget(self.fps_label)
-
-        # Separator
-        separator1 = QLabel("|")
-        separator1.setStyleSheet(f"color: {self.theme.border_subtle};")
-        status_layout.addWidget(separator1)
-
-        # Zoom label
-        self.zoom_label = QLabel("Zoom: 100%")
-        self.zoom_label.setMinimumWidth(100)
-        status_layout.addWidget(self.zoom_label)
-
-        # Separator
-        separator2 = QLabel("|")
-        separator2.setStyleSheet(f"color: {self.theme.border_subtle};")
-        status_layout.addWidget(separator2)
-
-        # Cursor position label
-        self.cursor_pos_label = QLabel("Cursor: (0, 0)")
-        self.cursor_pos_label.setMinimumWidth(150)
-        status_layout.addWidget(self.cursor_pos_label)
-
-        status_layout.addStretch()
-
-        # Add status bar to parent layout
-        parent_layout.addWidget(status_bar)
-
-        # Initialize FPS tracking
-        self.fps_counter = 0
-        self.fps_timer = QTimer()
-        self.fps_timer.timeout.connect(self.update_fps_display)
-        self.fps_timer.start(1000)  # Update every second
+    # DEPRECATED: Toolbar and status bar creation moved to ViewportPanel
+    # Old methods removed - see v2_engine/editor/panels/viewport_panel.py
 
     def update_fps_display(self):
         """Update FPS display in status bar."""
-        if hasattr(self, 'fps_label'):
-            # Calculate approximate FPS based on render timer (16ms = ~60 FPS)
-            self.fps_label.setText(f"FPS: ~60")
+        self.viewport_panel.update_fps_display()
 
     def update_status_bar(self):
         """Update status bar information."""
-        if hasattr(self, 'zoom_label'):
-            zoom_percent = int(self.state.camera.zoom * 100)
-            self.zoom_label.setText(f"Zoom: {zoom_percent}%")
+        self.viewport_panel.update_zoom_display()
 
     def update_cursor_position(self, screen_x, screen_y):
         """Update cursor position in status bar."""
-        if hasattr(self, 'cursor_pos_label'):
-            # Convert screen position to world position
-            world_pos = self.state.camera.screen_to_world(Vector2(screen_x, screen_y))
-            self.cursor_pos_label.setText(f"Cursor: ({int(world_pos.x)}, {int(world_pos.y)})")
+        self.viewport_panel.update_cursor_position(screen_x, screen_y)
 
     def create_collapsible_header(self, title, collapsed=False, add_button=False, add_callback=None):
         """
@@ -970,6 +870,18 @@ class EditorWindow(QMainWindow):
         dock.setWidget(scroll_area)
         self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, dock)
 
+    def _create_properties_panel_new(self):
+        """Create the properties panel using the new modular PropertiesPanel class."""
+        # Create the new panel
+        self.properties_panel = PropertiesPanel(self)
+
+        # Add to main window
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.properties_panel)
+
+        # Keep references for backward compatibility
+        self.properties_label = self.properties_panel.properties_label
+        self.properties_form = self.properties_panel.properties_form
+
     def create_gamestate_panel(self):
         """Create the GameState debug panel."""
         from PyQt6.QtWidgets import QScrollArea, QTreeWidget, QTreeWidgetItem, QVBoxLayout, QPushButton
@@ -1006,90 +918,29 @@ class EditorWindow(QMainWindow):
 
     def update_gamestate_panel(self):
         """Update the GameState panel with current state."""
-        from v2_engine.core.game_state import get_game_state
+        # Delegate to new gamestate panel
+        if hasattr(self, 'gamestate_panel'):
+            self.gamestate_panel.update()
 
-        self.gamestate_tree.clear()
-        game_state = get_game_state()
+    def _create_gamestate_panel_new(self):
+        """Create the GameState panel using the new modular GameStatePanel class."""
+        # Create the new panel
+        self.gamestate_panel = GameStatePanel(self, self.theme)
 
-        # Add variables section
-        variables_item = QTreeWidgetItem(self.gamestate_tree, ["Variables", f"({len(game_state.variables)} total)"])
-        variables_item.setExpanded(True)
+        # Add to main window
+        self.addDockWidget(Qt.DockWidgetArea.BottomDockWidgetArea, self.gamestate_panel)
 
-        for key, value in sorted(game_state.variables.items()):
-            value_str = str(value)
-            if len(value_str) > 50:
-                value_str = value_str[:50] + "..."
-            QTreeWidgetItem(variables_item, [key, value_str])
+        # Initialize data
+        self.gamestate_panel.update()
 
-        # Add persistent entities section
-        entities_item = QTreeWidgetItem(self.gamestate_tree, ["Persistent Entities", f"({len(game_state.persistent_entities)} total)"])
-        entities_item.setExpanded(True)
-
-        for entity_id, sprite in sorted(game_state.persistent_entities.items()):
-            sprite_name = getattr(sprite, 'name', sprite.__class__.__name__)
-            sprite_pos = getattr(sprite, 'position', None)
-            if sprite_pos:
-                info = f"{sprite_name} at ({sprite_pos.x:.1f}, {sprite_pos.y:.1f})"
-            else:
-                info = sprite_name
-            QTreeWidgetItem(entities_item, [entity_id, info])
-
-        # Add scene states section
-        scene_states_item = QTreeWidgetItem(self.gamestate_tree, ["Scene States", f"({len(game_state.scene_states)} scenes)"])
-        scene_states_item.setExpanded(False)  # Collapsed by default
-
-        for scene_name, scene_data in sorted(game_state.scene_states.items()):
-            scene_item = QTreeWidgetItem(scene_states_item, [scene_name, f"({len(scene_data)} objects)"])
-            for object_id, object_data in sorted(scene_data.items()):
-                object_item = QTreeWidgetItem(scene_item, [object_id, f"({len(object_data)} properties)"])
-                for key, value in sorted(object_data.items()):
-                    value_str = str(value)
-                    if len(value_str) > 50:
-                        value_str = value_str[:50] + "..."
-                    QTreeWidgetItem(object_item, [key, value_str])
+        # Keep references for backward compatibility
+        self.gamestate_tree = self.gamestate_panel.gamestate_tree
 
     def refresh_code_view(self):
         """Load and display the current scene file in code view."""
-        if not self.game.scene_manager or not self.game.scene_manager.current_scene:
-            self.code_editor.setPlainText("# No scene loaded")
-            self.current_scene_file = None
-            return
-
-        scene_name = self.game.scene_manager.current_scene
-
-        # Find scene file path from config
-        import json
-        config_path = os.path.join(self.project_path, '2d_project.json')
-
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-
-            scene_file = None
-            for scene_info in config.get('scenes', {}).get('scenes', []):
-                if scene_info['name'] == scene_name:
-                    scene_file = os.path.join(self.project_path, scene_info['file'])
-                    break
-
-            if scene_file and os.path.exists(scene_file):
-                # Store current scene file path
-                self.current_scene_file = scene_file
-
-                # Load scene file in Code view
-                self.code_editor.load_file(scene_file)
-
-                # Update file navigator to highlight scene file
-                if hasattr(self, 'file_navigator'):
-                    self.file_navigator.set_current_file(scene_file)
-            else:
-                self.current_scene_file = None
-                error_msg = f"# Scene file not found: {scene_file}"
-                self.code_editor.setPlainText(error_msg)
-
-        except Exception as e:
-            self.current_scene_file = None
-            error_msg = f"# Error loading scene file: {e}"
-            self.code_editor.setPlainText(error_msg)
+        self.code_panel.refresh_scene_code(self.game)
+        # Sync current scene file reference
+        self.current_scene_file = self.code_panel.get_current_scene_file()
 
     def save_code_and_reload(self):
         """Save code editor contents to file and reload the scene."""
@@ -1183,47 +1034,9 @@ class EditorWindow(QMainWindow):
 
     def update_hierarchy(self):
         """Update the hierarchy tree with scene objects."""
-        from v2_engine.sprites.sprite_object import SpriteObject
-        from v2_engine.core.logic_object import LogicObject
-
-        self.hierarchy_tree.clear()
-
-        if not self.game.scene_manager or not self.game.scene_manager.current_scene:
-            return
-
-        # Update scene header with current scene name
-        scene_name = self.game.scene_manager.current_scene
-        self.scene_section_header.title_label.setText(f"Scene: {scene_name}")
-
-        scene = self.game.scene_manager.scenes[scene_name]
-
-        if hasattr(scene, 'sprite_groups'):
-            for group_name, sprite_group in scene.sprite_groups.items():
-                group_item = QTreeWidgetItem(self.hierarchy_tree, [group_name])
-
-                for i, sprite in enumerate(sprite_group.sprites):
-                    # Use sprite.name if available, otherwise generate default
-                    if hasattr(sprite, 'name') and sprite.name:
-                        display_name = sprite.name
-                    else:
-                        display_name = f"{sprite.__class__.__name__}_{i}"
-                        # Auto-assign the name to the sprite
-                        sprite.name = display_name
-
-                    # Add visual indicator based on visibility
-                    sprite_item = QTreeWidgetItem(group_item, [display_name])
-                    sprite_item.setData(0, Qt.ItemDataRole.UserRole, sprite)  # Store sprite reference
-
-                    # Color based on visibility state
-                    is_visible = getattr(sprite, 'visible', True)
-                    if is_visible:
-                        # White/bright for visible objects
-                        sprite_item.setForeground(0, QColor(255, 255, 255))
-                    else:
-                        # Dim gray for invisible objects (ghosted)
-                        sprite_item.setForeground(0, QColor(128, 128, 128))
-
-                group_item.setExpanded(True)
+        # Delegate to new hierarchy panel
+        if hasattr(self, 'hierarchy_panel'):
+            self.hierarchy_panel.update_hierarchy(self.game)
 
     def on_hierarchy_item_clicked(self, item, column):
         """Handle hierarchy item selection."""
@@ -1235,242 +1048,10 @@ class EditorWindow(QMainWindow):
 
     def update_properties_panel(self, sprite):
         """Update properties panel with sprite data."""
-        from PyQt6.QtWidgets import QCheckBox, QHBoxLayout
-
-        # Clear existing form
-        while self.properties_form.count():
-            child = self.properties_form.takeAt(0)
-            if child.widget():
-                child.widget().deleteLater()
-
-        if not sprite:
-            # Show scene background settings instead
-            self.properties_label.setText("Scene Background")
-            # Disable assign button when no sprite selected
-            if hasattr(self, 'assign_asset_btn'):
-                self.assign_asset_btn.setEnabled(False)
-            self.show_scene_background_properties()
+        # Delegate to new properties panel
+        if hasattr(self, 'properties_panel'):
+            self.properties_panel.update_properties_panel(sprite)
             return
-
-        # Show sprite name in heading if available
-        sprite_name = getattr(sprite, 'name', sprite.__class__.__name__)
-        self.properties_label.setText(f"Selected: {sprite_name}")
-
-        # Enable assign button if asset is selected
-        if hasattr(self, 'assign_asset_btn') and hasattr(self, 'selected_asset_path'):
-            self.assign_asset_btn.setEnabled(self.selected_asset_path is not None)
-
-        # Name (first field for easy editing)
-        sprite_name = getattr(sprite, 'name', 'Sprite')
-        name_edit = QLineEdit(sprite_name)
-        name_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'name', name_edit.text()))
-        self.properties_form.addRow("Name:", name_edit)
-
-        # Check for missing asset and display warning
-        if hasattr(sprite, 'image_path') and sprite.image_path:
-            asset_full_path = os.path.join(self.project_path, sprite.image_path)
-            if not os.path.exists(asset_full_path):
-                # Create warning label
-                warning_label = QLabel(f"⚠️ Missing Asset\n{sprite.image_path}")
-                warning_label.setStyleSheet(f"color: {self.theme.error}; background-color: {self.theme.background_dark}; padding: {self.theme.spacing_small}px; border: 1px solid {self.theme.error};")
-                warning_label.setWordWrap(True)
-                self.properties_form.addRow("", warning_label)
-
-        # Position
-        pos_x_edit = QLineEdit(str(round(sprite.position.x, 2)))
-        pos_y_edit = QLineEdit(str(round(sprite.position.y, 2)))
-        pos_x_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'position.x', pos_x_edit.text()))
-        pos_y_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'position.y', pos_y_edit.text()))
-        self.properties_form.addRow("Position X:", pos_x_edit)
-        self.properties_form.addRow("Position Y:", pos_y_edit)
-
-        # Size (Width/Height) - Only for SpriteObjects with images
-        from v2_engine.sprites.sprite_object import SpriteObject
-        if isinstance(sprite, SpriteObject) and hasattr(sprite, 'image') and sprite.image:
-            base_width = sprite.image.get_width()
-            base_height = sprite.image.get_height()
-            sprite_scale = getattr(sprite, 'scale', Vector2(1, 1))
-            width = int(base_width * sprite_scale.x)
-            height = int(base_height * sprite_scale.y)
-
-            width_edit = QLineEdit(str(width))
-            height_edit = QLineEdit(str(height))
-            width_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'width', width_edit.text()))
-            height_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'height', height_edit.text()))
-            self.properties_form.addRow("Width:", width_edit)
-            self.properties_form.addRow("Height:", height_edit)
-
-        # Scale (X/Y) - Shows scale multipliers
-        sprite_scale = getattr(sprite, 'scale', Vector2(1, 1))
-        scale_x_edit = QLineEdit(str(round(sprite_scale.x, 2)))
-        scale_y_edit = QLineEdit(str(round(sprite_scale.y, 2)))
-        scale_x_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'scale.x', scale_x_edit.text()))
-        scale_y_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'scale.y', scale_y_edit.text()))
-        self.properties_form.addRow("Scale X:", scale_x_edit)
-        self.properties_form.addRow("Scale Y:", scale_y_edit)
-
-        # Rotation (degrees)
-        sprite_rotation = getattr(sprite, 'rotation', 0)
-        rotation_edit = QLineEdit(str(round(sprite_rotation, 1)))
-        rotation_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'rotation', rotation_edit.text()))
-        self.properties_form.addRow("Rotation:", rotation_edit)
-
-        # Origin with presets
-        origin_container = QWidget()
-        origin_layout = QVBoxLayout(origin_container)
-        origin_layout.setContentsMargins(0, 0, 0, 0)
-        origin_layout.setSpacing(self.theme.spacing_small)
-
-        # X/Y inputs
-        origin_inputs = QWidget()
-        origin_inputs_layout = QHBoxLayout(origin_inputs)
-        origin_inputs_layout.setContentsMargins(0, 0, 0, 0)
-        origin_inputs_layout.setSpacing(self.theme.spacing_small)
-
-        origin_x_edit = QLineEdit(str(round(sprite.origin.x, 2)))
-        origin_y_edit = QLineEdit(str(round(sprite.origin.y, 2)))
-        origin_x_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'origin.x', origin_x_edit.text()))
-        origin_y_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'origin.y', origin_y_edit.text()))
-
-        origin_inputs_layout.addWidget(QLabel("X:"))
-        origin_inputs_layout.addWidget(origin_x_edit, 1)
-        origin_inputs_layout.addWidget(QLabel("Y:"))
-        origin_inputs_layout.addWidget(origin_y_edit, 1)
-
-        origin_layout.addWidget(origin_inputs)
-
-        # Preset buttons grid (3x3)
-        presets_widget = QWidget()
-        presets_layout = QGridLayout(presets_widget)
-        presets_layout.setContentsMargins(0, 0, 0, 0)
-        presets_layout.setSpacing(2)
-
-        # Define origin presets: (label, x, y, tooltip)
-        presets = [
-            ("TL", 0.0, 0.0, "Top-Left"),
-            ("TC", 0.5, 0.0, "Top-Center"),
-            ("TR", 1.0, 0.0, "Top-Right"),
-            ("ML", 0.0, 0.5, "Middle-Left"),
-            ("C", 0.5, 0.5, "Center"),
-            ("MR", 1.0, 0.5, "Middle-Right"),
-            ("BL", 0.0, 1.0, "Bottom-Left"),
-            ("BC", 0.5, 1.0, "Bottom-Center"),
-            ("BR", 1.0, 1.0, "Bottom-Right"),
-        ]
-
-        for i, (label, x, y, tooltip) in enumerate(presets):
-            btn = QPushButton(label)
-            btn.setMaximumWidth(35)
-            btn.setMaximumHeight(25)
-            btn.setToolTip(tooltip)
-            btn.clicked.connect(lambda checked, ox=x, oy=y, s=sprite: self.set_origin_preset(s, ox, oy))
-            row = i // 3
-            col = i % 3
-            presets_layout.addWidget(btn, row, col)
-
-        origin_layout.addWidget(presets_widget)
-        self.properties_form.addRow("Origin:", origin_container)
-
-        # Layer with buttons
-        layer_container = QWidget()
-        layer_layout = QHBoxLayout(layer_container)
-        layer_layout.setContentsMargins(0, 0, 0, 0)
-
-        layer_edit = QLineEdit(str(getattr(sprite, 'layer', 0)))
-        layer_edit.returnPressed.connect(lambda: self.on_property_changed(sprite, 'layer', layer_edit.text()))
-        layer_layout.addWidget(layer_edit, 1)
-
-        # Move Forward button (increase layer number)
-        move_forward_btn = QPushButton("▲")
-        move_forward_btn.setMaximumWidth(30)
-        move_forward_btn.setToolTip("Move Forward (increase layer)")
-        move_forward_btn.clicked.connect(lambda: self.move_sprite_layer(sprite, 1))
-        layer_layout.addWidget(move_forward_btn)
-
-        # Move Backward button (decrease layer number)
-        move_backward_btn = QPushButton("▼")
-        move_backward_btn.setMaximumWidth(30)
-        move_backward_btn.setToolTip("Move Backward (decrease layer)")
-        move_backward_btn.clicked.connect(lambda: self.move_sprite_layer(sprite, -1))
-        layer_layout.addWidget(move_backward_btn)
-
-        self.properties_form.addRow("Layer:", layer_container)
-
-        # Visible checkbox
-        visible_checkbox = QCheckBox("Visible (runtime rendering)")
-        is_visible = getattr(sprite, 'visible', True)
-        visible_checkbox.setChecked(is_visible)
-        visible_checkbox.stateChanged.connect(
-            lambda state: self.on_visible_changed(sprite, state == 2)
-        )
-        self.properties_form.addRow("Visible:", visible_checkbox)
-
-        # Color picker (for white-boxing and objects without images)
-        color_container = QWidget()
-        color_layout = QHBoxLayout(color_container)
-        color_layout.setContentsMargins(0, 0, 0, 0)
-
-        # Get current color from the image surface (if it exists and is a solid color)
-        sprite_color = (255, 255, 255)  # Default white
-        if hasattr(sprite, 'image') and sprite.image:
-            # Sample the center pixel to get the color
-            width = sprite.image.get_width()
-            height = sprite.image.get_height()
-            try:
-                center_color = sprite.image.get_at((width // 2, height // 2))
-                sprite_color = (center_color.r, center_color.g, center_color.b)
-            except:
-                sprite_color = getattr(sprite, 'color', (255, 255, 255))
-        else:
-            sprite_color = getattr(sprite, 'color', (255, 255, 255))
-
-        current_color = QColor(*sprite_color)
-
-        # Color preview button
-        color_btn = QPushButton()
-        color_btn.setMaximumWidth(100)
-        color_btn.setStyleSheet(f"background-color: rgb({sprite_color[0]}, {sprite_color[1]}, {sprite_color[2]}); border: 1px solid {self.theme.border_strong};")
-        color_btn.clicked.connect(lambda checked: self.open_color_picker(sprite))
-        color_layout.addWidget(color_btn)
-
-        # Label showing RGB values
-        color_label = QLabel(f"RGB({sprite_color[0]}, {sprite_color[1]}, {sprite_color[2]})")
-        color_layout.addWidget(color_label)
-
-        self.properties_form.addRow("Color:", color_container)
-
-        # Persistent Entity Settings
-        persistent_checkbox = QCheckBox("Make this sprite persistent across scenes")
-        is_persistent = getattr(sprite, 'is_persistent', False)
-        persistent_checkbox.setChecked(is_persistent)
-        persistent_checkbox.stateChanged.connect(
-            lambda state: self.on_persistent_changed(sprite, state == 2)
-        )
-        self.properties_form.addRow("Persistent:", persistent_checkbox)
-
-        # Entity ID (only shown if persistent is enabled)
-        if is_persistent:
-            entity_id = getattr(sprite, 'entity_id', '')
-            entity_id_container = QWidget()
-            entity_id_layout = QHBoxLayout(entity_id_container)
-            entity_id_layout.setContentsMargins(0, 0, 0, 0)
-
-            entity_id_edit = QLineEdit(entity_id or '')
-            entity_id_edit.setPlaceholderText("Auto-generated if empty")
-            entity_id_edit.returnPressed.connect(
-                lambda: self.on_entity_id_changed(sprite, entity_id_edit.text())
-            )
-            entity_id_layout.addWidget(entity_id_edit)
-
-            # Info tooltip
-            info_label = QLabel("ℹ️")
-            info_label.setToolTip("Unique identifier for this persistent entity. Leave empty for auto-generation.")
-            entity_id_layout.addWidget(info_label)
-
-            self.properties_form.addRow("Entity ID:", entity_id_container)
-
-        # === Components Section ===
-        self.add_components_section(sprite)
 
     def update_properties_panel_multi(self, sprites):
         """
@@ -1926,6 +1507,17 @@ class EditorWindow(QMainWindow):
             self.update_viewport()
             print(f"[Editor] Grid size changed to {new_size}px")
 
+    def _on_grid_size_changed_from_panel(self, new_size):
+        """Handle grid size change from viewport panel."""
+        self.state.camera.grid_size = new_size
+        self.update_viewport()
+        print(f"[Editor] Grid size changed to {new_size}px")
+
+    def _on_snap_to_grid_changed_from_panel(self, snap_enabled):
+        """Handle snap to grid change from viewport panel."""
+        self.state.camera.snap_to_grid = snap_enabled
+        print(f"[Editor] Snap to grid: {snap_enabled}")
+
     def toggle_grid_visibility(self, visible=None):
         """Toggle grid visibility."""
         if visible is None:
@@ -1966,13 +1558,8 @@ class EditorWindow(QMainWindow):
         """Set the current transform tool (move, rotate, scale)."""
         self.transform_tool = tool
 
-        # Update button states (only one can be checked at a time)
-        if hasattr(self, 'move_tool_btn'):
-            self.move_tool_btn.setChecked(tool == 'move')
-        if hasattr(self, 'rotate_tool_btn'):
-            self.rotate_tool_btn.setChecked(tool == 'rotate')
-        if hasattr(self, 'scale_tool_btn'):
-            self.scale_tool_btn.setChecked(tool == 'scale')
+        # Delegate button state updates to viewport panel
+        self.viewport_panel.set_transform_tool(tool)
 
         print(f"[Editor] Transform tool: {tool}")
         self.update_viewport()
@@ -1990,7 +1577,13 @@ class EditorWindow(QMainWindow):
         current_color = scene.background_color
         initial_color = QColor(current_color[0], current_color[1], current_color[2])
 
+        # Pause rendering while color dialog is open to prevent conflicts
+        self.render_timer.stop()
+
         color = QColorDialog.getColor(initial_color, self, "Pick Background Color")
+
+        # Resume rendering
+        self.render_timer.start(16)
 
         if color.isValid():
             scene.background_color = (color.red(), color.green(), color.blue())
@@ -2198,48 +1791,11 @@ class EditorWindow(QMainWindow):
 
     def save_scene(self):
         """Save the current scene to file."""
-        if not self.game.scene_manager or not self.game.scene_manager.current_scene:
-            print("[Editor] No scene to save")
+        # Delegate to scene manager UI if available
+        if hasattr(self, 'scene_manager_ui'):
+            self.scene_manager_ui.save_scene()
             return
 
-        scene_name = self.game.scene_manager.current_scene
-        scene = self.game.scene_manager.scenes[scene_name]
-
-        # Find scene file path from project config
-        import json
-        config_path = os.path.join(self.project_path, '2d_project.json')
-
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-
-            # Find the scene file path
-            scene_file = None
-            for scene_info in config.get('scenes', {}).get('scenes', []):
-                if scene_info['name'] == scene_name:
-                    scene_file = os.path.join(self.project_path, scene_info['file'])
-                    break
-
-            if not scene_file:
-                # Fallback to guessing
-                scene_file = os.path.join(self.project_path, 'scenes', f'{scene_name}.py')
-                print(f"[Editor] Warning: Scene file not found in config, using: {scene_file}")
-
-            # Save scene
-            self.scene_serializer.save_scene(scene, scene_file)
-            print(f"[Editor] Scene saved successfully: {scene_file}")
-
-            # Optional: Save metadata
-            metadata_file = scene_file.replace('.py', '.meta.json')
-            self.scene_serializer.save_scene_metadata(scene, metadata_file)
-
-            # Refresh code view to show saved changes
-            self.refresh_code_view()
-
-        except Exception as e:
-            print(f"[Editor] Error saving scene: {e}")
-            import traceback
-            traceback.print_exc()
 
     def open_project_settings(self):
         """Open the project settings dialog."""
@@ -2284,156 +1840,35 @@ class EditorWindow(QMainWindow):
 
     def play_scene(self):
         """Play the scene in a separate window."""
-        # Check if game is already running
-        if self.play_process and self.play_process.poll() is None:
-            print("[Editor] Game is already running")
-            return
-
-        # Auto-save before playing
-        print("[Editor] Auto-saving scene before play...")
-        self.save_scene()
-
-        # Launch game in separate process
-        try:
-            # Use the v2_engine main entry point to run the game
-            python_executable = sys.executable
-            game_script = os.path.join(os.path.dirname(__file__), '..', 'main.py')
-
-            # Check if main.py exists
-            if not os.path.exists(game_script):
-                print(f"[Editor] Error: Game launcher not found at {game_script}")
-                # Create a simple launcher script
-                self._create_game_launcher(game_script)
+        # Delegate to playback manager if available
+        if hasattr(self, 'playback_manager'):
+            # Auto-save before playing
+            print("[Editor] Auto-saving scene before play...")
+            self.save_scene()
 
             # Get current scene name
             current_scene = self.game.scene_manager.current_scene if self.game.scene_manager else None
 
-            # Launch subprocess with current scene
-            args = [python_executable, game_script, self.project_path]
-            if current_scene:
-                args.append(current_scene)
-                print(f"[Editor] Playing scene: {current_scene}")
+            # Launch via playback manager
+            self.playback_manager.play(self.project_path, current_scene)
+            return
 
-            self.play_process = subprocess.Popen(
-                args,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            print(f"[Editor] Game launched (PID: {self.play_process.pid})")
-
-            # Check if process is still running after a brief moment
-            import time
-            time.sleep(0.5)
-            if self.play_process.poll() is not None:
-                # Process exited - read output
-                stdout, stderr = self.play_process.communicate(timeout=1)
-                print(f"[Editor] Game process exited with code {self.play_process.returncode}")
-                if stdout:
-                    print(f"[Editor] Game stdout:\n{stdout}")
-                if stderr:
-                    print(f"[Editor] Game stderr:\n{stderr}")
-                self.play_process = None
-                return
-
-            # Update play mode state and toolbar buttons
-            self.is_playing = True
-            if hasattr(self, 'play_btn'):
-                self.play_btn.setEnabled(False)
-                self.play_btn.setText("▶ Playing...")
-                self.play_btn.setStyleSheet(f"background-color: {self.theme.success}; color: {self.theme.text};")
-            if hasattr(self, 'stop_btn'):
-                self.stop_btn.setEnabled(True)
-
-        except Exception as e:
-            print(f"[Editor] Error launching game: {e}")
-            import traceback
-            traceback.print_exc()
 
     def stop_play(self):
         """Stop the running game."""
-        if self.play_process and self.play_process.poll() is None:
-            self.play_process.terminate()
-            try:
-                self.play_process.wait(timeout=2)
-                print("[Editor] Game stopped")
-            except subprocess.TimeoutExpired:
-                print("[Editor] Game didn't stop gracefully, forcing kill...")
-                self.play_process.kill()
-                self.play_process.wait()
-                print("[Editor] Game forcefully killed")
-            self.play_process = None
+        # Delegate to playback manager if available
+        if hasattr(self, 'playback_manager'):
+            self.playback_manager.stop()
+            return
 
-            # Update play mode state and toolbar buttons
-            self.is_playing = False
-            if hasattr(self, 'play_btn'):
-                self.play_btn.setEnabled(True)
-                self.play_btn.setText("▶ Play (F5)")
-                self.play_btn.setStyleSheet("")  # Reset to default theme styling
-            if hasattr(self, 'stop_btn'):
-                self.stop_btn.setEnabled(False)
-        else:
             print("[Editor] No game running")
 
     def check_play_process(self):
         """Check if the play process is still running and update UI accordingly."""
-        if self.play_process is not None:
-            # Check if process has terminated
-            return_code = self.play_process.poll()
-            if return_code is not None:
-                # Process has ended naturally
-                print(f"[Editor] Game process ended (exit code: {return_code})")
-                self.play_process = None
-
-                # Update play mode state and toolbar buttons
-                self.is_playing = False
-                if hasattr(self, 'play_btn'):
-                    self.play_btn.setEnabled(True)
-                    self.play_btn.setText("▶ Play (F5)")
-                    self.play_btn.setStyleSheet("")  # Reset to default theme styling
-                if hasattr(self, 'stop_btn'):
-                    self.stop_btn.setEnabled(False)
-
-    def _create_game_launcher(self, script_path):
-        """Create a simple game launcher script if it doesn't exist."""
-        launcher_code = '''#!/usr/bin/env python3
-"""
-V2 Engine Game Launcher
-"""
-import sys
-import os
-
-# Add engine to path
-engine_root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.dirname(engine_root))
-
-from v2_engine.core.game import Game
-
-if __name__ == '__main__':
-    if len(sys.argv) < 2:
-        print("Usage: python main.py <project_path>")
-        sys.exit(1)
-
-    project_path = sys.argv[1]
-    game = Game(project_path, editor_mode=False)
-
-    # Initialize engine systems
-    if not game.initialize():
-        print("[Game] Failed to initialize game engine")
-        sys.exit(1)
-
-    # Load entry scene
-    entry_scene = game.project_config.get('scenes', {}).get('entry_scene')
-    if entry_scene:
-        game.scene_manager.load_scene(entry_scene)
-
-    # Run game loop
-    game.run()
-'''
-        os.makedirs(os.path.dirname(script_path), exist_ok=True)
-        with open(script_path, 'w') as f:
-            f.write(launcher_code)
-        print(f"[Editor] Created game launcher: {script_path}")
+        # Delegate to playback manager if available
+        if hasattr(self, 'playback_manager'):
+            self.playback_manager.check_process()
+            return
 
     def show_add_object_dialog(self):
         """Add a new object to the scene (simplified - just add directly)."""
@@ -2513,6 +1948,96 @@ if __name__ == '__main__':
         self.update_hierarchy()
 
     # Multi-select helper methods
+    def _on_selection_changed(self, sprites, primary_sprite):
+        """Handle selection change from SelectionManager."""
+        # Update local references for backward compatibility
+        self.selected_sprites = sprites
+        self.selected_sprite = primary_sprite
+        self.state.selected_sprite = primary_sprite
+
+        # Update UI
+        if len(sprites) > 1:
+            # Multi-selection
+            self.update_properties_panel_multi(sprites)
+        else:
+            # Single or no selection
+            self.update_properties_panel(primary_sprite)
+
+        # Update split view code tabs
+        self.update_split_view_code_tabs()
+
+        # Update viewport
+        self.update_viewport()
+
+    def _on_playback_started(self, pid):
+        """Handle playback start from PlaybackManager."""
+        # Update local state for backward compatibility
+        self.play_process = self.playback_manager.play_process
+        self.is_playing = True
+
+        # Update toolbar buttons
+        if hasattr(self, 'play_btn'):
+            self.play_btn.setEnabled(False)
+            self.play_btn.setText("▶ Playing...")
+            self.play_btn.setStyleSheet(f"background-color: {self.theme.success}; color: {self.theme.text_primary};")
+        if hasattr(self, 'stop_btn'):
+            self.stop_btn.setEnabled(True)
+
+        print(f"[Editor] Playback started (PID: {pid})")
+
+    def _on_playback_stopped(self, exit_code):
+        """Handle playback stop from PlaybackManager."""
+        # Update local state for backward compatibility
+        self.play_process = None
+        self.is_playing = False
+
+        # Update toolbar buttons
+        if hasattr(self, 'play_btn'):
+            self.play_btn.setEnabled(True)
+            self.play_btn.setText("▶ Play (F5)")
+            self.play_btn.setStyleSheet("")  # Reset to default theme styling
+        if hasattr(self, 'stop_btn'):
+            self.stop_btn.setEnabled(False)
+
+        print(f"[Editor] Playback stopped (exit code: {exit_code})")
+
+    def _on_scene_switched(self, scene_name):
+        """Handle scene switch from SceneManagerUI."""
+        # Update UI
+        self.update_hierarchy()
+        self.refresh_code_view()
+        self.update_scene_menu()
+        self.update_scene_list()
+
+        # Clear selection
+        if hasattr(self, 'selection_manager'):
+            self.selection_manager.clear()
+        else:
+            self.selected_sprite = None
+            self.state.selected_sprite = None
+            self.update_properties_panel(None)
+
+        print(f"[Editor] UI updated after scene switch to: {scene_name}")
+
+    def _on_scene_created(self, scene_name):
+        """Handle scene creation from SceneManagerUI."""
+        # Update scene menu and list
+        self.update_scene_menu()
+        self.update_scene_list()
+
+        # Switch to the new scene
+        if hasattr(self, 'scene_manager_ui'):
+            self.scene_manager_ui.switch_to_scene(scene_name)
+
+        print(f"[Editor] UI updated after scene creation: {scene_name}")
+
+    def _on_scene_saved(self, scene_name):
+        """Handle scene save from SceneManagerUI."""
+        # Refresh code view to show saved changes
+        self.refresh_code_view()
+
+        print(f"[Editor] UI updated after scene save: {scene_name}")
+
     def select_sprite(self, sprite, add_to_selection=False):
         """
         Select a sprite (or add to current selection).
@@ -2521,110 +2046,54 @@ if __name__ == '__main__':
             sprite: Sprite to select
             add_to_selection: If True, add to selection; if False, clear and select only this sprite
         """
-        if add_to_selection:
-            # Toggle selection
-            if sprite in self.selected_sprites:
-                self.selected_sprites.remove(sprite)
-                print(f"[Editor] Deselected sprite: {getattr(sprite, 'name', sprite.__class__.__name__)}")
-            else:
-                self.selected_sprites.append(sprite)
-                print(f"[Editor] Added sprite to selection: {getattr(sprite, 'name', sprite.__class__.__name__)}")
+        # Delegate to selection manager if available
+        if hasattr(self, 'selection_manager'):
+            self.selection_manager.select(sprite, add_to_selection)
+            return
 
-            # Update primary selection to last selected
-            if self.selected_sprites:
-                self.selected_sprite = self.selected_sprites[-1]
-            else:
-                self.selected_sprite = None
-        else:
-            # Clear and select only this sprite
-            self.selected_sprites = [sprite]
-            self.selected_sprite = sprite
-            print(f"[Editor] Selected sprite: {getattr(sprite, 'name', sprite.__class__.__name__)}")
-
-        # Update editor state
-        self.state.selected_sprite = self.selected_sprite
-
-        # Update properties panel
-        if len(self.selected_sprites) > 1:
-            self.update_properties_panel_multi(self.selected_sprites)
-        elif len(self.selected_sprites) == 1:
-            self.update_properties_panel(self.selected_sprites[0])
-        else:
-            self.update_properties_panel(None)
-
-        # Update split view code tabs
-        self.update_split_view_code_tabs()
 
     def deselect_all(self):
         """Deselect all sprites."""
-        self.selected_sprites = []
-        self.selected_sprite = None
-        self.state.selected_sprite = None
-        self.update_properties_panel(None)
-        self.update_split_view_code_tabs()  # Update split view
-        print("[Editor] Deselected all sprites")
+        # Delegate to selection manager if available
+        if hasattr(self, 'selection_manager'):
+            self.selection_manager.clear()
+            return
+
 
     def get_selected_sprites(self):
         """Get list of currently selected sprites."""
-        return self.selected_sprites if self.selected_sprites else []
+        # Delegate to selection manager if available
+        if hasattr(self, 'selection_manager'):
+            return self.selection_manager.get_selection()
+
 
     def copy_sprite(self):
         """Copy the currently selected sprite."""
-        if not self.selected_sprite:
-            print("[Editor] No sprite selected to copy")
+        # Delegate to selection manager if available
+        if hasattr(self, 'selection_manager'):
+            self.selection_manager.copy()
             return
 
-        # Store a reference to the selected sprite for pasting
-        self.copied_sprite = self.selected_sprite
-        sprite_name = getattr(self.copied_sprite, 'name', self.copied_sprite.__class__.__name__)
-        print(f"[Editor] Copied sprite: {sprite_name}")
 
     def paste_sprite(self):
         """Paste the copied sprite."""
-        if not self.copied_sprite:
-            print("[Editor] No sprite copied")
+        # Delegate to selection manager if available
+        if hasattr(self, 'selection_manager'):
+            if not self.game.scene_manager or not self.game.scene_manager.current_scene:
+                print("[Editor] No scene loaded")
+                return
+
+            scene = self.game.scene_manager.scenes[self.game.scene_manager.current_scene]
+            new_sprite = self.selection_manager.paste(scene)
+
+            if new_sprite:
+                # Update hierarchy
+                self.update_hierarchy()
+
+                # Select the new sprite
+                self.select_sprite(new_sprite)
             return
 
-        if not self.game.scene_manager or not self.game.scene_manager.current_scene:
-            print("[Editor] No scene loaded")
-            return
-
-        scene = self.game.scene_manager.scenes[self.game.scene_manager.current_scene]
-
-        # Create new sprite as a copy
-        from v2_engine.sprites.sprite_object import SpriteObject
-        import copy
-
-        # Deep copy the sprite to duplicate all attributes
-        new_sprite = SpriteObject()
-
-        # Copy basic properties
-        new_sprite.position = Vector2(self.copied_sprite.position.x + 20, self.copied_sprite.position.y + 20)  # Offset slightly
-        new_sprite.origin = Vector2(self.copied_sprite.origin.x, self.copied_sprite.origin.y)
-        new_sprite.layer = getattr(self.copied_sprite, 'layer', 0)
-
-        # Copy image
-        if hasattr(self.copied_sprite, 'image') and self.copied_sprite.image:
-            new_sprite.image = self.copied_sprite.image.copy()
-
-        # Copy name with " (Copy)" suffix
-        original_name = getattr(self.copied_sprite, 'name', 'Sprite')
-        new_sprite.name = f"{original_name} (Copy)"
-
-        # Add to 'all' group
-        if 'all' in scene.sprite_groups:
-            scene.sprite_groups['all'].add(new_sprite)
-            print(f"[Editor] Pasted sprite: {new_sprite.name}")
-
-            # Update hierarchy
-            self.update_hierarchy()
-
-            # Select the new sprite
-            self.selected_sprite = new_sprite
-            self.state.selected_sprite = new_sprite
-            self.update_properties_panel(new_sprite)
-        else:
-            print("[Editor] No 'all' sprite group found")
 
     def check_rotate_gizmo_hit(self, screen_x, screen_y, sprite):
         """Check if mouse is over rotate gizmo handle."""
@@ -3512,93 +2981,10 @@ if __name__ == '__main__':
 
     def update_split_view_code_tabs(self):
         """Update split view code tabs when sprite selection changes."""
-        if not hasattr(self, 'split_code_tabs'):
-            return
-
-        # Clear existing tabs
-        self.split_code_tabs.clear_tabs()
-
-        if not self.selected_sprite:
-            # No selection - show full scene code
-            scene_editor = CodeEditor(self.theme)
-            scene_editor.file_saved.connect(self.on_code_saved)
-            scene_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
-
-            scene_path = self.get_current_scene_file_path()
-            if scene_path and os.path.exists(scene_path):
-                scene_editor.load_file(scene_path)
-
-            self.split_code_tabs.addTab(scene_editor, "Scene Code")
-            return
-
-        sprite = self.selected_sprite
-        sprite_name = getattr(sprite, 'name', sprite.__class__.__name__)
-
-        # Create instance code editor
-        instance_editor = CodeEditor(self.theme)
-        instance_editor.file_saved.connect(self.on_code_saved)
-        instance_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
-
-        # Load scene file and extract sprite section
-        scene_path = self.get_current_scene_file_path()
-        if scene_path and os.path.exists(scene_path):
-            from v2_engine.editor.scene_code_extractor import SceneCodeExtractor
-
-            extractor = SceneCodeExtractor(scene_path)
-            section_info = extractor.find_sprite_section(sprite_name)
-
-            print(f"[SplitView] Looking for sprite: '{sprite_name}' in {scene_path}")
-            print(f"[SplitView] Extraction result: {section_info is not None}")
-
-            if section_info:
-                start_line, end_line, code_section = section_info
-
-                # Show extracted section with context
-                context_lines = 2
-                context_start = max(0, start_line - context_lines)
-                context_end = min(extractor.get_line_count() - 1, end_line + context_lines)
-
-                # Get full context
-                full_lines = extractor.scene_code.split('\n')
-                context_code = '\n'.join(full_lines[context_start:context_end + 1])
-
-                # Add helpful comment at top
-                header = f"# Sprite: {sprite_name} (Lines {start_line + 1}-{end_line + 1})\n"
-                header += "# Edit this sprite's instance code below:\n\n"
-
-                instance_editor.setPlainText(header + context_code)
-
-                # Detect overrides
-                has_overrides = extractor.has_custom_overrides(sprite_name)
-            else:
-                # Couldn't find sprite - show full scene
-                instance_editor.load_file(scene_path)
-                has_overrides = False
-        else:
-            has_overrides = False
-
-        # Add instance tab
-        self.split_code_tabs.set_instance_tab(instance_editor, has_overrides)
-
-        # Add behavior class tabs
-        if hasattr(sprite, 'components'):
-            for component in sprite.components.values():
-                behavior_name = component.__class__.__name__
-
-                # Create behavior editor
-                behavior_editor = CodeEditor(self.theme)
-                behavior_editor.file_saved.connect(self.on_code_saved)
-                behavior_editor.file_saved_and_reload.connect(self.on_code_saved_and_reload)
-
-                # Load behavior file
-                import inspect
-                try:
-                    behavior_file = inspect.getfile(component.__class__)
-                    if os.path.exists(behavior_file):
-                        behavior_editor.load_file(behavior_file)
-                        self.split_code_tabs.add_behavior_tab(behavior_editor, behavior_name, behavior_file)
-                except:
-                    pass
+        # Delegate to split code panel if available
+        if hasattr(self, 'split_code_panel'):
+            current_scene_file = self.get_current_scene_file_path()
+            self.split_code_panel.update_tabs(self.selected_sprite, current_scene_file)
 
     def get_current_scene_file_path(self) -> str:
         """Get the file path of the currently loaded scene."""
@@ -3608,9 +2994,8 @@ if __name__ == '__main__':
 
     def on_split_switch_to_instance(self):
         """Handle switch to instance editing in split view."""
-        # Switch to first tab (instance code)
-        if hasattr(self, 'split_code_tabs'):
-            self.split_code_tabs.setCurrentIndex(0)
+        # Delegate to split code panel
+        self.split_code_panel.switch_to_instance_tab()
 
     def on_split_tab_changed(self, index: int):
         """Handle split view tab change."""
@@ -3701,35 +3086,11 @@ if __name__ == '__main__':
 
     def update_scene_list(self):
         """Update the Scene list in the left panel."""
-        import json
-
-        self.scene_list.clear()
-
-        # Read project config to get scene list
-        config_path = os.path.join(self.project_path, '2d_project.json')
-        try:
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-
-            scenes = config.get('scenes', {}).get('scenes', [])
+        # Delegate to new hierarchy panel
+        if hasattr(self, 'hierarchy_panel'):
+            scenes_config = self._get_scenes_config()
             current_scene = self.game.scene_manager.current_scene if self.game.scene_manager else None
-
-            for scene_info in scenes:
-                scene_name = scene_info['name']
-                item = QTreeWidgetItem(self.scene_list, [scene_name])
-
-                # Mark current scene with bold font
-                if scene_name == current_scene:
-                    from PyQt6.QtGui import QFont
-                    font = QFont()
-                    font.setBold(True)
-                    item.setFont(0, font)
-
-                # Store scene name in item data
-                item.setData(0, Qt.ItemDataRole.UserRole, scene_name)
-
-        except Exception as e:
-            print(f"[Editor] Error updating scene list: {e}")
+            self.hierarchy_panel.update_scenes(scenes_config, current_scene)
 
     def on_scene_list_clicked(self, item, column):
         """Handle scene list item click."""
@@ -3839,245 +3200,25 @@ if __name__ == '__main__':
 
     def switch_to_scene(self, scene_name: str):
         """Switch to a different scene."""
-        if not self.game.scene_manager:
-            print("[Editor] No scene manager available")
+        # Delegate to scene manager UI if available
+        if hasattr(self, 'scene_manager_ui'):
+            self.scene_manager_ui.switch_to_scene(scene_name)
             return
 
-        if scene_name == self.game.scene_manager.current_scene:
-            print(f"[Editor] Already viewing scene: {scene_name}")
-            return
-
-        try:
-            # Save current scene before switching
-            if self.game.scene_manager.current_scene:
-                self.save_scene()
-                print(f"[Editor] Saved current scene before switching")
-
-            # Reload the target scene from disk (editor mode only)
-            self.reload_scene_from_file(scene_name)
-
-            # Load and transition to the scene
-            self.game.scene_manager.load_scene(scene_name)
-            self.game.scene_manager._perform_scene_transition()
-
-            # Update UI
-            self.update_hierarchy()
-            self.refresh_code_view()
-            self.update_scene_menu()
-            self.update_scene_list()
-
-            # Clear selection
-            self.selected_sprite = None
-            self.state.selected_sprite = None
-            self.update_properties_panel(None)
-
-            print(f"[Editor] Switched to scene: {scene_name}")
-
-        except Exception as e:
-            print(f"[Editor] Error switching to scene '{scene_name}': {e}")
-            import traceback
-            traceback.print_exc()
 
     def create_new_scene(self):
         """Create a new scene with dialog."""
-        # Prompt for scene name
-        scene_name, ok = QInputDialog.getText(
-            self,
-            'New Scene',
-            'Enter scene name (e.g., "level_2", "menu"):',
-            text='new_scene'
-        )
-
-        if not ok or not scene_name:
+        # Delegate to scene manager UI if available
+        if hasattr(self, 'scene_manager_ui'):
+            self.scene_manager_ui.create_new_scene(self)
             return
 
-        # Validate scene name (alphanumeric and underscores only)
-        import re
-        if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_]*$', scene_name):
-            QMessageBox.warning(
-                self,
-                'Invalid Name',
-                'Scene name must start with a letter or underscore and contain only letters, numbers, and underscores.'
-            )
-            return
-
-        try:
-            import json
-
-            # Read project config
-            config_path = os.path.join(self.project_path, '2d_project.json')
-            with open(config_path, 'r') as f:
-                config = json.load(f)
-
-            # Check if scene already exists
-            scenes = config.get('scenes', {}).get('scenes', [])
-            for scene_info in scenes:
-                if scene_info['name'] == scene_name:
-                    QMessageBox.warning(
-                        self,
-                        'Scene Exists',
-                        f'A scene named "{scene_name}" already exists.'
-                    )
-                    return
-
-            # Create scene file path
-            class_name = ''.join(word.capitalize() for word in scene_name.split('_')) + 'Scene'
-            scene_file = f'scenes/{scene_name}.py'
-            scene_file_path = os.path.join(self.project_path, scene_file)
-
-            # Create scenes directory if it doesn't exist
-            os.makedirs(os.path.dirname(scene_file_path), exist_ok=True)
-
-            # Generate empty scene file
-            scene_code = f'''"""
-Scene: {class_name}
-Generated by Scribe Engine V2 Editor
-"""
-
-import pygame
-from v2_engine.core.scene import Scene
-from v2_engine.core.camera import Camera
-from v2_engine.utils.math import Vector2
-from v2_engine.sprites.sprite import Sprite
-
-class {class_name}(Scene):
-    """Auto-generated scene."""
-
-    def __init__(self, game):
-        super().__init__(game)
-
-        # Initialize sprite groups
-        from v2_engine.sprites.group import SpriteGroup
-        self.sprite_groups["all"] = SpriteGroup("all")
-
-    def on_enter(self):
-        """Called when scene becomes active."""
-        super().on_enter()
-
-        # Initialize camera
-        screen_width = self.game.screen.get_width()
-        screen_height = self.game.screen.get_height()
-        self.camera = Camera(screen_width, screen_height)
-
-        # Add sprites here
-
-
-    def render(self, screen):
-        """Render all sprites with camera."""
-        # Clear screen
-        screen.fill((40, 40, 50))  # Dark gray background
-
-        # Render all sprite groups
-        self.sprite_groups["all"].render(screen, self.camera)
-
-'''
-
-            # Write scene file
-            with open(scene_file_path, 'w') as f:
-                f.write(scene_code)
-
-            # Update project config
-            scenes.append({
-                'name': scene_name,
-                'file': scene_file,
-                'class': class_name
-            })
-
-            with open(config_path, 'w') as f:
-                json.dump(config, f, indent=2)
-
-            print(f"[Editor] Created new scene: {scene_name} at {scene_file}")
-
-            # Reload project config and scenes
-            self.game.project_config = self.game.load_project_config()
-
-            # Import and register the new scene
-            try:
-                module_path = scene_file.replace('/', '.').replace('.py', '')
-                import importlib
-                module = importlib.import_module(module_path)
-                SceneClass = getattr(module, class_name)
-                scene_instance = SceneClass(self.game)
-                self.game.scene_manager.register_scene(scene_name, scene_instance)
-                print(f"[Editor] Registered scene: {scene_name}")
-            except Exception as e:
-                print(f"[Editor] Error registering scene: {e}")
-                import traceback
-                traceback.print_exc()
-
-            # Update scene menu and list
-            self.update_scene_menu()
-            self.update_scene_list()
-
-            # Switch to the new scene
-            self.switch_to_scene(scene_name)
-
-        except Exception as e:
-            print(f"[Editor] Error creating scene: {e}")
-            import traceback
-            traceback.print_exc()
-            QMessageBox.critical(
-                self,
-                'Error',
-                f'Failed to create scene: {str(e)}'
-            )
 
     def update_asset_browser(self):
         """Populate the asset browser with files from the assets directory."""
-        self.asset_tree.clear()
-
-        assets_path = os.path.join(self.project_path, 'assets')
-
-        if not os.path.exists(assets_path):
-            # Create assets directory if it doesn't exist
-            os.makedirs(assets_path, exist_ok=True)
-            no_assets_item = QTreeWidgetItem(self.asset_tree, ["No assets found"])
-            return
-
-        # Supported image extensions
-        image_extensions = {'.png', '.jpg', '.jpeg', '.gif', '.bmp'}
-
-        # Walk through assets directory
-        for root, dirs, files in os.walk(assets_path):
-            # Get relative path from assets root
-            rel_path = os.path.relpath(root, assets_path)
-
-            # Create folder items
-            if rel_path == '.':
-                parent_item = self.asset_tree.invisibleRootItem()
-                folder_name = 'assets'
-            else:
-                # Create nested tree structure
-                path_parts = rel_path.split(os.sep)
-                parent_item = self.asset_tree.invisibleRootItem()
-
-                # Find or create parent items
-                for part in path_parts:
-                    found = False
-                    for i in range(parent_item.childCount()):
-                        child = parent_item.child(i)
-                        if child.text(0) == part and child.data(0, Qt.ItemDataRole.UserRole) is None:
-                            parent_item = child
-                            found = True
-                            break
-
-                    if not found:
-                        new_item = QTreeWidgetItem(parent_item, [part])
-                        new_item.setData(0, Qt.ItemDataRole.UserRole, None)  # Mark as folder
-                        parent_item = new_item
-
-                folder_name = path_parts[-1]
-
-            # Add files
-            for file in sorted(files):
-                file_ext = os.path.splitext(file)[1].lower()
-                if file_ext in image_extensions:
-                    file_path = os.path.join(root, file)
-                    file_item = QTreeWidgetItem(parent_item, [file])
-                    file_item.setData(0, Qt.ItemDataRole.UserRole, file_path)  # Store full path
-
-        # Expand all folders by default
-        self.asset_tree.expandAll()
+        # Delegate to new hierarchy panel
+        if hasattr(self, 'hierarchy_panel'):
+            self.hierarchy_panel.update_assets(self.project_path)
 
     def on_asset_clicked(self, item, column):
         """Handle asset item click - show preview."""
