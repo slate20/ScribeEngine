@@ -2,11 +2,11 @@
     <div class="explorer-section">
         <div class="section-header collapsible-header" data-section="story"
              onclick="toggleSection('story')" role="button" tabindex="0"
-             aria-expanded="true" aria-label="Toggle story files section">
+             aria-expanded="true" aria-label="Toggle template files section">
             <i data-lucide="chevron-down" class="collapse-icon"></i>
-            <span>Story Files (.tgame)</span>
+            <span>Templates (.stpl)</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New Story File"
+                <button class="btn-icon" title="New Template File"
                         hx-get="/modal/new-file/{{ project_name }}/story"
                         hx-target="#modal-container"
                         onclick="event.stopPropagation()">
@@ -79,7 +79,7 @@
                 </li>
                 {% endfor %}
             {% else %}
-            <li class="file-item-empty">No story files found.</li>
+            <li class="file-item-empty">No template files found.</li>
             {% endif %}
         </ul>
     </div>
@@ -87,11 +87,11 @@
     <div class="explorer-section">
         <div class="section-header collapsible-header" data-section="logic"
              onclick="toggleSection('logic')" role="button" tabindex="0"
-             aria-expanded="true" aria-label="Toggle logic files section">
+             aria-expanded="true" aria-label="Toggle python files section">
             <i data-lucide="chevron-down" class="collapse-icon"></i>
-            <span>Game Logic (.py)</span>
+            <span>Python Modules (.py)</span>
             <div class="header-actions">
-                <button class="btn-icon" title="New Logic File"
+                <button class="btn-icon" title="New Python File"
                         hx-get="/modal/new-file/{{ project_name }}/logic"
                         hx-target="#modal-container"
                         onclick="event.stopPropagation()">
@@ -164,7 +164,92 @@
                 </li>
                 {% endfor %}
             {% else %}
-            <li class="file-item-empty">No logic files found.</li>
+            <li class="file-item-empty">No Python files found.</li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <div class="explorer-section">
+        <div class="section-header collapsible-header" data-section="database"
+             onclick="toggleSection('database')" role="button" tabindex="0"
+             aria-expanded="true" aria-label="Toggle database files section">
+            <i data-lucide="chevron-down" class="collapse-icon"></i>
+            <span>Database (.sql)</span>
+            <div class="header-actions">
+                <button class="btn-icon" title="New Migration File"
+                        hx-get="/modal/new-file/{{ project_name }}/database"
+                        hx-target="#modal-container"
+                        onclick="event.stopPropagation()">
+                    <i data-lucide="file-plus-2"></i>
+                </button>
+            </div>
+        </div>
+        <ul class="file-tree" id="database-section">
+            {% if database_root_files or database_groups %}
+                <!-- Root files (displayed directly under main category) -->
+                {% for file_info in database_root_files %}
+                <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                    <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
+                        {{ file_info.filename }}
+                    </span>
+                    <div class="file-actions">
+                        <button class="rename-btn" title="Rename File"
+                                hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                hx-target="#modal-container">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button class="delete-btn" title="Delete File"
+                                hx-post="/api/delete-item/{{ project_name }}"
+                                hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                hx-target="#sidebar-content" hx-swap="innerHTML">
+                            <i data-lucide="x"></i>
+                        </button>
+                    </div>
+                </li>
+                {% endfor %}
+
+                <!-- Grouped files (in subdirectories) -->
+                {% for group_name, files in database_groups.items() %}
+                <li class="file-group">
+                    <div class="file-group-header collapsible-header"
+                         data-group="database-{{ group_name|replace('/', '-') }}"
+                         onclick="toggleGroup('database-{{ group_name|replace('/', '-') }}')"
+                         role="button" tabindex="0"
+                         aria-expanded="true" aria-label="Toggle {{ group_name }} folder">
+                        <i data-lucide="chevron-down" class="collapse-icon"></i>
+                        <i data-lucide="folder" class="group-folder-icon"></i>
+                        <span class="group-name">{{ group_name }}</span>
+                        <span class="file-count">({{ files|length }})</span>
+                    </div>
+                    <ul class="file-group-files" id="database-{{ group_name|replace('/', '-') }}-files">
+                        {% for file_info in files %}
+                        <li class="file-item" data-filepath="{{ file_info.full_path }}">
+                            <span class="file-name" onclick="openFile('{{ project_name }}', '{{ file_info.full_path }}', this.parentElement)">
+                                <i data-lucide="file" class="file-icon"></i>
+                                {{ file_info.filename }}
+                            </span>
+                            <div class="file-actions">
+                                <button class="rename-btn" title="Rename File"
+                                        hx-get="/modal/rename-file/{{ project_name }}/{{ file_info.full_path }}"
+                                        hx-target="#modal-container">
+                                    <i data-lucide="edit-2"></i>
+                                </button>
+                                <button class="delete-btn" title="Delete File"
+                                        hx-post="/api/delete-item/{{ project_name }}"
+                                        hx-vals='{"path": "{{ file_info.full_path }}"}'
+                                        hx-confirm="Are you sure you want to delete '{{ file_info.filename }}'?"
+                                        hx-target="#sidebar-content" hx-swap="innerHTML">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                {% endfor %}
+            {% else %}
+            <li class="file-item-empty">No database files found.</li>
             {% endif %}
         </ul>
     </div>

@@ -132,8 +132,6 @@ body {
 #game-content {
 	flex-grow: 1;
 	overflow-y: auto;
-	padding: 20px;
-	max-width: 800px;
 	margin: 0 auto;
 }
 
@@ -761,22 +759,26 @@ body {
 	opacity: 0.8;
 }
 
-/* Adjust main content area when debug footer is present */
-body:has(.debug-footer) #main-content-area {
-	padding-bottom: 60px;
-	/* Account for debug footer height + some spacing */
-}
-
-body:has(.debug-footer) #game-content {
-	margin-bottom: 20px;
-	/* Extra spacing from bottom */
-}
-
-/* Fallback for browsers that don't support :has() */
-.debug-mode #main-content-area {
-	padding-bottom: 60px;
-}
-
-.debug-mode #game-content {
-	margin-bottom: 20px;
-}
+/* /* Adjust main content area when debug footer is present */
+*/
+/* body:has(.debug-footer) #main-content-area { */
+/* 	padding-bottom: 60px; */
+/* 	/* Account for debug footer height + some spacing */
+*/
+/* } */
+/**/
+/* body:has(.debug-footer) #game-content { */
+/* 	margin-bottom: 20px; */
+/* 	/* Extra spacing from bottom */
+*/
+/* } */
+/**/
+/* /* Fallback for browsers that don't support :has() */
+*/
+/* .debug-mode #main-content-area { */
+/* 	padding-bottom: 60px; */
+/* } */
+/**/
+/* .debug-mode #game-content { */
+/* 	margin-bottom: 20px; */
+/* } */

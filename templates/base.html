@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ game_title or "Text Game Engine" }}</title>
+    <title>{{ game_title or "Scribe Framework" }}</title>
     {% if theme_css %}
     <style type="text/css">
         {{ theme_css | safe }}
@@ -13,23 +13,19 @@
     {% if use_engine_defaults %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
     {% endif %}
-    <link rel="stylesheet" href="{{ url_for('serve_game_theme_css') }}">
+    <link rel="stylesheet" href="{{ url_for('serve_style_css') }}">
     <script src="https://unpkg.com/htmx.org@2.0.6"></script>
 </head>
 <body id="main-body" class="{% if use_engine_defaults %}engine-themed{% endif %}{% if debug_mode %} debug-mode{% endif %}">
-    <div id="game-container" class="layout-{{ nav_config.position or 'horizontal' }}">
+    <div id="app-container" class="layout-{{ nav_config.position or 'horizontal' }}">
         
         {% if nav_config.enabled %}
         <nav id="main-nav" hx-trigger="load">
             <div class="nav-section title">
-                <h1>{{ game_title or "Adventure Game" }}</h1>
+                <h1>{{ game_title or "My Application" }}</h1>
             </div>
             <div class="nav-section user-links" id="main-nav-content">
                 {{ nav_content | safe }}
-            </div>
-            <div class="nav-section game-controls">
-                <button hx-get="/modal/save" hx-target="#modal-container" hx-trigger="click">Save</button>
-                <button hx-get="/modal/load" hx-target="#modal-container" hx-trigger="click">Load</button>
             </div>
         </nav>
         {% endif %}
@@ -37,8 +33,8 @@
         <div id="main-content-area">
             <div id="passage-tags-container"></div>
             <div class="content-container">
-                <main id="game-content" hx-get="/passage/{{ starting_passage }}" hx-trigger="load">
-                    <div class="loading">Loading game...</div>
+                <main id="app-content" hx-get="/passage/{{ starting_passage }}" hx-trigger="load">
+                    <div class="loading">Loading...</div>
                 </main>
             </div>
             
@@ -54,16 +50,16 @@
     <!-- HTMX Modal Container -->
     <div id="modal-container"></div>
 
-    <!-- Passage Search Modal -->
+    <!-- Page Navigation Modal -->
     <div id="passage-search-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h3>Jump to Passage</h3>
+                <h3>Navigate to Page</h3>
                 <button class="modal-close" onclick="closePassageSearchModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <div class="search-container">
-                    <input type="text" id="passage-search-input" placeholder="Type passage name..." autocomplete="off">
+                    <input type="text" id="passage-search-input" placeholder="Type page name..." autocomplete="off">
                     <div id="passage-search-results" class="search-results"></div>
                 </div>
             </div>
@@ -75,7 +71,7 @@
     <div id="debug-footer" class="debug-footer">
         <div class="debug-footer-content">
             <div class="debug-tools">
-                <button id="passage-search-btn" class="debug-btn">Jump to Passage</button>
+                <button id="passage-search-btn" class="debug-btn">Navigate to Page</button>
                 <button id="debug-btn" class="debug-btn">Debug Panel</button>
             </div>
             <div class="debug-indicator">

@@ -318,6 +318,8 @@ class TabManager {
             mode = { name: 'javascript', json: true };
         } else if (filename.endsWith('.css')) {
             mode = 'css';
+        } else if (filename.endsWith('.sql')) {
+            mode = 'sql';
         }
         editor.setOption("mode", mode);
     }
@@ -628,22 +630,22 @@ async function saveFile() {
 
 	const content = editor.getValue();
 
-	// Capture game state before saving file
+	// Capture application state before saving file
 	try {
-		const gameStateResponse = await fetch('/api/game-state');
-		const currentGameState = await gameStateResponse.json();
+		const appStateResponse = await fetch('/api/app-state');
+		const currentAppState = await appStateResponse.json();
 
-		// Send game state to a temporary storage endpoint on the backend
-		await fetch('/api/set-temp-game-state', {
+		// Send application state to a temporary storage endpoint on the backend
+		await fetch('/api/set-temp-state', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
-			body: JSON.stringify(currentGameState)
+			body: JSON.stringify(currentAppState)
 		});
 	} catch (error) {
-		console.error('Error capturing or sending game state:', error);
-		showNotification('Could not capture game state.', 'error');
+		console.error('Error capturing or sending application state:', error);
+		showNotification('Could not capture application state.', 'error');
 		// Decide if you want to proceed with file save even if state capture fails
 		// For now, we'll proceed, but a more robust solution might stop here.
 	}
@@ -667,11 +669,11 @@ async function saveFile() {
 				// Refresh the preview iframe after a successful save
 				if (data.passage_html) {
 					const iframeDoc = document.getElementById('preview-iframe').contentWindow.document;
-					const gameContentDiv = iframeDoc.getElementById('game-content');
-					gameContentDiv.innerHTML = data.passage_html;
+					const appContentDiv = iframeDoc.getElementById('app-content');
+					appContentDiv.innerHTML = data.passage_html;
 					// Re-process HTMX on the newly loaded content within the iframe
 					if (iframeDoc.defaultView.htmx) { // Check if htmx is available in the iframe's context
-						iframeDoc.defaultView.htmx.process(gameContentDiv);
+						iframeDoc.defaultView.htmx.process(appContentDiv);
 					}
 				} else {
 					refreshPreview();
@@ -697,28 +699,28 @@ async function refreshPreview() {
 	}
 
 	try {
-		// Fetch current game state to get the current passage
-		const gameStateResponse = await fetch('/api/game-state');
-		const gameState = await gameStateResponse.json();
-		const currentPassage = gameState.current_passage || 'start';
+		// Fetch current application state to get the current passage
+		const appStateResponse = await fetch('/api/app-state');
+		const appState = await appStateResponse.json();
+		const currentPassage = appState.current_passage || 'start';
 
 		// Reload iframe with full context
 		iframe.src = `/`;
-		
+
 		// Wait for iframe to load, then navigate to current passage
 		iframe.onload = function() {
 			try {
 				const iframeDoc = iframe.contentWindow.document;
-				const gameContentDiv = iframeDoc.getElementById('game-content');
-				
-				if (gameContentDiv && iframe.contentWindow.htmx) {
-					// Use HTMX to load the current passage into the game-content div
+				const appContentDiv = iframeDoc.getElementById('app-content');
+
+				if (appContentDiv && iframe.contentWindow.htmx) {
+					// Use HTMX to load the current passage into the app-content div
 					iframe.contentWindow.htmx.ajax('GET', `/passage/${currentPassage}`, {
-						target: '#game-content',
+						target: '#app-content',
 						swap: 'innerHTML'
 					});
 				} else {
-					console.warn('HTMX or game-content div not found in iframe');
+					console.warn('HTMX or app-content div not found in iframe');
 				}
 			} catch (error) {
 				console.error('Error navigating to current passage in iframe:', error);
@@ -728,7 +730,7 @@ async function refreshPreview() {
 		showNotification('Preview refreshed!', 'info');
 
 	} catch (error) {
-		console.error('Error fetching game state for refresh:', error);
+		console.error('Error fetching application state for refresh:', error);
 		// Fallback to simple reload
 		iframe.src = `/`;
 		showNotification('Preview refreshed (fallback to start)!', 'warning');
@@ -1039,11 +1041,11 @@ function toggleDebugTerminal() {
     }
 }
 
-function updateGameStateDisplay() {
-    const display = document.getElementById('game-state-content'); // Target the new content div
+function updateAppStateDisplay() {
+    const display = document.getElementById('app-state-content'); // Target the application state content div
     if (!display) return;
 
-    fetch('/api/game-state')
+    fetch('/api/app-state')
         .then(response => response.json())
         .then(state => {
             display.innerHTML = ''; // Clear previous state
@@ -1053,8 +1055,8 @@ function updateGameStateDisplay() {
             display.appendChild(pre);
         })
         .catch(err => {
-            console.error('Error fetching game state:', err);
-            display.innerHTML = '<div class="state-item error">Could not load game state.</div>';
+            console.error('Error fetching application state:', err);
+            display.innerHTML = '<div class="state-item error">Could not load application state.</div>';
         });
 }
 
@@ -1272,27 +1274,27 @@ async function browseForProjectRoot() {
     }
 }
 
-function resetGameState() {
+function resetAppState() {
     // Close the dropdown menu
     const projectActionsDropdown = document.getElementById('project-actions-dropdown');
     if (projectActionsDropdown) {
         projectActionsDropdown.classList.remove('show');
     }
-    
-    fetch('/api/reset-game-state', { method: 'POST' })
+
+    fetch('/api/reset-state', { method: 'POST' })
         .then(response => {
-            showNotification('Game state has been reset.', 'success');
+            showNotification('Application state has been reset.', 'success');
             // Simplified approach: just reload preview iframe to '/'
             const iframe = document.getElementById('preview-iframe');
             if (iframe) {
                 iframe.src = '/';
             }
             // Force an immediate update of the debug display
-            updateGameStateDisplay();
+            updateAppStateDisplay();
         })
         .catch(err => {
-            console.error('Error resetting game state:', err);
-            showNotification('An error occurred while resetting the game state.', 'error');
+            console.error('Error resetting application state:', err);
+            showNotification('An error occurred while resetting the application state.', 'error');
         });
 }
 

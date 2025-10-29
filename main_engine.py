@@ -93,7 +93,7 @@ def restart_flask_server():
             app.reset_game_engine()
             stop_flask_server()
             run_flask_server(project_path_for_watcher)
-            print(f"Flask server restarted. Access your game at http://127.0.0.1:5000")
+            print(f"Flask server restarted. Access your application at http://127.0.0.1:5000")
         finally:
             restart_lock.release()
             print("Released lock.")
@@ -300,10 +300,10 @@ def project_menu(project_root):
             run_flask_server(active_project_path)
             start_watcher(active_project_path)
             flask_server_running = True
-            print(f"Flask server started. Access your game at http://127.0.0.1:5000")
+            print(f"Flask server started. Access your application at http://127.0.0.1:5000")
             return "server_running_menu" # Transition to server running menu
         elif choice == '2':
-            print(f"\nBuilding standalone game for project: {project_name}")
+            print(f"\nBuilding standalone application for project: {project_name}")
             # Ensure server is stopped before building
             if flask_server_running:
                 print("Stopping development server before building...")
@@ -360,7 +360,7 @@ def server_running_menu(project_root):
         clear_screen()
         print(f"--- Scribe Engine Launcher (Project Root: {project_root}) ---")
         print(f"\nActive Project: {project_name} (Server Running)")
-        print(f"Access your game at http://127.0.0.1:5000")
+        print(f"Access your application at http://127.0.0.1:5000")
         print("\nServer Running Menu:")
         print("1. Stop Development Server")
 

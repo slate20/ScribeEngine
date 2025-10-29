@@ -48,7 +48,7 @@
 				<button class="btn btn-secondary" id="toggle-preview-btn" title="Toggle Preview">
 					<i data-lucide="panel-right-open"></i> Preview
 				</button>
-				<button class="btn btn-secondary" id="build-btn" title="Build Game" onclick="startBuild('{{ project_name }}')">
+				<button class="btn btn-secondary" id="build-btn" title="Build Application" onclick="startBuild('{{ project_name }}')">
 					<i data-lucide="package"></i> Build
 				</button>
 				<div class="action-dropdown">
@@ -56,9 +56,9 @@
 						<i data-lucide="power"></i>
 					</button>
 					<div id="project-actions-dropdown" class="action-dropdown-content">
-						<button onclick="resetGameState()">
+						<button onclick="resetAppState()">
 							<i data-lucide="refresh-cw"></i>
-							Reset Game State
+							Reset Application State
 						</button>
 						<div class="separator"></div>
 						<a href="/api/close-project">
@@ -133,7 +133,7 @@
 	<div id="build-progress-modal" class="modal" style="display: none;">
 		<div class="modal-content">
 			<div class="modal-header">
-				<h3>Building Game</h3>
+				<h3>Building Application</h3>
 			</div>
 			<div class="modal-body">
 				<div class="build-progress-container">

@@ -458,15 +458,15 @@ def close_modal():
 
 # --- Asset and Styling Routes ---
 
-@app.route('/game_theme.css')
-def serve_game_theme_css():
+@app.route('/style.css')
+def serve_style_css():
     """Serve game theme CSS from the game project."""
     if not game_engine:
         return '', 404
 
-    game_theme_css_path = os.path.join(game_engine.project_path, 'game_theme.css')
-    if os.path.exists(game_theme_css_path):
-        return send_file(game_theme_css_path, mimetype='text/css')
+    style_css_path = os.path.join(game_engine.project_path, 'style.css')
+    if os.path.exists(style_css_path):
+        return send_file(style_css_path, mimetype='text/css')
     else:
         # Return empty CSS if no game theme stylesheet exists
         return '', 404
@@ -481,10 +481,10 @@ def serve_custom_css():
     custom_css_path = os.path.join(game_engine.project_path, 'custom.css')
     if os.path.exists(custom_css_path):
         return send_file(custom_css_path, mimetype='text/css')
-    # If custom.css doesn't exist, try game_theme.css as fallback
-    game_theme_css_path = os.path.join(game_engine.project_path, 'game_theme.css')
-    if os.path.exists(game_theme_css_path):
-        return send_file(game_theme_css_path, mimetype='text/css')
+    # If custom.css doesn't exist, try style.css as fallback
+    style_css_path = os.path.join(game_engine.project_path, 'style.css')
+    if os.path.exists(style_css_path):
+        return send_file(style_css_path, mimetype='text/css')
     else:
         # Return empty CSS if no stylesheet exists
         response = make_response('/* No custom CSS */')

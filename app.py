@@ -793,11 +793,18 @@ def new_folder_modal(project_name):
     """Show new folder modal."""
     return render_template('_fragments/_htmx_new_folder_modal.html', project_name=project_name)
 
-@app.route('/game_theme.css')
-def serve_game_theme_css():
-    game_theme_css_path = os.path.join(game_engine.project_path, 'game_theme.css')
-    if os.path.exists(game_theme_css_path):
-        return send_file(game_theme_css_path, mimetype='text/css')
+@app.route('/style.css')
+def serve_style_css():
+    # Try static/style.css first (new webapp projects)
+    style_css_path = os.path.join(game_engine.project_path, 'static', 'style.css')
+    if os.path.exists(style_css_path):
+        return send_file(style_css_path, mimetype='text/css')
+
+    # Fall back to root style.css (legacy)
+    style_css_path = os.path.join(game_engine.project_path, 'style.css')
+    if os.path.exists(style_css_path):
+        return send_file(style_css_path, mimetype='text/css')
+
     return '', 404
 
 # Backward compatibility route for existing projects
@@ -806,10 +813,10 @@ def serve_custom_css():
     custom_css_path = os.path.join(game_engine.project_path, 'custom.css')
     if os.path.exists(custom_css_path):
         return send_file(custom_css_path, mimetype='text/css')
-    # If custom.css doesn't exist, try game_theme.css as fallback
-    game_theme_css_path = os.path.join(game_engine.project_path, 'game_theme.css')
-    if os.path.exists(game_theme_css_path):
-        return send_file(game_theme_css_path, mimetype='text/css')
+    # If custom.css doesn't exist, try style.css as fallback
+    style_css_path = os.path.join(game_engine.project_path, 'style.css')
+    if os.path.exists(style_css_path):
+        return send_file(style_css_path, mimetype='text/css')
     return '', 404
 
 # GUI routes
@@ -962,17 +969,23 @@ def list_files(project_name):
         return "Project not found", 404
 
     # Add .replace() to normalize paths here
-    story_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.tgame", recursive=True)]
+    # Scan for both .tgame and .stpl files (support both formats)
+    story_files_tgame = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.tgame", recursive=True)]
+    story_files_stpl = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.stpl", recursive=True)]
+    story_files = story_files_tgame + story_files_stpl
+
     logic_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.py", recursive=True)]
     config_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}//**.json", recursive=True) if os.path.basename(f) != 'project.json']
     css_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.css", recursive=True)]
     asset_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/assets/**/*", recursive=True) if os.path.isfile(f)]
+    database_files = [os.path.relpath(f, project_path).replace('\\', '/') for f in glob.glob(f"{project_path}/**/*.sql", recursive=True)]
 
     # Group files by directory
     story_groups, story_root_files = group_files_by_directory(story_files)
     logic_groups, logic_root_files = group_files_by_directory(logic_files)
     css_groups, css_root_files = group_files_by_directory(css_files)
     asset_groups, asset_root_files = group_asset_files_by_directory(asset_files)
+    database_groups, database_root_files = group_files_by_directory(database_files)
 
     return render_template('_fragments/_file_list.html',
                            story_groups=story_groups,
@@ -984,7 +997,9 @@ def list_files(project_name):
                            asset_root_files=asset_root_files,
                            project_name=project_name,
                            css_groups=css_groups,
-                           css_root_files=css_root_files)
+                           css_root_files=css_root_files,
+                           database_groups=database_groups,
+                           database_root_files=database_root_files)
 
 @app.route('/api/create-item/<project_name>', methods=['POST'])
 def create_item(project_name):
@@ -1334,15 +1349,15 @@ def close_project():
     active_project_path = None
     return redirect(url_for('gui_launcher'))
 
-@app.route('/api/reset-game-state', methods=['POST'])
-def reset_game_state_api():
+@app.route('/api/reset-state', methods=['POST'])
+def reset_app_state_api():
     if game_engine:
         game_engine.reset_game_state()
-        # return jsonify({'status': 'success', 'message': 'Game state reset successfully'}), 200
+        # return jsonify({'status': 'success', 'message': 'Application state reset successfully'}), 200
         response = make_response('', 204)
-        response.headers['HX-Trigger'] = '{"showNotification": {"message": "Game state has been reset.", "type": "success"}}'
+        response.headers['HX-Trigger'] = '{"showNotification": {"message": "Application state has been reset.", "type": "success"}}'
         return response
-    return jsonify({'status': 'error', 'message': 'Game engine not initialized'}), 500
+    return jsonify({'status': 'error', 'message': 'Engine not initialized'}), 500
 
 @app.route('/api/preview-panel')
 def get_preview_panel():
@@ -1350,18 +1365,25 @@ def get_preview_panel():
 
 
 # Debug routes
-@app.route('/api/game-state')
-def get_game_state():
+@app.route('/api/app-state')
+def get_app_state():
     if game_engine and hasattr(game_engine, 'game_state'):
         return jsonify(game_engine.get_serializable_state())
     return jsonify({})
 
-@app.route('/api/set-temp-game-state', methods=['POST'])
-def set_temp_game_state():
+@app.route('/api/app-state-content')
+def get_app_state_content():
+    if game_engine and hasattr(game_engine, 'game_state'):
+        state = game_engine.get_serializable_state()
+        return render_template('_fragments/_app_state_content.html', state=state)
+    return render_template('_fragments/_app_state_content.html', state={})
+
+@app.route('/api/set-temp-state', methods=['POST'])
+def set_temp_app_state():
     global _temp_game_state
     try:
         _temp_game_state = request.json
-        return jsonify({'status': 'success', 'message': 'Temporary game state set.'}), 200
+        return jsonify({'status': 'success', 'message': 'Temporary application state set.'}), 200
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
