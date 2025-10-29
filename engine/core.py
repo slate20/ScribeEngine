@@ -10,6 +10,7 @@ from .executor import SafeExecutor
 from .state import StateManager
 from .storage import JSONStorage
 from .browser_storage import BrowserStorage
+from .database import Database
 
 class GameEngine:
     def __init__(self, project_path, debug_mode=False):
@@ -21,10 +22,12 @@ class GameEngine:
 
         self.parser = GameParser()
 
-        # Initialize storage after loading project config
+        # Initialize storage and database after loading project config
         self.storage = None
+        self.db = None
         self.load_project()
         self._initialize_storage()
+        self._initialize_database()
 
     def update_debug_mode(self, debug_mode):
         """Update the debug mode setting and reinitialize executor if needed."""
@@ -57,7 +60,7 @@ class GameEngine:
             for file in files:
                 if file.endswith('.py'):
                     python_files.append(os.path.join(root, file))
-                elif file.endswith('.tgame'):
+                elif file.endswith(('.tgame', '.stpl')):
                     passage_files.append(os.path.join(root, file))
         
         self.executor = SafeExecutor(self.game_state, features, self.debug_mode)
@@ -95,6 +98,83 @@ class GameEngine:
         systems = self.executor.get_systems()
         if 'Player' in systems and isinstance(systems['Player'], type):
             self.game_state['player'] = systems['Player']()
+
+    def _initialize_database(self):
+        """Initialize SQLite database if enabled in project configuration."""
+        db_config = self.config.get('database', {})
+
+        if db_config.get('enabled', False):
+            try:
+                self.db = Database(self.project_path, self.config)
+
+                # Expose database to executor
+                self.executor.db = self.db
+
+                # Run migrations if migrations directory exists
+                self._run_migrations()
+
+                if self.debug_mode:
+                    print(f"  - Database initialized: {db_config.get('path', 'data/app.db')}")
+            except Exception as e:
+                if self.debug_mode:
+                    print(f"  - Database initialization failed: {e}")
+                # Don't fail the entire engine if database fails
+                self.db = None
+        else:
+            if self.debug_mode:
+                print("  - Database disabled")
+
+    def _run_migrations(self):
+        """Run SQL migrations from migrations/ directory."""
+        if not self.db:
+            return
+
+        migrations_dir = os.path.join(self.project_path, 'migrations')
+        if not os.path.exists(migrations_dir):
+            return
+
+        try:
+            # Create migrations tracking table
+            self.db.execute("""
+                CREATE TABLE IF NOT EXISTS _migrations (
+                    filename TEXT PRIMARY KEY,
+                    applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+
+            # Get applied migrations
+            applied = {row['filename'] for row in self.db.query("SELECT filename FROM _migrations")}
+
+            # Get all SQL migration files
+            migration_files = []
+            for filename in os.listdir(migrations_dir):
+                if filename.endswith('.sql'):
+                    migration_files.append(filename)
+
+            # Sort migrations to ensure correct order
+            migration_files.sort()
+
+            # Run pending migrations
+            for filename in migration_files:
+                if filename not in applied:
+                    migration_path = os.path.join(migrations_dir, filename)
+                    with open(migration_path, 'r', encoding='utf-8') as f:
+                        sql = f.read()
+
+                    # Execute migration using executescript for multiple statements
+                    cursor = self.db.conn.cursor()
+                    cursor.executescript(sql)
+                    self.db.conn.commit()
+
+                    # Record as applied
+                    self.db.execute("INSERT INTO _migrations (filename) VALUES (?)", (filename,))
+
+                    if self.debug_mode:
+                        print(f"  ✓ Applied migration: {filename}")
+
+        except Exception as e:
+            if self.debug_mode:
+                print(f"  - Migration error: {e}")
 
     def _process_passage_content(self, passage_name, executor, use_raw_content=False):
         """Helper to execute Python blocks and render Jinja for a passage."""
@@ -148,6 +228,10 @@ class GameEngine:
             executor = SafeExecutor(self.game_state, self.config.get('features', {}), self.debug_mode)
             executor.load_systems_from_cache(self.executor.get_systems())
 
+            # Pass database reference to new executor
+            if hasattr(self, 'db') and self.db is not None:
+                executor.db = self.db
+
         if passage_name == 'NavMenu':
             rendered_content = self._process_passage_content(passage_name, executor, use_raw_content=True)
             
@@ -188,6 +272,10 @@ class GameEngine:
         # Create a single executor for this entire rendering sequence
         executor = SafeExecutor(self.game_state, self.config.get('features', {}), self.debug_mode)
         executor.load_systems_from_cache(self.executor.get_systems())
+
+        # Pass database reference to new executor
+        if hasattr(self, 'db') and self.db is not None:
+            executor.db = self.db
 
         # Handle silent passages
         if 'silent' in tags:

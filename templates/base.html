@@ -37,7 +37,7 @@
         <div id="main-content-area">
             <div id="passage-tags-container"></div>
             <div class="content-container">
-                <main id="game-content" hx-get="/passage/start" hx-trigger="load">
+                <main id="game-content" hx-get="/passage/{{ starting_passage }}" hx-trigger="load">
                     <div class="loading">Loading game...</div>
                 </main>
             </div>

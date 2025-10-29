@@ -9,7 +9,7 @@ class SafeExecutor:
         self.game_state = game_state
         self.features = features if features is not None else {}
         self.debug_mode = debug_mode
-        self.allowed_imports = {'random', 'math', 'datetime'}
+        self.allowed_imports = {'random', 'math', 'datetime', 'sqlite3'}
         self.systems = {}
 
     def load_systems(self, python_files: List[str]):
@@ -101,9 +101,14 @@ class SafeExecutor:
         safe_globals.update(helpers)
         safe_globals.update(self.systems)
 
+        # Expose database if available
+        if hasattr(self, 'db') and self.db is not None:
+            safe_globals['db'] = self.db
 
         non_persistent_keys = set(helpers.keys()) | set(self.systems.keys())
         non_persistent_keys.add('__builtins__')
+        if hasattr(self, 'db') and self.db is not None:
+            non_persistent_keys.add('db')  # Don't persist db object to game state
 
         return safe_globals, non_persistent_keys
 

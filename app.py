@@ -9,6 +9,7 @@ import glob
 from datetime import datetime
 from jinja2 import Environment
 from engine.core import GameEngine
+from config import Config, generate_secret_key
 
 # Add these imports for graceful shutdown
 from werkzeug.serving import make_server
@@ -42,7 +43,18 @@ app = Flask(__name__,
 # Suppress Werkzeug access logs
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
-app.secret_key = 'your-secret-key-here'  # Change in production
+
+# Configure secret key based on environment
+if Config.is_production():
+    secret_key = Config.get_secret_key()
+    if not secret_key:
+        raise ValueError("SCRIBE_SECRET_KEY environment variable is required in production mode")
+    app.secret_key = secret_key
+    app.debug = False
+else:
+    # Development mode - use generated key
+    app.secret_key = generate_secret_key()
+    app.debug = Config.get_debug_mode()
 
 # Template filters for formatting
 @app.template_filter('format_timestamp')
@@ -136,6 +148,7 @@ def index():
 
     return render_template('base.html',
                          game_title=game_engine.get_title(),
+                         starting_passage=game_engine.config.get('starting_passage', 'start'),
                          debug_mode=game_engine.debug_mode,
                          nav_config=nav_config,
                          nav_content=nav_content,
