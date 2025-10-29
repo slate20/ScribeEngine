@@ -1,3 +1,6 @@
+> <h4>NOTE: Windows Virus False-Positive</h4>
+> While it didn't originally, as of version 1.2, Windows has started falsely flagging the exe as a Virus. I am aware and currently digging into what might be triggering it to see if I can implement an alternative that Windows will be happy with.
+
 # Scribe Engine - A Robust Text-Based Game Engine
 
 <img width="1921" height="1080" alt="Screenshot from 2025-09-11 01-33-33" src="https://github.com/user-attachments/assets/db2c82bc-33c4-48e6-9bb1-fcd6f27dba3b" />
@@ -56,3 +59,7 @@ Hit the "Build" button and your game is packaged into a standalone distribution 
 ## Documentation
 
 For detailed instructions on writing your story, managing game logic, customizing your game, and advanced features, please refer to the comprehensive [User Documentation](https://github.com/slate20/ScribeEngine/wiki).
+
+## Feedback & Discussions
+
+If you want to offer any feedback, report issues, or just engage with other users and myself, head over to the [Discussions](https://github.com/slate20/ScribeEngine/discussions)!
