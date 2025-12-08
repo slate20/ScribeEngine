@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ScribeEngine IDE - API Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #ccc;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        pre {
+            background: #252526;
+            padding: 15px;
+            border: 1px solid #3e3e42;
+            overflow: auto;
+            max-height: 500px;
+        }
+        .error {
+            color: #f48771;
+        }
+        .success {
+            color: #4ec9b0;
+        }
+    </style>
+</head>
+<body>
+    <h1>ScribeEngine IDE - API Test Page</h1>
+
+    <h2>Test API Endpoints</h2>
+    <button onclick="testFiles()">Test /api/files</button>
+    <button onclick="testRoutes()">Test /api/routes</button>
+    <button onclick="testTables()">Test /api/database/tables</button>
+    <button onclick="testStaticJS()">Test Static JS File</button>
+    <button onclick="testStaticCSS()">Test Static CSS File</button>
+
+    <h2>Results:</h2>
+    <pre id="output">Click a button to test an endpoint...</pre>
+
+    <script>
+        function log(message, isError = false) {
+            const output = document.getElementById('output');
+            const className = isError ? 'error' : 'success';
+            output.innerHTML += `<span class="${className}">${message}</span>\n`;
+        }
+
+        function clearLog() {
+            document.getElementById('output').innerHTML = '';
+        }
+
+        async function testFiles() {
+            clearLog();
+            log('Testing /api/files...');
+            try {
+                const response = await fetch('/__scribe_gui/api/files');
+                log(`Status: ${response.status} ${response.statusText}`);
+                const data = await response.json();
+                log('Response:');
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log(`Error: ${error.message}`, true);
+            }
+        }
+
+        async function testRoutes() {
+            clearLog();
+            log('Testing /api/routes...');
+            try {
+                const response = await fetch('/__scribe_gui/api/routes');
+                log(`Status: ${response.status} ${response.statusText}`);
+                const data = await response.json();
+                log('Response:');
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log(`Error: ${error.message}`, true);
+            }
+        }
+
+        async function testTables() {
+            clearLog();
+            log('Testing /api/database/tables...');
+            try {
+                const response = await fetch('/__scribe_gui/api/database/tables');
+                log(`Status: ${response.status} ${response.statusText}`);
+                const data = await response.json();
+                log('Response:');
+                log(JSON.stringify(data, null, 2));
+            } catch (error) {
+                log(`Error: ${error.message}`, true);
+            }
+        }
+
+        async function testStaticJS() {
+            clearLog();
+            log('Testing static JS file...');
+            try {
+                const response = await fetch('/__scribe_gui/static/js/ide.js');
+                log(`Status: ${response.status} ${response.statusText}`);
+                log(`Content-Type: ${response.headers.get('content-type')}`);
+                const text = await response.text();
+                log(`File size: ${text.length} bytes`);
+                log(`First 200 chars: ${text.substring(0, 200)}...`);
+            } catch (error) {
+                log(`Error: ${error.message}`, true);
+            }
+        }
+
+        async function testStaticCSS() {
+            clearLog();
+            log('Testing static CSS file...');
+            try {
+                const response = await fetch('/__scribe_gui/static/css/ide.css');
+                log(`Status: ${response.status} ${response.statusText}`);
+                log(`Content-Type: ${response.headers.get('content-type')}`);
+                const text = await response.text();
+                log(`File size: ${text.length} bytes`);
+                log(`First 200 chars: ${text.substring(0, 200)}...`);
+            } catch (error) {
+                log(`Error: ${error.message}`, true);
+            }
+        }
+    </script>
+</body>
+</html>
