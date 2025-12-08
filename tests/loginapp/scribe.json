@@ -1,0 +1,7 @@
+{
+  "database": {
+    "type": "sqlite",
+    "database": "app.db"
+  },
+  "secret_key": "CHANGE_THIS_TO_A_RANDOM_SECRET_KEY_IN_PRODUCTION"
+}
