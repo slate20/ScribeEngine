@@ -10,7 +10,17 @@ const IDE = {
     fileTree: null,
     monaco: null,
     editorReady: false,
-    pendingFileSwitch: null
+    pendingFileSwitch: null,
+    panels: {
+        sidebarWidth: 250,
+        previewWidth: null,
+        previewVisible: true
+    },
+    categorizedTree: null,
+    categoryState: {
+        collapsedCategories: new Set(),
+        collapsedFolders: new Set()
+    }
 };
 
 // Initialize IDE when DOM is loaded
@@ -25,6 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
     loadRoutes();
     loadDatabaseTables();
     updateProjectName();
+
+    // Initialize preview with root path
+    const previewUrlInput = document.getElementById('preview-url');
+    if (previewUrlInput && !previewUrlInput.value) {
+        previewUrlInput.value = '/';
+        loadPreview();
+    }
 
     // Initialize Monaco Editor (this may take time to load from CDN)
     initMonacoEditor();
@@ -134,50 +151,268 @@ function registerScribeLanguage() {
         monaco.languages.register({ id: 'scribe-template' });
         console.log('IDE: Language ID registered');
 
-        // Use a simple, working language definition
+        // Enhanced multi-language tokenizer for .stpl files
+        // Supports Python blocks {$ $}, Jinja2 {{ }} {% %}, and HTML
         monaco.languages.setMonarchTokensProvider('scribe-template', {
+            defaultToken: '',
+            tokenPostfix: '.stpl',
+
+            // Keywords for different contexts
+            pythonKeywords: [
+                'and', 'as', 'assert', 'async', 'await', 'break', 'class', 'continue',
+                'def', 'del', 'elif', 'else', 'except', 'False', 'finally', 'for',
+                'from', 'global', 'if', 'import', 'in', 'is', 'lambda', 'None',
+                'nonlocal', 'not', 'or', 'pass', 'raise', 'return', 'True', 'try',
+                'while', 'with', 'yield'
+            ],
+
+            pythonBuiltins: [
+                'abs', 'all', 'any', 'ascii', 'bin', 'bool', 'bytearray', 'bytes',
+                'chr', 'dict', 'dir', 'divmod', 'enumerate', 'filter', 'float', 'format',
+                'frozenset', 'getattr', 'hasattr', 'hash', 'hex', 'int', 'isinstance',
+                'len', 'list', 'map', 'max', 'min', 'next', 'object', 'oct', 'open',
+                'ord', 'pow', 'print', 'range', 'repr', 'reversed', 'round', 'set',
+                'setattr', 'slice', 'sorted', 'str', 'sum', 'tuple', 'type', 'zip'
+            ],
+
+            jinjaKeywords: [
+                'block', 'endblock', 'extends', 'include', 'import', 'from', 'as',
+                'macro', 'endmacro', 'call', 'endcall', 'filter', 'endfilter',
+                'set', 'endset', 'if', 'elif', 'else', 'endif', 'for', 'endfor',
+                'in', 'not', 'and', 'or', 'is', 'defined', 'undefined'
+            ],
+
+            jinjaFilters: [
+                'abs', 'attr', 'batch', 'capitalize', 'center', 'default', 'escape',
+                'filesizeformat', 'first', 'float', 'format', 'groupby', 'indent',
+                'int', 'join', 'last', 'length', 'list', 'lower', 'map', 'max',
+                'min', 'pprint', 'random', 'reject', 'replace', 'reverse', 'round',
+                'safe', 'select', 'slice', 'sort', 'string', 'sum', 'title', 'trim',
+                'truncate', 'unique', 'upper', 'urlencode', 'urlize', 'wordcount', 'wordwrap'
+            ],
+
+            operators: [
+                '=', '>', '<', '!', '~', '?', ':', '==', '<=', '>=', '!=',
+                '&&', '||', '++', '--', '+', '-', '*', '/', '&', '|', '^', '%',
+                '<<', '>>', '>>>', '+=', '-=', '*=', '/=', '&=', '|=', '^=',
+                '%=', '<<=', '>>=', '>>>='
+            ],
+
+            symbols: /[=><!~?:&|+\-*\/\^%]+/,
+            escapes: /\\(?:[abfnrtv\\"']|x[0-9A-Fa-f]{1,4}|u[0-9A-Fa-f]{4}|U[0-9A-Fa-f]{8})/,
+            digits: /\d+(_+\d+)*/,
+
             tokenizer: {
+                // ========== ROOT STATE (HTML Mode) ==========
                 root: [
+                    // Route decorators (always at start of line or after whitespace)
+                    [/^(\s*)(@\w+)/, ['white', 'annotation']],
+                    [/(\s+)(@\w+)/, ['white', 'annotation']],
+
+                    // Python code blocks {$ ... $} - Distinctive orange highlight
+                    [/\{\$/, { token: 'type.identifier', next: '@pythonBlock', nextEmbedded: 'python' }],
+
+                    // Jinja2 expressions {{ ... }} - Cyan/teal highlight
+                    [/\{\{/, { token: 'number.hex', next: '@jinjaExpression' }],
+
+                    // Jinja2 statements {% ... %} - Purple/magenta highlight
+                    [/\{%/, { token: 'tag', next: '@jinjaStatement' }],
+
+                    // HTML comments
+                    [/<!--/, { token: 'comment.html', next: '@htmlComment' }],
+
+                    // HTML doctype
+                    [/<!DOCTYPE/, 'metatag.html', '@doctype'],
+
+                    // HTML tags
+                    [/<(\w+)/, { token: 'tag.html', next: '@htmlTag' }],
+                    [/<\/(\w+)\s*>/, 'tag.html'],
+
+                    // Whitespace
+                    [/[ \t\r\n]+/, 'white'],
+                ],
+
+                // ========== HTML COMMENT STATE ==========
+                htmlComment: [
+                    [/-->/, { token: 'comment.html', next: '@pop' }],
+                    [/./, 'comment.html']
+                ],
+
+                // ========== HTML DOCTYPE STATE ==========
+                doctype: [
+                    [/[^>]+/, 'metatag.content.html'],
+                    [/>/, { token: 'metatag.html', next: '@pop' }]
+                ],
+
+                // ========== HTML TAG STATE ==========
+                htmlTag: [
+                    [/[ \t\r\n]+/, 'white'],
+                    [/(\w+)(\s*=\s*)/, ['attribute.name.html', 'delimiter.html']],
+                    [/"([^"]*)"/, 'attribute.value.html'],
+                    [/'([^']*)'/, 'attribute.value.html'],
+                    [/>/, { token: 'tag.html', next: '@pop' }],
+                    [/(\w+)/, 'attribute.name.html']
+                ],
+
+                // ========== PYTHON BLOCK STATE {$ ... $} ==========
+                pythonBlock: [
+                    // Exit Python block - Matching orange highlight
+                    [/\$\}/, { token: 'type.identifier', next: '@pop', nextEmbedded: '@pop' }],
+
+                    // Python comments
+                    [/#.*$/, 'comment'],
+
+                    // Python keywords
+                    [/\b(def|class|return|if|elif|else|for|while|try|except|finally|with|as|import|from|pass|break|continue|raise|yield|await|async|lambda|global|nonlocal|assert)\b/, 'keyword'],
+
+                    // Boolean and None
+                    [/\b(True|False|None)\b/, 'constant.language'],
+
+                    // Built-in functions
+                    [/\b(print|len|range|enumerate|zip|map|filter|str|int|float|bool|list|dict|set|tuple|type|isinstance|hasattr|getattr|setattr)\b/, 'support.function'],
+
+                    // Special objects available in ScribeEngine
+                    [/\b(db|session|request|g|redirect|abort|jsonify|url_for|csrf|flash)\b/, 'variable.language'],
+
                     // Decorators
-                    [/@\w+/, 'keyword'],
+                    [/@\w+/, 'annotation'],
 
-                    // Python blocks
-                    [/\{\$/, 'delimiter'],
-                    [/\$\}/, 'delimiter'],
+                    // Numbers
+                    [/\b\d+[lL]?\b/, 'number'],
+                    [/\b0[xX][0-9a-fA-F]+[lL]?\b/, 'number.hex'],
+                    [/\b0[oO][0-7]+[lL]?\b/, 'number.octal'],
+                    [/\b0[bB][01]+[lL]?\b/, 'number.binary'],
+                    [/\b\d+\.?\d*([eE][\-+]?\d+)?\b/, 'number.float'],
 
-                    // Jinja2
-                    [/\{%/, 'delimiter'],
-                    [/%\}/, 'delimiter'],
-                    [/\{\{/, 'delimiter'],
-                    [/\}\}/, 'delimiter'],
+                    // Strings (including f-strings)
+                    [/f"/, { token: 'string', next: '@fstringDouble' }],
+                    [/f'/, { token: 'string', next: '@fstringSingle' }],
+                    [/"""/, { token: 'string', next: '@stringTripleDouble' }],
+                    [/'''/, { token: 'string', next: '@stringTripleSingle' }],
+                    [/"/, { token: 'string', next: '@stringDouble' }],
+                    [/'/, { token: 'string', next: '@stringSingle' }],
 
-                    // Keywords
-                    [/\b(if|else|elif|for|while|def|class|return)\b/, 'keyword'],
+                    // Operators
+                    [/[{}()\[\]]/, '@brackets'],
+                    [/@symbols/, 'operator'],
+
+                    // Identifiers
+                    [/[a-zA-Z_]\w*/, 'identifier'],
+
+                    // Whitespace
+                    [/[ \t\r\n]+/, 'white'],
+                ],
+
+                // ========== JINJA2 EXPRESSION STATE {{ ... }} ==========
+                jinjaExpression: [
+                    // Exit expression - Matching cyan/teal highlight
+                    [/\}\}/, { token: 'number.hex', next: '@pop' }],
+
+                    // Jinja2 filters (pipe syntax)
+                    [/\|(\w+)/, 'support.function.jinja'],
+
+                    // Jinja2 keywords
+                    [/\b(is|not|defined|undefined|none|true|false)\b/, 'keyword.jinja'],
+
+                    // Python-like keywords in expressions
+                    [/\b(and|or|not|in)\b/, 'keyword.jinja'],
+
+                    // Numbers
+                    [/\b\d+\.?\d*\b/, 'number'],
 
                     // Strings
-                    [/"([^"\\]|\\.)*$/, 'string.invalid'],
-                    [/'([^'\\]|\\.)*$/, 'string.invalid'],
-                    [/"/, 'string', '@string_double'],
-                    [/'/, 'string', '@string_single'],
+                    [/"([^"\\]|\\.)*"/, 'string'],
+                    [/'([^'\\]|\\.)*'/, 'string'],
 
-                    // Comments
-                    [/#.*$/, 'comment'],
-                    [/<!--/, 'comment', '@html_comment'],
+                    // Special variables
+                    [/\b(session|request|g)\b/, 'variable.language'],
+
+                    // Operators and symbols
+                    [/[{}()\[\].]/, '@brackets'],
+                    [/@symbols/, 'operator'],
+
+                    // Identifiers (variables)
+                    [/[a-zA-Z_]\w*/, 'variable'],
+
+                    [/[ \t\r\n]+/, 'white'],
                 ],
 
-                string_double: [
+                // ========== JINJA2 STATEMENT STATE {% ... %} ==========
+                jinjaStatement: [
+                    // Exit statement - Matching purple/magenta highlight
+                    [/%\}/, { token: 'tag', next: '@pop' }],
+
+                    // Jinja2 block keywords
+                    [/\b(block|endblock|extends|include|import|macro|endmacro|call|endcall|filter|endfilter|set|endset)\b/, 'keyword.control.jinja'],
+
+                    // Jinja2 control flow
+                    [/\b(if|elif|else|endif|for|endfor|in|not|and|or|is|defined|undefined)\b/, 'keyword.jinja'],
+
+                    // Boolean and None
+                    [/\b(true|false|none)\b/, 'constant.language'],
+
+                    // Numbers
+                    [/\b\d+\.?\d*\b/, 'number'],
+
+                    // Strings
+                    [/"([^"\\]|\\.)*"/, 'string'],
+                    [/'([^'\\]|\\.)*'/, 'string'],
+
+                    // Operators
+                    [/[{}()\[\].]/, '@brackets'],
+                    [/@symbols/, 'operator'],
+
+                    // Identifiers
+                    [/[a-zA-Z_]\w*/, 'identifier'],
+
+                    [/[ \t\r\n]+/, 'white'],
+                ],
+
+                // ========== STRING STATES FOR PYTHON ==========
+                stringDouble: [
                     [/[^\\"]+/, 'string'],
-                    [/"/, 'string', '@pop']
+                    [/@escapes/, 'string.escape'],
+                    [/\\./, 'string.escape.invalid'],
+                    [/"/, { token: 'string', next: '@pop' }]
                 ],
 
-                string_single: [
+                stringSingle: [
                     [/[^\\']+/, 'string'],
-                    [/'/, 'string', '@pop']
+                    [/@escapes/, 'string.escape'],
+                    [/\\./, 'string.escape.invalid'],
+                    [/'/, { token: 'string', next: '@pop' }]
                 ],
 
-                html_comment: [
-                    [/-->/, 'comment', '@pop'],
-                    [/./, 'comment']
+                stringTripleDouble: [
+                    [/[^"]+/, 'string'],
+                    [/"""/, { token: 'string', next: '@pop' }],
+                    [/"/, 'string']
+                ],
+
+                stringTripleSingle: [
+                    [/[^']+/, 'string'],
+                    [/'''/, { token: 'string', next: '@pop' }],
+                    [/'/, 'string']
+                ],
+
+                // F-strings (simplified - full support would require nested expressions)
+                fstringDouble: [
+                    [/[^\\"{}]+/, 'string'],
+                    [/@escapes/, 'string.escape'],
+                    [/\{/, 'string.interpolation.delimiter', '@fstringInterp'],
+                    [/"/, { token: 'string', next: '@pop' }]
+                ],
+
+                fstringSingle: [
+                    [/[^\\'{}]+/, 'string'],
+                    [/@escapes/, 'string.escape'],
+                    [/\{/, 'string.interpolation.delimiter', '@fstringInterp'],
+                    [/'/, { token: 'string', next: '@pop' }]
+                ],
+
+                fstringInterp: [
+                    [/[^}]+/, 'string.interpolation'],
+                    [/\}/, { token: 'string.interpolation.delimiter', next: '@pop' }]
                 ]
             }
         });
@@ -241,6 +476,78 @@ function registerScribeLanguage() {
 }
 
 /**
+ * Load panel state from localStorage
+ */
+function loadPanelState() {
+    try {
+        const saved = localStorage.getItem('scribe-ide-panels');
+        if (saved) {
+            const state = JSON.parse(saved);
+            IDE.panels = { ...IDE.panels, ...state };
+        }
+    } catch (error) {
+        console.error('IDE: Error loading panel state:', error);
+    }
+}
+
+/**
+ * Save panel state to localStorage
+ */
+function savePanelState() {
+    try {
+        localStorage.setItem('scribe-ide-panels', JSON.stringify(IDE.panels));
+    } catch (error) {
+        console.error('IDE: Error saving panel state:', error);
+    }
+}
+
+/**
+ * Load file tree state from localStorage
+ */
+function loadFileTreeState() {
+    try {
+        const saved = localStorage.getItem('scribe-ide-file-tree');
+        if (saved) {
+            const state = JSON.parse(saved);
+            IDE.categoryState.collapsedCategories = new Set(state.collapsedCategories || []);
+            IDE.categoryState.collapsedFolders = new Set(state.collapsedFolders || []);
+        }
+    } catch (error) {
+        console.error('IDE: Error loading file tree state:', error);
+    }
+}
+
+/**
+ * Save file tree state to localStorage
+ */
+function saveFileTreeState() {
+    try {
+        const state = {
+            collapsedCategories: Array.from(IDE.categoryState.collapsedCategories),
+            collapsedFolders: Array.from(IDE.categoryState.collapsedFolders)
+        };
+        localStorage.setItem('scribe-ide-file-tree', JSON.stringify(state));
+    } catch (error) {
+        console.error('IDE: Error saving file tree state:', error);
+    }
+}
+
+/**
+ * Debounce function for performance
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+/**
  * Initialize event listeners
  */
 function initEventListeners() {
@@ -261,9 +568,7 @@ function initEventListeners() {
         tab.addEventListener('click', () => switchPanel(tab.dataset.panel));
     });
 
-    // New file/folder buttons
-    document.getElementById('new-file-btn').addEventListener('click', () => showModal('new-file-modal'));
-    document.getElementById('new-folder-btn').addEventListener('click', () => showModal('new-folder-modal'));
+    // Refresh files button
     document.getElementById('refresh-files-btn').addEventListener('click', loadFileTree);
 
     // Modal handlers
@@ -293,27 +598,61 @@ function initEventListeners() {
  * Initialize panel resizers
  */
 function initResizers() {
-    // Sidebar resizer
+    loadPanelState();
+
     const sidebarResizer = document.getElementById('sidebar-resizer');
     const sidebar = document.getElementById('sidebar');
 
     if (sidebarResizer && sidebar) {
-        makeResizable(sidebarResizer, sidebar, 'width', 150, 500);
+        sidebar.style.width = `${IDE.panels.sidebarWidth}px`;
+        makeResizable(sidebarResizer, sidebar, 'width', 150, 500, false, (newWidth) => {
+            IDE.panels.sidebarWidth = newWidth;
+            savePanelState();
+        });
     }
 
-    // Right panel resizer
     const rightPanelResizer = document.getElementById('right-panel-resizer');
     const rightPanel = document.getElementById('right-panel');
 
     if (rightPanelResizer && rightPanel) {
-        makeResizable(rightPanelResizer, rightPanel, 'width', 300, 800, true);
+        // Calculate 50/50 split if no saved width
+        if (!IDE.panels.previewWidth) {
+            const ideMain = document.getElementById('ide-main');
+            const availableWidth = ideMain.offsetWidth - IDE.panels.sidebarWidth - 8;
+            IDE.panels.previewWidth = Math.floor(availableWidth / 2);
+        }
+
+        rightPanel.style.width = `${IDE.panels.previewWidth}px`;
+        if (!IDE.panels.previewVisible) {
+            rightPanel.classList.add('hidden');
+        }
+
+        const calculateMaxWidth = () => {
+            const ideMain = document.getElementById('ide-main');
+            const availableWidth = ideMain.offsetWidth - IDE.panels.sidebarWidth - 8;
+            return availableWidth - 400;
+        };
+
+        makeResizable(rightPanelResizer, rightPanel, 'width', 300, calculateMaxWidth(), true, (newWidth) => {
+            IDE.panels.previewWidth = newWidth;
+            savePanelState();
+        });
     }
+
+    const toggleBtn = document.getElementById('toggle-preview-btn');
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', togglePreviewPanel);
+        updateToggleButtonIcon();
+    }
+
+    // Window resize handler
+    window.addEventListener('resize', debounce(handleWindowResize, 200));
 }
 
 /**
  * Make an element resizable
  */
-function makeResizable(resizer, element, property, minSize, maxSize, reverse = false) {
+function makeResizable(resizer, element, property, minSize, maxSize, reverse = false, onResize = null) {
     let startPos = 0;
     let startSize = 0;
 
@@ -325,7 +664,6 @@ function makeResizable(resizer, element, property, minSize, maxSize, reverse = f
         document.addEventListener('mousemove', resize);
         document.addEventListener('mouseup', stopResize);
 
-        // Add a class to disable text selection during resize
         document.body.style.cursor = property === 'width' ? 'col-resize' : 'row-resize';
         document.body.style.userSelect = 'none';
     });
@@ -335,10 +673,14 @@ function makeResizable(resizer, element, property, minSize, maxSize, reverse = f
         const diff = reverse ? (startPos - currentPos) : (currentPos - startPos);
         let newSize = startSize + diff;
 
-        // Clamp to min/max
-        newSize = Math.max(minSize, Math.min(maxSize, newSize));
+        const actualMaxSize = typeof maxSize === 'function' ? maxSize() : maxSize;
+        newSize = Math.max(minSize, Math.min(actualMaxSize, newSize));
 
         element.style[property] = `${newSize}px`;
+
+        if (onResize) {
+            onResize(newSize);
+        }
     }
 
     function stopResize() {
@@ -346,6 +688,61 @@ function makeResizable(resizer, element, property, minSize, maxSize, reverse = f
         document.removeEventListener('mouseup', stopResize);
         document.body.style.cursor = '';
         document.body.style.userSelect = '';
+    }
+}
+
+/**
+ * Toggle preview panel visibility
+ */
+function togglePreviewPanel() {
+    const rightPanel = document.getElementById('right-panel');
+    const isHidden = rightPanel.classList.contains('hidden');
+
+    if (isHidden) {
+        rightPanel.classList.remove('hidden');
+        rightPanel.style.width = `${IDE.panels.previewWidth}px`;
+        IDE.panels.previewVisible = true;
+    } else {
+        rightPanel.classList.add('hidden');
+        IDE.panels.previewVisible = false;
+    }
+
+    updateToggleButtonIcon();
+    savePanelState();
+}
+
+/**
+ * Update toggle button icon based on panel state
+ */
+function updateToggleButtonIcon() {
+    const toggleBtn = document.getElementById('toggle-preview-btn');
+    const rightPanel = document.getElementById('right-panel');
+
+    if (toggleBtn) {
+        const iconSpan = toggleBtn.querySelector('.icon');
+        const isHidden = rightPanel.classList.contains('hidden');
+        if (iconSpan) {
+            iconSpan.textContent = isHidden ? '▶' : '◀';
+        }
+        toggleBtn.title = isHidden ? 'Show Preview Panel' : 'Hide Preview Panel';
+    }
+}
+
+/**
+ * Handle window resize to keep panels within bounds
+ */
+function handleWindowResize() {
+    const rightPanel = document.getElementById('right-panel');
+    if (!rightPanel || rightPanel.classList.contains('hidden')) return;
+
+    const ideMain = document.getElementById('ide-main');
+    const availableWidth = ideMain.offsetWidth - IDE.panels.sidebarWidth - 8;
+    const maxWidth = availableWidth - 400;
+
+    if (IDE.panels.previewWidth > maxWidth) {
+        IDE.panels.previewWidth = maxWidth;
+        rightPanel.style.width = `${maxWidth}px`;
+        savePanelState();
     }
 }
 
@@ -375,70 +772,334 @@ async function loadFileTree() {
 }
 
 /**
- * Render file tree in sidebar
+ * Categorize files into Templates, Logic, Data, Style
  */
-function renderFileTree() {
-    console.log('IDE: Rendering file tree...');
-    const container = document.getElementById('file-tree');
+function categorizeFiles(fileTree) {
+    const categories = {
+        templates: { label: 'Templates (Pages)', icon: '📄', files: [], collapsed: false },
+        logic: { label: 'Logic', icon: '🔧', folders: {}, collapsed: false },
+        data: { label: 'Data', icon: '🗄️', folders: {}, collapsed: false },
+        style: { label: 'Style', icon: '🎨', folders: {}, collapsed: false }
+    };
 
-    if (!container) {
-        console.error('IDE: file-tree container not found!');
-        return;
+    const configFiles = [];
+
+    function processNode(node, parentPath = '') {
+        const fullPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+
+        // Config files
+        if (node.type === 'file' && node.name === 'scribe.json') {
+            configFiles.push({ ...node, path: fullPath });
+            return;
+        }
+
+        // Templates (.stpl files anywhere)
+        if (node.type === 'file' && node.extension === '.stpl') {
+            categories.templates.files.push({ ...node, path: fullPath });
+            return;
+        }
+
+        // Logic (lib/ directory - .py files)
+        if (fullPath.startsWith('lib/') || fullPath === 'lib') {
+            if (node.type === 'file' && node.extension === '.py') {
+                addToCategoryFolder(categories.logic, node, fullPath, 'lib');
+            } else if (node.type === 'directory' && node.children) {
+                node.children.forEach(child => processNode(child, fullPath));
+            }
+            return;
+        }
+
+        // Data (migrations/ directory - .sql files)
+        if (fullPath.startsWith('migrations/') || fullPath === 'migrations') {
+            if (node.type === 'file' && node.extension === '.sql') {
+                addToCategoryFolder(categories.data, node, fullPath, 'migrations');
+            } else if (node.type === 'directory' && node.children) {
+                node.children.forEach(child => processNode(child, fullPath));
+            }
+            return;
+        }
+
+        // Style (static/css/ directory - .css files)
+        if (fullPath.startsWith('static/css/') || fullPath === 'static/css' || fullPath === 'static') {
+            if (node.type === 'file' && node.extension === '.css') {
+                addToCategoryFolder(categories.style, node, fullPath, 'static');
+            } else if (node.type === 'directory' && node.children) {
+                node.children.forEach(child => processNode(child, fullPath));
+            }
+            return;
+        }
+
+        // Process children for other directories
+        if (node.type === 'directory' && node.children) {
+            node.children.forEach(child => processNode(child, fullPath));
+        }
     }
 
-    if (!IDE.fileTree || IDE.fileTree.length === 0) {
-        console.warn('IDE: No files to render');
+    function addToCategoryFolder(category, node, fullPath, rootPath) {
+        const relativePath = fullPath.replace(new RegExp(`^${rootPath}/?`), '');
+
+        if (node.type === 'file') {
+            if (!relativePath) return;
+
+            const parts = relativePath.split('/');
+            let current = category.folders;
+
+            // Build folder structure
+            for (let i = 0; i < parts.length - 1; i++) {
+                const part = parts[i];
+                if (!current[part]) {
+                    current[part] = {
+                        name: part,
+                        files: [],
+                        subfolders: {},
+                        collapsed: false
+                    };
+                }
+                current = current[part].subfolders;
+            }
+
+            // Add file to parent folder or root
+            if (parts.length === 1) {
+                // File directly in root (e.g., lib/helpers.py)
+                if (!category.rootFiles) category.rootFiles = [];
+                category.rootFiles.push({ ...node, path: fullPath });
+            } else {
+                // File in subfolder
+                const parentKey = parts[parts.length - 2];
+                if (!current[parentKey]) {
+                    current[parentKey] = {
+                        name: parentKey,
+                        files: [],
+                        subfolders: {},
+                        collapsed: false
+                    };
+                }
+                current[parentKey].files.push({ ...node, path: fullPath });
+            }
+        }
+    }
+
+    fileTree.forEach(node => processNode(node));
+
+    // Apply collapsed state from localStorage
+    Object.keys(categories).forEach(key => {
+        categories[key].collapsed = IDE.categoryState.collapsedCategories.has(key);
+    });
+
+    return { categories, configFiles };
+}
+
+/**
+ * Render file tree in sidebar (categorized)
+ */
+function renderFileTree() {
+    console.log('IDE: Rendering categorized file tree...');
+    const container = document.getElementById('file-tree');
+
+    if (!container || !IDE.fileTree || IDE.fileTree.length === 0) {
         container.innerHTML = '<div class="loading">No files found</div>';
         return;
     }
 
-    function renderNode(node, level = 0) {
-        if (node.type === 'directory') {
-            const folderDiv = document.createElement('div');
-            folderDiv.className = 'folder-item';
-            folderDiv.style.paddingLeft = `${level * 1 + 1}rem`;
-            folderDiv.textContent = `📁 ${node.name}`;
-
-            const childrenDiv = document.createElement('div');
-            childrenDiv.className = 'folder-children';
-
-            if (node.children) {
-                node.children.forEach(child => {
-                    const childElement = renderNode(child, level + 1);
-                    childrenDiv.appendChild(childElement);
-                });
-            }
-
-            const wrapper = document.createElement('div');
-            wrapper.appendChild(folderDiv);
-            wrapper.appendChild(childrenDiv);
-
-            return wrapper;
-        } else {
-            const fileDiv = document.createElement('div');
-            fileDiv.className = 'file-item';
-            fileDiv.style.paddingLeft = `${level * 1 + 1}rem`;
-            fileDiv.textContent = `📄 ${node.name}`;
-            fileDiv.dataset.path = node.path;
-
-            fileDiv.addEventListener('click', () => openFile(node.path));
-
-            return fileDiv;
-        }
-    }
+    loadFileTreeState();
+    IDE.categorizedTree = categorizeFiles(IDE.fileTree);
+    const { categories, configFiles } = IDE.categorizedTree;
 
     container.innerHTML = '';
 
-    try {
-        IDE.fileTree.forEach(node => {
-            const element = renderNode(node);
-            container.appendChild(element);
+    // Render each category
+    Object.entries(categories).forEach(([key, category]) => {
+        const hasContent = (category.files && category.files.length > 0) ||
+                          (category.rootFiles && category.rootFiles.length > 0) ||
+                          (category.folders && Object.keys(category.folders).length > 0);
+
+        if (!hasContent) return;
+
+        const section = renderCategory(key, category);
+        container.appendChild(section);
+    });
+
+    // Render config files
+    if (configFiles.length > 0) {
+        const configSection = document.createElement('div');
+        configSection.className = 'config-files';
+        configFiles.forEach(file => {
+            const fileDiv = createFileElement(file);
+            configSection.appendChild(fileDiv);
         });
-        console.log(`IDE: Rendered ${IDE.fileTree.length} top-level items`);
-    } catch (error) {
-        console.error('IDE: Error rendering file tree:', error);
-        container.innerHTML = '<div class="loading error">Error rendering files</div>';
+        container.appendChild(configSection);
     }
+}
+
+/**
+ * Render a category section
+ */
+function renderCategory(categoryKey, category) {
+    const section = document.createElement('div');
+    section.className = 'category-section';
+
+    const fileCount = (category.files ? category.files.length : 0) +
+                     (category.rootFiles ? category.rootFiles.length : 0);
+    const folderCount = category.folders ? Object.keys(category.folders).length : 0;
+
+    const header = document.createElement('div');
+    header.className = `category-header ${category.collapsed ? 'collapsed' : ''}`;
+
+    // Create header content (clickable area)
+    const headerContent = document.createElement('div');
+    headerContent.className = 'category-header-content';
+    headerContent.innerHTML = `
+        <span class="category-icon">${category.icon}</span>
+        <span class="category-label">${category.label}</span>
+        <span class="category-count">${fileCount + folderCount}</span>
+        <span class="collapse-icon">▼</span>
+    `;
+
+    // Create action buttons
+    const actions = document.createElement('div');
+    actions.className = 'category-actions';
+
+    const newFileBtn = document.createElement('button');
+    newFileBtn.className = 'category-action-btn';
+    newFileBtn.innerHTML = '📄';
+    newFileBtn.title = 'New File';
+    newFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showNewFileModal(categoryKey);
+    });
+
+    const newFolderBtn = document.createElement('button');
+    newFolderBtn.className = 'category-action-btn';
+    newFolderBtn.innerHTML = '📁';
+    newFolderBtn.title = 'New Folder';
+    newFolderBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showNewFolderModal(categoryKey);
+    });
+
+    actions.appendChild(newFileBtn);
+    actions.appendChild(newFolderBtn);
+
+    header.appendChild(headerContent);
+    header.appendChild(actions);
+
+    const content = document.createElement('div');
+    content.className = `category-content ${category.collapsed ? 'collapsed' : ''}`;
+
+    // Render root files (files directly in category root, e.g., lib/helpers.py)
+    if (category.rootFiles) {
+        category.rootFiles.forEach(file => {
+            content.appendChild(createFileElement(file));
+        });
+    }
+
+    // Render folders
+    if (category.folders) {
+        Object.values(category.folders).forEach(folder => {
+            content.appendChild(renderFolder(folder));
+        });
+    }
+
+    // Render files
+    if (category.files) {
+        category.files.forEach(file => {
+            content.appendChild(createFileElement(file));
+        });
+    }
+
+    headerContent.addEventListener('click', () => toggleCategory(categoryKey, header, content));
+
+    section.appendChild(header);
+    section.appendChild(content);
+    return section;
+}
+
+/**
+ * Render a folder within a category
+ */
+function renderFolder(folder, level = 0) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'category-folder';
+
+    const folderDiv = document.createElement('div');
+    folderDiv.className = `folder-item ${folder.collapsed ? 'collapsed' : ''}`;
+    folderDiv.style.paddingLeft = `${level * 1 + 1}rem`;
+    folderDiv.innerHTML = `<span class="folder-icon">📁</span> ${folder.name}`;
+
+    const childrenDiv = document.createElement('div');
+    childrenDiv.className = `folder-children ${folder.collapsed ? 'collapsed' : ''}`;
+
+    if (folder.subfolders) {
+        Object.values(folder.subfolders).forEach(subfolder => {
+            childrenDiv.appendChild(renderFolder(subfolder, level + 1));
+        });
+    }
+
+    if (folder.files) {
+        folder.files.forEach(file => {
+            childrenDiv.appendChild(createFileElement(file, level + 1));
+        });
+    }
+
+    folderDiv.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleFolder(folder.name, folderDiv, childrenDiv);
+    });
+
+    wrapper.appendChild(folderDiv);
+    wrapper.appendChild(childrenDiv);
+    return wrapper;
+}
+
+/**
+ * Create a file element
+ */
+function createFileElement(file, level = 0) {
+    const fileDiv = document.createElement('div');
+    fileDiv.className = 'file-item';
+    fileDiv.style.paddingLeft = `${level * 1 + 1}rem`;
+    fileDiv.textContent = `📄 ${file.name}`;
+    fileDiv.dataset.path = file.path;
+    fileDiv.addEventListener('click', () => openFile(file.path));
+    return fileDiv;
+}
+
+/**
+ * Toggle category collapsed state
+ */
+function toggleCategory(categoryKey, headerElement, contentElement) {
+    const isCollapsed = headerElement.classList.contains('collapsed');
+
+    if (isCollapsed) {
+        headerElement.classList.remove('collapsed');
+        contentElement.classList.remove('collapsed');
+        IDE.categoryState.collapsedCategories.delete(categoryKey);
+    } else {
+        headerElement.classList.add('collapsed');
+        contentElement.classList.add('collapsed');
+        IDE.categoryState.collapsedCategories.add(categoryKey);
+    }
+
+    saveFileTreeState();
+}
+
+/**
+ * Toggle folder collapsed state
+ */
+function toggleFolder(folderPath, folderElement, childrenElement) {
+    const isCollapsed = folderElement.classList.contains('collapsed');
+
+    if (isCollapsed) {
+        folderElement.classList.remove('collapsed');
+        childrenElement.classList.remove('collapsed');
+        IDE.categoryState.collapsedFolders.delete(folderPath);
+    } else {
+        folderElement.classList.add('collapsed');
+        childrenElement.classList.add('collapsed');
+        IDE.categoryState.collapsedFolders.add(folderPath);
+    }
+
+    saveFileTreeState();
 }
 
 /**
@@ -690,14 +1351,79 @@ function markFileAsModified() {
 }
 
 /**
+ * Category context for file creation
+ */
+let currentFileContext = null;
+
+/**
+ * Show new file modal with category context
+ */
+function showNewFileModal(categoryKey) {
+    const contexts = {
+        templates: { extension: '.stpl', basePath: '', label: 'Template' },
+        logic: { extension: '.py', basePath: 'lib/', label: 'Python Module' },
+        data: { extension: '.sql', basePath: 'migrations/', label: 'Migration' },
+        style: { extension: '.css', basePath: 'static/css/', label: 'Stylesheet' }
+    };
+
+    currentFileContext = contexts[categoryKey];
+    const modal = document.getElementById('new-file-modal');
+    const input = document.getElementById('new-file-name');
+    const title = modal.querySelector('h2');
+
+    title.textContent = `New ${currentFileContext.label}`;
+    input.placeholder = `${currentFileContext.basePath}filename${currentFileContext.extension}`;
+    input.value = '';
+
+    showModal('new-file-modal');
+    setTimeout(() => input.focus(), 100);
+}
+
+/**
+ * Show new folder modal with category context
+ */
+function showNewFolderModal(categoryKey) {
+    const contexts = {
+        templates: { basePath: '', label: 'Template Folder' },
+        logic: { basePath: 'lib/', label: 'Logic Folder' },
+        data: { basePath: 'migrations/', label: 'Data Folder' },
+        style: { basePath: 'static/css/', label: 'Style Folder' }
+    };
+
+    currentFileContext = contexts[categoryKey];
+    const modal = document.getElementById('new-folder-modal');
+    const input = document.getElementById('new-folder-name');
+    const title = modal.querySelector('h2');
+
+    title.textContent = `New ${currentFileContext.label}`;
+    input.placeholder = `${currentFileContext.basePath}foldername`;
+    input.value = '';
+
+    showModal('new-folder-modal');
+    setTimeout(() => input.focus(), 100);
+}
+
+/**
  * Create new file
  */
 async function createNewFile() {
-    const filename = document.getElementById('new-file-name').value.trim();
+    let filename = document.getElementById('new-file-name').value.trim();
 
     if (!filename) {
         alert('Please enter a filename');
         return;
+    }
+
+    // Apply context-aware defaults
+    if (currentFileContext) {
+        // If user didn't provide basePath, prepend it
+        if (!filename.startsWith(currentFileContext.basePath)) {
+            filename = currentFileContext.basePath + filename;
+        }
+        // If user didn't provide extension, append it
+        if (!filename.endsWith(currentFileContext.extension)) {
+            filename += currentFileContext.extension;
+        }
     }
 
     try {
@@ -715,6 +1441,7 @@ async function createNewFile() {
         if (data.success) {
             hideModal('new-file-modal');
             document.getElementById('new-file-name').value = '';
+            currentFileContext = null;
             loadFileTree();
             openFile(filename);
         } else {
@@ -729,11 +1456,19 @@ async function createNewFile() {
  * Create new folder
  */
 async function createNewFolder() {
-    const foldername = document.getElementById('new-folder-name').value.trim();
+    let foldername = document.getElementById('new-folder-name').value.trim();
 
     if (!foldername) {
         alert('Please enter a folder name');
         return;
+    }
+
+    // Apply context-aware defaults
+    if (currentFileContext) {
+        // If user didn't provide basePath, prepend it
+        if (!foldername.startsWith(currentFileContext.basePath)) {
+            foldername = currentFileContext.basePath + foldername;
+        }
     }
 
     try {
@@ -751,6 +1486,7 @@ async function createNewFolder() {
         if (data.success) {
             hideModal('new-folder-modal');
             document.getElementById('new-folder-name').value = '';
+            currentFileContext = null;
             loadFileTree();
         } else {
             alert(`Error: ${data.error}`);
@@ -814,18 +1550,38 @@ function refreshPreview() {
  */
 async function loadDatabaseTables() {
     try {
-        const response = await fetch('/__scribe_gui/api/database/tables');
+        // First, get available database connections
+        const connectionsResponse = await fetch('/__scribe_gui/api/database/connections');
+        const connectionsData = await connectionsResponse.json();
+
+        if (!connectionsData.connections || connectionsData.connections.length === 0) {
+            console.error('No database connections available');
+            return;
+        }
+
+        // Use 'default' connection if available, otherwise use first connection
+        const connectionName = connectionsData.connections.includes('default')
+            ? 'default'
+            : connectionsData.connections[0];
+
+        // Store current connection for use in loadTableData
+        window.currentDbConnection = connectionName;
+
+        // Now load tables for this connection
+        const response = await fetch(`/__scribe_gui/api/database/${connectionName}/tables`);
         const data = await response.json();
 
         const select = document.getElementById('table-select');
         select.innerHTML = '<option value="">Select a table...</option>';
 
-        data.tables.forEach(table => {
-            const option = document.createElement('option');
-            option.value = table;
-            option.textContent = table;
-            select.appendChild(option);
-        });
+        if (data.tables) {
+            data.tables.forEach(table => {
+                const option = document.createElement('option');
+                option.value = table;
+                option.textContent = table;
+                select.appendChild(option);
+            });
+        }
     } catch (error) {
         console.error('Error loading tables:', error);
     }
@@ -836,7 +1592,9 @@ async function loadDatabaseTables() {
  */
 async function loadTableData(tableName) {
     try {
-        const response = await fetch(`/__scribe_gui/api/database/table/${tableName}`);
+        // Use the stored connection name (default to 'default' if not set)
+        const connectionName = window.currentDbConnection || 'default';
+        const response = await fetch(`/__scribe_gui/api/database/${connectionName}/table/${tableName}`);
         const data = await response.json();
 
         const content = document.getElementById('database-content');

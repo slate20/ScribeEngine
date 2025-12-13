@@ -10,11 +10,11 @@ Flask-WTF>=1.2.0,<2.0.0
 
 # Database Support
 # SQLite is built into Python
+psycopg2-binary>=2.9.0  # PostgreSQL
+pymssql>=2.2.0          # Microsoft SQL Server
 # Uncomment below for other database support
 # SQLAlchemy>=2.0.0,<3.0.0
-# psycopg2-binary>=2.9.0  # PostgreSQL
 # pymysql>=1.1.0          # MySQL
-# pymssql>=2.2.0          # MSSQL
 
 # Development & Testing
 pytest>=7.4.0,<8.0.0

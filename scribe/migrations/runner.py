@@ -6,17 +6,20 @@ Migrations are SQL files in the migrations/ directory, executed in order.
 
 import os
 import glob
-from typing import List
+from typing import List, Union
 from scribe.database.base import DatabaseAdapter
 
 
-def run_migrations(db: DatabaseAdapter, project_path: str):
+def run_migrations(db: Union[DatabaseAdapter, 'DatabaseManager'], project_path: str):
     """
     Run all pending database migrations.
 
     Args:
-        db: DatabaseAdapter instance
+        db: DatabaseAdapter or DatabaseManager instance
         project_path: Path to the project directory
+
+    Note:
+        If a DatabaseManager is passed, migrations run on the 'default' connection.
 
     Migration files:
         migrations/
@@ -36,6 +39,14 @@ def run_migrations(db: DatabaseAdapter, project_path: str):
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
     """
+    # If DatabaseManager is passed, use the 'default' connection
+    from scribe.database.manager import DatabaseManager
+    if isinstance(db, DatabaseManager):
+        if 'default' not in db:
+            print("Warning: No 'default' database connection found. Skipping migrations.")
+            return
+        db = db['default']
+
     migrations_path = os.path.join(project_path, 'migrations')
 
     # If migrations/ directory doesn't exist, nothing to do

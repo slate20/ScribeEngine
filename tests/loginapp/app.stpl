@@ -1,36 +1,33 @@
 @route('/')
 {$
+page_title = "Welcome"
 # Redirect to dashboard if logged in, otherwise show login
 if 'user_id' in session:
     return redirect('/dashboard')
 $}
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Welcome</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Welcome to the ScribeEngine Login Demo</h1>
-        <p><a href="/login" class="btn-primary">Login</a></p>
-        <p><small>Username: testuser, Password: password123</small></p>
-    </div>
-</body>
-</html>
+<div class="container">
+    <h1>Welcome to the ScribeEngine Login Demo</h1>
+    <p><a href="/login" class="btn-primary">Login</a></p>
+    <p><small>Username: testuser, Password: password123</small></p>
+</div>
 
 
 @route('/login', methods=['GET', 'POST'])
 {$
+page_title = "Login"
 error = None
+
+# Redirect to dashboard if logged in, otherwise show login
+if 'user_id' in session:
+    return redirect('/dashboard')
 
 if request.method == 'POST':
     username = request.form.get('username')
     password = request.form.get('password')
 
     # Query database
-    users = db.query("SELECT * FROM users WHERE username = ?", (username,))
+    users = db['default'].query("SELECT * FROM users WHERE username = ?", (username,))
 
     if users:
         user = users[0]
@@ -43,66 +40,49 @@ if request.method == 'POST':
         error = "User not found"
 $}
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Login</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container-narrow">
-        <div class="card">
-            <h2>Login</h2>
+<div class="container-narrow">
+    <div class="card">
+        <h2>Login</h2>
 
-            {% if error %}
-            <div class="alert-error">{{ error }}</div>
-            {% endif %}
+        {% if error %}
+        <div class="alert-error">{{ error }}</div>
+        {% endif %}
 
-            <form method="POST">
-                {{ csrf() }}
+        <form method="POST">
+            {{ csrf() }}
 
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" name="username" required>
-                </div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" name="username" required>
+            </div>
 
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" required>
-                </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
 
-                <button type="submit" class="btn-primary">Login</button>
-            </form>
+            <button type="submit" class="btn-primary">Login</button>
+        </form>
 
-            <p><a href="/">← Back to Home</a></p>
-        </div>
+        <p><a href="/">← Back to Home</a></p>
     </div>
-</body>
-</html>
+</div>
 
 
 @route('/dashboard')
 @require_auth
 {$
-user = db.query("SELECT * FROM users WHERE id = ?", (session['user_id'],))[0]
+page_title = "Dashboard"
+user = db['default'].query("SELECT * FROM users WHERE id = ?", (session['user_id'],))[0]
 $}
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <div class="container">
-        <h1>Welcome, {{ user['username'] }}!</h1>
-        <p>You successfully logged in.</p>
-        <p>Your user ID is: {{ user['id'] }}</p>
-        <p>Account created: {{ user['created_at'] }}</p>
-        <p><a href="/logout" class="btn-secondary">Logout</a></p>
-    </div>
-</body>
-</html>
+<div class="container">
+    <h1>Welcome, {{ user['username'] }}!</h1>
+    <p>You successfully logged in.</p>
+    <p>Your user ID is: {{ user['id'] }}</p>
+    <p>Account created: {{ user['created_at'] }}</p>
+    <p><a href="/logout" class="btn-secondary">Logout</a></p>
+</div>
 
 
 @route('/logout')

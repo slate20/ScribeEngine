@@ -1,0 +1,49 @@
+@route('/')
+{$
+message = "Hello, ScribeEngine!"
+$}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ message }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>{{ message }}</h1>
+    <p>Your ScribeEngine app is running!</p>
+
+    <h2>Getting Started</h2>
+    <ul>
+        <li>Edit <code>app.stpl</code> to add routes and templates</li>
+        <li>Add helper functions in <code>lib/</code> directory</li>
+        <li>Create database migrations in <code>migrations/</code> directory</li>
+        <li>Run <code>scribe dev</code> to start development server</li>
+    </ul>
+
+    <h2>Example Routes</h2>
+    <ul>
+        <li><a href="/">Home</a> (this page)</li>
+        <li><a href="/about">About</a></li>
+    </ul>
+</body>
+</html>
+
+
+@route('/about')
+{$
+title = "About This Project"
+$}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <h1>{{ title }}</h1>
+    <p>This is a ScribeEngine application.</p>
+    <p><a href="/">← Back to Home</a></p>
+</body>
+</html>

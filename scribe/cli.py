@@ -50,9 +50,11 @@ def new(project_name, path):
 
     # Create scribe.json
     scribe_json = '''{
-  "database": {
-    "type": "sqlite",
-    "database": "app.db"
+  "databases": {
+    "default": {
+      "type": "sqlite",
+      "database": "app.db"
+    }
   },
   "secret_key": "CHANGE_THIS_TO_A_RANDOM_SECRET_KEY_IN_PRODUCTION"
 }
@@ -60,56 +62,86 @@ def new(project_name, path):
     with open(os.path.join(project_path, 'scribe.json'), 'w') as f:
         f.write(scribe_json)
 
-    # Create example app.stpl
+    # Create base.stpl layout template
+    base_stpl = '''<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title | default('My App') }}</title>
+    <meta name="description" content="{{ page_description | default('') }}">
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand"><a href="/">My App</a></div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/about">About</a>
+        </div>
+    </nav>
+
+    <main class="container">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <p>&copy; 2025 My ScribeEngine App</p>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
+'''
+    with open(os.path.join(project_path, 'base.stpl'), 'w') as f:
+        f.write(base_stpl)
+
+    # Create example app.stpl (using layout system - no HTML boilerplate!)
     app_stpl = '''@route('/')
 {$
+page_title = "Home"
 message = "Hello, ScribeEngine!"
 $}
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ message }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <h1>{{ message }}</h1>
-    <p>Your ScribeEngine app is running!</p>
+<h1>{{ message }}</h1>
+<p>Your ScribeEngine app is running!</p>
 
-    <h2>Getting Started</h2>
-    <ul>
-        <li>Edit <code>app.stpl</code> to add routes and templates</li>
-        <li>Add helper functions in <code>lib/</code> directory</li>
-        <li>Create database migrations in <code>migrations/</code> directory</li>
-        <li>Run <code>scribe dev</code> to start development server</li>
-    </ul>
+<h2>Getting Started</h2>
+<ul>
+    <li>Edit <code>app.stpl</code> to add routes</li>
+    <li>Modify <code>base.stpl</code> to customize your layout</li>
+    <li>Add helper functions in <code>lib/</code> directory</li>
+    <li>Create database migrations in <code>migrations/</code> directory</li>
+    <li>Run <code>scribe dev</code> to start development server</li>
+</ul>
 
-    <h2>Example Routes</h2>
-    <ul>
-        <li><a href="/">Home</a> (this page)</li>
-        <li><a href="/about">About</a></li>
-    </ul>
-</body>
-</html>
+<h2>Example Routes</h2>
+<ul>
+    <li><a href="/">Home</a> (this page)</li>
+    <li><a href="/about">About</a></li>
+</ul>
 
 
 @route('/about')
 {$
-title = "About This Project"
+page_title = "About"
+page_description = "Learn about this ScribeEngine application"
 $}
 
-<!DOCTYPE html>
-<html>
-<head>
-    <title>{{ title }}</title>
-    <link rel="stylesheet" href="/static/css/style.css">
-</head>
-<body>
-    <h1>{{ title }}</h1>
-    <p>This is a ScribeEngine application.</p>
-    <p><a href="/">← Back to Home</a></p>
-</body>
-</html>
+<h1>About This Project</h1>
+<p>Built with ScribeEngine - no HTML boilerplate needed!</p>
+<p>All routes automatically use the layout defined in <code>base.stpl</code>.</p>
+
+<h2>Layout Features</h2>
+<ul>
+    <li>Shared navigation and footer across all pages</li>
+    <li>Set page title with <code>page_title</code> variable</li>
+    <li>Set meta description with <code>page_description</code> variable</li>
+    <li>Use explicit blocks for advanced layouts</li>
+</ul>
+
+<p><a href="/">← Back to Home</a></p>
 '''
     with open(os.path.join(project_path, 'app.stpl'), 'w') as f:
         f.write(app_stpl)
@@ -194,7 +226,7 @@ $}
 ```python
 @route('/users')
 {$
-users = db.query("SELECT * FROM users")
+users = db['default'].query("SELECT * FROM users")
 $}
 
 {'''+ '''% for user in users %}

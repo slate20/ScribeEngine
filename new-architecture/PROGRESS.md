@@ -1,16 +1,17 @@
 # ScribeEngine 2.0 - Development Progress
 
-**Last Updated:** 2025-12-07
-**Current Phase:** Phase 2A - GUI IDE COMPLETE ✓
+**Last Updated:** 2025-12-11
+**Current Phase:** Phase 2B - Multi-Database COMPLETE ✓
 **Version:** 2.0.0-beta
 
 ---
 
 ## Quick Stats
 
-- **Lines of Code:** ~11,000+ (production code)
-- **Core Components:** 11/11 Complete + GUI IDE
-- **Test Coverage:** Login example working, GUI IDE functional
+- **Lines of Code:** ~12,500+ (production code)
+- **Core Components:** 11/11 Complete + GUI IDE + Multi-Database
+- **Database Support:** SQLite, PostgreSQL, MSSQL (3 databases)
+- **Test Coverage:** 14 database tests passing, Login example working, GUI IDE functional
 - **Distribution:** Standalone binary (PyInstaller) with IDE
 - **Documentation:** 28,000+ words
 
@@ -54,9 +55,13 @@
 
 #### Database Layer
 - ✅ SQLite adapter with full CRUD
+- ✅ PostgreSQL adapter with full CRUD 🆕
+- ✅ MSSQL adapter with full CRUD 🆕
+- ✅ Multi-database connection manager 🆕
 - ✅ Fluent query builder interface
-- ✅ `db.find()`, `db.where()`, `db.insert()`, `db.update()`, `db.delete()`
-- ✅ `db.table().where().order_by().limit().all()` chaining
+- ✅ `db['default'].find()`, `db['default'].where()`, `db['default'].insert()`, etc. 🆕
+- ✅ `db['analytics'].table().where().order_by().limit().all()` chaining 🆕
+- ✅ Automatic placeholder conversion (? → %s for PostgreSQL/MSSQL) 🆕
 - ✅ Parameterized queries (SQL injection prevention)
 - ✅ Row objects with dict/attribute access
 
@@ -114,7 +119,7 @@
 - ✅ Static files 404 (fixed Flask static_folder path)
 
 #### Current Limitations
-- ⚠️ SQLite only (PostgreSQL, MySQL, MSSQL not implemented)
+- ⚠️ MySQL not implemented (SQLite, PostgreSQL, MSSQL done) 🔄
 - ⚠️ No query logging/debug toolbar
 - ⚠️ No rate limiting implementation
 - ⚠️ No email/notification helpers
@@ -196,18 +201,115 @@
 
 ---
 
-## Phase 2B: Multi-Database & Production Ready 🔜 NEXT
+## Phase 2B: Multi-Database Support ✅ COMPLETE
 
-**Status:** Not Started
-**Estimated Effort:** 3-4 weeks
+**Status:** ✅ Complete (2025-12-11)
+**Effort:** ~1,500 lines of code
+**Features:** PostgreSQL, MSSQL, multiple simultaneous connections
 
-### Goals
-- [ ] PostgreSQL adapter (individual connection params)
-- [ ] MSSQL adapter (individual connection params)
-- [ ] Enhanced configuration system
+### Implemented Features
+
+#### Database Adapters
+- ✅ PostgreSQL adapter (psycopg2-based)
+- ✅ MSSQL adapter (pymssql-based)
+- ✅ Automatic placeholder conversion (? → %s)
+- ✅ RETURNING/OUTPUT clauses for INSERT operations
+- ✅ All CRUD operations on both databases
+- ✅ Transaction support (commit/rollback)
+
+#### Multi-Database Manager
+- ✅ Named database connections
+- ✅ Explicit connection access (`db['name']`)
+- ✅ Dictionary-style interface
+- ✅ Helpful error messages
+- ✅ Backward compatibility (old config format)
+- ✅ Connection validation
+
+#### GUI IDE Integration
+- ✅ Database connection selector
+- ✅ Multi-database table browser
+- ✅ Connection-aware data viewer
+- ✅ Support for SQLite, PostgreSQL, MSSQL in IDE
+
+#### Configuration System
+- ✅ Named connections in `scribe.json`
+- ✅ Individual connection parameters (no connection strings)
+- ✅ Multiple databases in single project
+- ✅ Backward compatible with single `"database"` key
+
+### Code Metrics
+
+| Component | Lines | File |
+|-----------|-------|------|
+| PostgreSQL Adapter | ~334 | `scribe/database/postgresql.py` |
+| MSSQL Adapter | ~356 | `scribe/database/mssql.py` |
+| Database Manager | ~168 | `scribe/database/manager.py` |
+| PostgreSQL Tests | ~200 | `tests/test_postgresql_adapter.py` |
+| MSSQL Tests | ~206 | `tests/test_mssql_adapter.py` |
+| Multi-DB Tests | ~206 | `tests/test_multi_database.py` |
+| GUI Updates | ~50 | `scribe/gui/routes.py` (additions) |
+| **Total New Code** | **~1,520** | |
+
+### Testing Completed
+
+| Test | Status | Notes |
+|------|--------|-------|
+| PostgreSQL Adapter | ✅ Pass | 4 unit tests passing |
+| MSSQL Adapter | ✅ Pass | 4 unit tests passing |
+| Multi-Database | ✅ Pass | 6 tests passing |
+| GUI Multi-DB | ✅ Pass | Connection selector works |
+| Backward Compat | ✅ Pass | Old config format works |
+| LoginApp Updated | ✅ Pass | Uses new `db['default']` syntax |
+| **Total Tests** | **✅ 14/14** | All passing |
+
+### Example Configuration
+
+**Single Database:**
+```json
+{
+  "databases": {
+    "default": {"type": "sqlite", "database": "app.db"}
+  }
+}
+```
+
+**Multiple Databases:**
+```json
+{
+  "databases": {
+    "default": {"type": "sqlite", "database": "app.db"},
+    "analytics": {
+      "type": "postgresql",
+      "host": "localhost",
+      "port": 5432,
+      "user": "analytics",
+      "password": "secret",
+      "database": "analytics_db"
+    },
+    "warehouse": {
+      "type": "mssql",
+      "host": "dataserver.com",
+      "port": 1433,
+      "user": "warehouse_user",
+      "password": "secure",
+      "database": "warehouse_db"
+    }
+  }
+}
+```
+
+**Template Usage:**
+```python
+{$
+users = db['default'].query("SELECT * FROM users")
+stats = db['analytics'].query("SELECT * FROM page_views")
+reports = db['warehouse'].query("SELECT * FROM monthly_reports")
+$}
+```
+
+### Remaining Goals (Future)
+- [ ] MySQL adapter (not prioritized)
 - [ ] Connection pooling
-- [ ] Query builder parameter translation per DB
-- [ ] Architecture for future multi-connection support
 - [ ] Form validation helpers
 - [ ] Error handling improvements
 - [ ] Logging system
@@ -288,10 +390,11 @@ ScribeEngine/
 │   ├── database/            # Database abstraction
 │   │   ├── base.py          # Abstract interface (200 lines)
 │   │   ├── sqlite.py        # SQLite implementation (250 lines)
+│   │   ├── postgresql.py    # PostgreSQL implementation (334 lines) ✅
+│   │   ├── mssql.py         # MSSQL implementation (356 lines) ✅
+│   │   ├── manager.py       # Multi-DB manager (168 lines) ✅
 │   │   ├── query_builder.py # Fluent queries (250 lines)
-│   │   ├── postgresql.py    # Placeholder
-│   │   ├── mysql.py         # Placeholder
-│   │   └── mssql.py         # Placeholder
+│   │   └── mysql.py         # Placeholder
 │   ├── execution/           # Code execution
 │   │   ├── context.py       # Execution environment (250 lines)
 │   │   └── builtins.py      # Safe builtins (120 lines)
@@ -306,7 +409,10 @@ ScribeEngine/
 │   └── templates/           # Project scaffolding
 │       └── new_project/     # Template for 'scribe new'
 ├── tests/                   # Test suite
-│   └── loginapp/           # Login example (working)
+│   ├── loginapp/           # Login example (working)
+│   ├── test_postgresql_adapter.py  # PostgreSQL tests (200 lines) ✅
+│   ├── test_mssql_adapter.py       # MSSQL tests (206 lines) ✅
+│   └── test_multi_database.py      # Multi-DB tests (206 lines) ✅
 ├── examples/               # Example applications
 ├── new-architecture/       # Design documentation (28,000 words)
 ├── build.py               # Build script (200 lines)
@@ -336,11 +442,12 @@ ScribeEngine/
 - pytest 7.4+
 - pytest-flask 1.3+
 
-### Future (Phase 2+)
-- SQLAlchemy 2.0+ (multi-database)
-- psycopg2-binary (PostgreSQL)
-- pymysql (MySQL)
-- pymssql (MSSQL)
+### Database Support (Phase 2B)
+- psycopg2-binary 2.9+ (PostgreSQL) ✅
+- pymssql 2.2+ (MSSQL) ✅
+
+### Future
+- pymysql (MySQL) - not prioritized
 
 ---
 
@@ -351,12 +458,15 @@ ScribeEngine/
 - **Phase 1 Implementation:** ~1 week
 - **Testing & Debugging:** ~2 days
 - **Build System:** ~1 day
-- **Total Phase 1:** ~3.5 weeks
+- **Phase 2A (GUI IDE):** ~3 days
+- **Phase 2B (Multi-Database):** ~1 day
+- **Total to Phase 2B:** ~4 weeks
 
-### Code Statistics (Estimated)
-- **Total Lines:** ~8,000
-- **Python Files:** 25+
-- **Test Files:** 1 (integration test)
+### Code Statistics
+- **Total Lines:** ~12,500 (production code)
+- **Python Files:** 30+
+- **Test Files:** 4 (1 integration, 3 database unit test suites)
+- **Total Tests:** 14 passing
 - **Documentation:** 28,000+ words
 - **Binary Size:** 50-80 MB (platform-dependent)
 
@@ -364,21 +474,30 @@ ScribeEngine/
 
 ## Next Steps
 
-### Immediate (Before Phase 2)
+### Completed
 1. ✅ Complete Phase 1 testing
 2. ✅ Build standalone executables
 3. ✅ Create installation system
-4. [ ] Write comprehensive README.md
-5. [ ] Create GitHub repository
-6. [ ] Add unit tests for core components
-7. [ ] Performance benchmarking
+4. ✅ Implement GUI IDE (Phase 2A)
+5. ✅ Implement PostgreSQL adapter (Phase 2B)
+6. ✅ Implement MSSQL adapter (Phase 2B)
+7. ✅ Multi-database manager (Phase 2B)
+8. ✅ Add database unit tests (14 passing)
 
-### Short Term (Phase 2 Prep)
-1. [ ] Design PostgreSQL adapter
-2. [ ] Research SQLAlchemy integration
-3. [ ] Plan query builder abstraction
-4. [ ] Design role-based auth system
-5. [ ] Plan error handling improvements
+### Immediate
+1. [ ] Update build.py to include new database modules
+2. [ ] Test standalone binary with PostgreSQL/MSSQL
+3. [ ] Write comprehensive README.md
+4. [ ] Create GitHub repository
+5. [ ] Add unit tests for parser and execution components
+6. [ ] Performance benchmarking
+
+### Short Term (Phase 3 Prep)
+1. [ ] Design error handling improvements
+2. [ ] Plan query logging system
+3. [ ] Design role-based auth system
+4. [ ] Plan form validation helpers
+5. [ ] Design debug toolbar
 
 ### Long Term (Future Phases)
 1. [ ] Design web IDE architecture
@@ -391,8 +510,7 @@ ScribeEngine/
 
 ## Success Criteria Met ✅
 
-All Phase 1 success criteria have been met:
-
+### Phase 1 ✅
 - [x] Can run `scribe new myapp` and create project structure
 - [x] Can run `scribe dev` and start development server
 - [x] Can define routes using `@route('/path')`
@@ -408,16 +526,55 @@ All Phase 1 success criteria have been met:
 
 **Phase 1 is COMPLETE! 🎉**
 
+### Phase 2A (GUI IDE) ✅
+- [x] Web-based IDE with Monaco Editor
+- [x] File tree explorer with create/edit/delete
+- [x] Live preview panel
+- [x] Database browser
+- [x] Route explorer
+- [x] Hot-reload on file changes
+- [x] CSRF-protected file operations
+
+**Phase 2A is COMPLETE! 🎉**
+
+### Phase 2B (Multi-Database) ✅
+- [x] PostgreSQL adapter implemented
+- [x] MSSQL adapter implemented
+- [x] Multi-database manager (named connections)
+- [x] Explicit connection access (`db['name']`)
+- [x] Backward compatible configuration
+- [x] GUI support for multiple databases
+- [x] All database tests passing (14/14)
+- [x] Updated loginapp example
+
+**Phase 2B is COMPLETE! 🎉**
+
 ---
 
 ## Notes
 
+### Architecture Decisions
 - Standalone binary approach validated - works without Python installation
 - Waitress provides production-ready server without external dependencies
 - Template parsing with return statement support required AST transformation
 - Module auto-loading enables zero-boilerplate helper functions
 - CSRF protection is automatic and transparent to developers
 - Migration system is simple but effective for basic schema management
+
+### Multi-Database Design (Phase 2B)
+- Explicit connection access (`db['name']`) chosen for clarity
+- No ambiguous `db.query()` calls - always specify connection
+- Dictionary-style access enables multiple databases in templates
+- Automatic placeholder conversion (? → %s) maintains code portability
+- Backward compatible with old single-database config
+- GUI browser works across all three database types (SQLite, PostgreSQL, MSSQL)
+
+### Key Achievements
+- **3 database adapters** with unified API (SQLite, PostgreSQL, MSSQL)
+- **Multiple simultaneous connections** in single project
+- **14 passing tests** for database layer
+- **~1,500 lines** of new code in Phase 2B
+- **Same-day implementation** from design to completion
 
 ---
 

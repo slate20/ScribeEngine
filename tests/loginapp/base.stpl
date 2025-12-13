@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ page_title | default('Login Demo') }}</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    {% if 'user_id' in session %}
+    <nav class="navbar">
+        <a href="/">Home</a>
+        <a href="/dashboard">Dashboard</a>
+        <a href="/logout">Logout</a>
+    </nav>
+    {% endif %}
+
+    {% block content %}
+        <!-- Route content goes here -->
+    {% endblock %}
+
+    <footer>
+        <p>ScribeEngine Login Demo &copy; 2025</p>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

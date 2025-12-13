@@ -9,6 +9,7 @@ This module handles:
 """
 
 import os
+import re
 import glob
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -16,10 +17,91 @@ from flask import Flask, request, session, g, render_template_string
 from jinja2 import Template
 
 from scribe.parser import TemplateParser
-from scribe.database import create_adapter
+from scribe.database import create_adapter, DatabaseManager
 from scribe.execution import ExecutionContext
 from scribe.loader import load_helper_modules
 from scribe.helpers import response, forms, auth
+
+
+def should_skip_layout(template: str) -> bool:
+    """
+    Check if template should bypass layout wrapping.
+
+    Templates skip layout if they:
+    - Start with <!DOCTYPE (case-insensitive)
+    - Already use {% extends %}
+
+    Args:
+        template: Route template content
+
+    Returns:
+        True if layout should be skipped
+    """
+    if not template:
+        return False
+
+    template_stripped = template.strip()
+
+    # Check for DOCTYPE at start (case-insensitive)
+    if re.match(r'^\s*<!DOCTYPE', template_stripped, re.IGNORECASE):
+        return True
+
+    # Check for existing {% extends %}
+    if re.search(r'{%\s*extends\s+', template_stripped):
+        return True
+
+    return False
+
+
+def has_explicit_blocks(template: str) -> bool:
+    """
+    Check if template defines explicit Jinja2 blocks.
+
+    Args:
+        template: Route template content
+
+    Returns:
+        True if template contains {% block %} tags
+    """
+    return bool(re.search(r'{%\s*block\s+', template))
+
+
+def wrap_template_with_layout(template: str, base_template_name: str = 'base.stpl') -> str:
+    """
+    Wrap route template with layout inheritance.
+
+    Handles three modes:
+    1. Bypass: Template has <!DOCTYPE> or {% extends %} - return as-is
+    2. Explicit blocks: Template has {% block %} tags - add {% extends %}
+    3. Auto-wrap: Plain content - wrap in {% block content %} and add {% extends %}
+
+    Args:
+        template: Route template content
+        base_template_name: Name of base template file (default: 'base.stpl')
+
+    Returns:
+        Combined template string ready for render_template_string()
+    """
+    if not template:
+        return template
+
+    template_stripped = template.strip()
+
+    # Mode 3: Skip wrapping for full HTML or already-extending templates
+    if should_skip_layout(template_stripped):
+        return template_stripped
+
+    # Mode 2: Has explicit blocks - just add extends
+    if has_explicit_blocks(template_stripped):
+        return f"{{% extends '{base_template_name}' %}}\n{template_stripped}"
+
+    # Mode 1: Plain HTML - wrap in content block
+    return (
+        f"{{% extends '{base_template_name}' %}}\n"
+        f"{{% block content %}}\n"
+        f"{template_stripped}\n"
+        f"{{% endblock %}}"
+    )
 
 
 def create_app(project_path: str = '.', config: Optional[Dict[str, Any]] = None) -> Flask:
@@ -47,7 +129,8 @@ def create_app(project_path: str = '.', config: Optional[Dict[str, Any]] = None)
         __name__,
         instance_relative_config=True,
         static_folder=static_folder if os.path.exists(static_folder) else None,
-        static_url_path='/static'
+        static_url_path='/static',
+        template_folder=project_path  # Enable template loading for base.stpl
     )
 
     # Debug: print static folder location
@@ -66,11 +149,18 @@ def create_app(project_path: str = '.', config: Optional[Dict[str, Any]] = None)
         app.config['SECRET_KEY'] = secrets.token_hex(32)
         print("Warning: No SECRET_KEY configured, generated a random one. Set it in scribe.json for production.")
 
-    # Create database adapter
-    db_config = app.config.get('database', {'type': 'sqlite', 'database': 'app.db'})
-    db = create_adapter(db_config)
+    # Create database manager (supports multiple named connections)
+    # Handle both old 'database' key and new 'databases' key
+    if 'databases' not in app_config and 'database' in app_config:
+        # Old format: convert to new format
+        app_config['databases'] = {'default': app_config['database']}
+    elif 'databases' not in app_config:
+        # No database config at all: use SQLite default
+        app_config['databases'] = {'default': {'type': 'sqlite', 'database': 'app.db'}}
 
-    # Store database in app config for access in routes
+    db = DatabaseManager(app_config)
+
+    # Store database manager in app config for access in routes and GUI
     app.config['DB'] = db
 
     # Load helper modules from lib/ directory
@@ -159,9 +249,10 @@ def parse_template_files(project_path: str) -> List:
     parser = TemplateParser()
     all_routes = []
 
-    # Find all .stpl files
+    # Find all .stpl files (excluding base.stpl which is a layout template)
     stpl_pattern = os.path.join(project_path, '**', '*.stpl')
-    template_files = glob.glob(stpl_pattern, recursive=True)
+    all_template_files = glob.glob(stpl_pattern, recursive=True)
+    template_files = [f for f in all_template_files if os.path.basename(f) != 'base.stpl']
 
     if not template_files:
         print(f"Warning: No .stpl template files found in {project_path}")
@@ -276,9 +367,16 @@ def create_route_handler(route, db, helpers: Dict[str, Any], app: Flask, project
             template_vars['csrf'] = forms.csrf_token
             template_vars['url_for'] = response.url_for
 
-            # Render template
+            # Render template with layout wrapping
             if route.template:
-                html = render_template_string(route.template, **template_vars)
+                base_template_path = os.path.join(project_path, 'base.stpl')
+                if os.path.exists(base_template_path):
+                    # Wrap template with layout
+                    wrapped_template = wrap_template_with_layout(route.template)
+                    html = render_template_string(wrapped_template, **template_vars)
+                else:
+                    # No base.stpl - render as-is (backward compatibility)
+                    html = render_template_string(route.template, **template_vars)
                 return html
             else:
                 # No template, just return empty response

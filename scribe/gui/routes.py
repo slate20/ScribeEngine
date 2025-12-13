@@ -257,33 +257,84 @@ def get_routes():
     return jsonify({'routes': all_routes})
 
 
-@gui_bp.route('/api/database/tables')
-def get_database_tables():
+@gui_bp.route('/api/database/connections')
+def get_database_connections():
     """
-    Get list of all database tables
+    Get list of available database connections
     """
     from flask import current_app
 
     try:
-        db = current_app.config.get('DB')
-        if not db:
+        db_manager = current_app.config.get('DB')
+        if not db_manager:
+            return jsonify({'connections': [], 'error': 'No database configured'}), 500
+
+        # Get all connection names
+        connections = list(db_manager.keys())
+
+        return jsonify({'connections': connections})
+
+    except Exception as e:
+        return jsonify({'connections': [], 'error': str(e)}), 500
+
+
+@gui_bp.route('/api/database/<connection_name>/tables')
+def get_database_tables(connection_name):
+    """
+    Get list of all database tables for a specific connection
+    """
+    from flask import current_app
+
+    try:
+        db_manager = current_app.config.get('DB')
+        if not db_manager:
             return jsonify({'tables': [], 'error': 'No database configured'}), 500
 
-        # Get table list (SQLite-specific for now)
-        if hasattr(db, 'connection'):
-            cursor = db.connection.cursor()
+        # Get specific connection
+        if connection_name not in db_manager:
+            return jsonify({'tables': [], 'error': f'Connection "{connection_name}" not found'}), 404
+
+        db = db_manager[connection_name]
+
+        if not hasattr(db, 'connection'):
+            return jsonify({'tables': [], 'error': 'Database type not supported yet'}), 500
+
+        cursor = db.connection.cursor()
+
+        # Detect database type and use appropriate query
+        db_type = db.config.get('type', 'sqlite').lower()
+
+        if db_type == 'sqlite':
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
             tables = [row[0] for row in cursor.fetchall()]
-            return jsonify({'tables': tables})
+        elif db_type == 'postgresql':
+            cursor.execute("""
+                SELECT table_name
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                ORDER BY table_name
+            """)
+            tables = [row[0] for row in cursor.fetchall()]
+        elif db_type == 'mssql':
+            cursor.execute("""
+                SELECT TABLE_NAME
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_TYPE = 'BASE TABLE'
+                ORDER BY TABLE_NAME
+            """)
+            tables = [row[0] if isinstance(row, tuple) else row['TABLE_NAME'] for row in cursor.fetchall()]
         else:
-            return jsonify({'tables': [], 'error': 'Database type not supported yet'}), 500
+            return jsonify({'tables': [], 'error': f'Database type {db_type} not supported yet'}), 500
+
+        cursor.close()
+        return jsonify({'tables': tables})
 
     except Exception as e:
         return jsonify({'tables': [], 'error': str(e)}), 500
 
 
-@gui_bp.route('/api/database/table/<table_name>')
-def get_table_data(table_name):
+@gui_bp.route('/api/database/<connection_name>/table/<table_name>')
+def get_table_data(connection_name, table_name):
     """
     Get data from a specific table with pagination
     """
@@ -293,52 +344,88 @@ def get_table_data(table_name):
     per_page = request.args.get('per_page', 50, type=int)
 
     try:
-        db = current_app.config.get('DB')
-        if not db:
+        db_manager = current_app.config.get('DB')
+        if not db_manager:
             return jsonify({'error': 'No database configured'}), 500
+
+        # Get specific connection
+        if connection_name not in db_manager:
+            return jsonify({'error': f'Connection "{connection_name}" not found'}), 404
+
+        db = db_manager[connection_name]
 
         # Security: validate table name (prevent SQL injection)
         if not table_name.replace('_', '').isalnum():
             return jsonify({'error': 'Invalid table name'}), 400
 
         # Get column names
-        if hasattr(db, 'connection'):
-            cursor = db.connection.cursor()
+        if not hasattr(db, 'connection'):
+            return jsonify({'error': 'Database type not supported yet'}), 500
 
-            # Get column info
+        cursor = db.connection.cursor()
+        db_type = db.config.get('type', 'sqlite').lower()
+
+        # Get column info based on database type
+        if db_type == 'sqlite':
             cursor.execute(f"PRAGMA table_info({table_name})")
             columns = [row[1] for row in cursor.fetchall()]
-
-            if not columns:
-                return jsonify({'error': 'Table not found'}), 404
-
-            # Get total count
-            cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
-            total = cursor.fetchone()[0]
-
-            # Get paginated data
-            offset = (page - 1) * per_page
-            cursor.execute(f"SELECT * FROM {table_name} LIMIT ? OFFSET ?", (per_page, offset))
-
-            # Convert rows to dictionaries
-            rows = cursor.fetchall()
-            data = []
-            for row in rows:
-                row_dict = {}
-                for i, col in enumerate(columns):
-                    row_dict[col] = row[i]
-                data.append(row_dict)
-
-            return jsonify({
-                'table': table_name,
-                'columns': columns,
-                'data': data,
-                'total': total,
-                'page': page,
-                'per_page': per_page
-            })
+        elif db_type == 'postgresql':
+            cursor.execute("""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = %s
+                ORDER BY ordinal_position
+            """, (table_name,))
+            columns = [row[0] for row in cursor.fetchall()]
+        elif db_type == 'mssql':
+            cursor.execute("""
+                SELECT COLUMN_NAME
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_NAME = %s
+                ORDER BY ORDINAL_POSITION
+            """, (table_name,))
+            columns = [row[0] if isinstance(row, tuple) else row['COLUMN_NAME'] for row in cursor.fetchall()]
         else:
-            return jsonify({'error': 'Database type not supported yet'}), 500
+            cursor.close()
+            return jsonify({'error': f'Database type {db_type} not supported yet'}), 500
+
+        if not columns:
+            cursor.close()
+            return jsonify({'error': 'Table not found'}), 404
+
+        # Get total count
+        cursor.execute(f"SELECT COUNT(*) FROM {table_name}")
+        total = cursor.fetchone()[0]
+
+        # Get paginated data (handle different placeholder styles)
+        offset = (page - 1) * per_page
+        if db_type == 'sqlite':
+            cursor.execute(f"SELECT * FROM {table_name} LIMIT ? OFFSET ?", (per_page, offset))
+        elif db_type == 'postgresql':
+            cursor.execute(f"SELECT * FROM {table_name} LIMIT %s OFFSET %s", (per_page, offset))
+        elif db_type == 'mssql':
+            # MSSQL uses OFFSET/FETCH syntax (requires ORDER BY)
+            cursor.execute(f"SELECT * FROM {table_name} ORDER BY (SELECT NULL) OFFSET %s ROWS FETCH NEXT %s ROWS ONLY", (offset, per_page))
+
+        # Convert rows to dictionaries
+        rows = cursor.fetchall()
+        data = []
+        for row in rows:
+            row_dict = {}
+            for i, col in enumerate(columns):
+                row_dict[col] = row[i]
+            data.append(row_dict)
+
+        cursor.close()
+
+        return jsonify({
+            'table': table_name,
+            'columns': columns,
+            'data': data,
+            'total': total,
+            'page': page,
+            'per_page': per_page
+        })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

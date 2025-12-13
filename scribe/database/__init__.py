@@ -7,6 +7,7 @@ Provides a unified interface across SQLite, PostgreSQL, MySQL, and MSSQL.
 from scribe.database.base import DatabaseAdapter, Row
 from scribe.database.sqlite import SQLiteAdapter
 from scribe.database.query_builder import QueryBuilder
+from scribe.database.manager import DatabaseManager
 
 
 def create_adapter(config: dict) -> DatabaseAdapter:
@@ -51,5 +52,6 @@ __all__ = [
     "Row",
     "SQLiteAdapter",
     "QueryBuilder",
+    "DatabaseManager",
     "create_adapter",
 ]

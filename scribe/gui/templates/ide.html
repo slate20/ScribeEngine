@@ -25,6 +25,9 @@
                 <button id="refresh-preview-btn" class="btn">
                     <span class="icon">🔄</span> Refresh Preview
                 </button>
+                <button id="toggle-preview-btn" class="btn" title="Toggle Preview Panel">
+                    <span class="icon">◀</span>
+                </button>
             </div>
         </header>
 
@@ -35,8 +38,6 @@
                 <div class="sidebar-header">
                     <h2>Files</h2>
                     <div class="sidebar-actions">
-                        <button id="new-file-btn" class="icon-btn" title="New File">📄</button>
-                        <button id="new-folder-btn" class="icon-btn" title="New Folder">📁</button>
                         <button id="refresh-files-btn" class="icon-btn" title="Refresh">🔄</button>
                     </div>
                 </div>
@@ -73,6 +74,17 @@
                     </div>
                     <div id="monaco-editor" style="display: none;"></div>
                 </div>
+
+                <!-- Status Bar -->
+                <footer id="status-bar">
+                    <div class="status-left">
+                        <span id="status-message">Ready</span>
+                    </div>
+                    <div class="status-right">
+                        <span id="cursor-position">Ln 1, Col 1</span>
+                        <span id="file-language">-</span>
+                    </div>
+                </footer>
             </main>
 
             <!-- Resizer between editor and right panel -->
@@ -119,17 +131,6 @@
                 </div>
             </aside>
         </div>
-
-        <!-- Status Bar -->
-        <footer id="status-bar">
-            <div class="status-left">
-                <span id="status-message">Ready</span>
-            </div>
-            <div class="status-right">
-                <span id="cursor-position">Ln 1, Col 1</span>
-                <span id="file-language">-</span>
-            </div>
-        </footer>
     </div>
 
     <!-- New File Modal -->
