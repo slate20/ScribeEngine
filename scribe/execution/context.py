@@ -5,6 +5,8 @@ This module provides a controlled environment for executing Python code
 from template files, with access to database, session, request, and helpers.
 """
 
+import types
+import inspect
 from typing import Dict, Any, Optional
 from scribe.execution.builtins import get_safe_builtins
 
@@ -131,11 +133,22 @@ class ExecutionContext:
             has_return = bool(re.search(r'\breturn\b', code))
 
             if has_return:
-                # Transform return statements to store value and raise exception
-                # Replace "return xyz" with "raise __ScribeReturn__(xyz, locals())"
+                # Define custom exception class for handling returns
+                # Execute this in the namespace so it's available
+                setup_code = '''
+class __ScribeReturn__(Exception):
+    """Internal exception for handling return statements"""
+    def __init__(self, value):
+        self.value = value
+        super().__init__()
+'''
+                exec(setup_code, self.namespace, self.namespace)
+
+                # Transform return statements to raise exception instead
+                # Replace "return xyz" with "raise __ScribeReturn__(xyz)"
                 transformed_code = re.sub(
                     r'\breturn\s+(.+)$',
-                    r'raise __ScribeReturn__(\1, locals())',
+                    r'raise __ScribeReturn__(\1)',
                     code,
                     flags=re.MULTILINE
                 )
@@ -143,41 +156,24 @@ class ExecutionContext:
                 # Also handle bare "return" statements
                 transformed_code = re.sub(
                     r'\breturn\s*$',
-                    r'raise __ScribeReturn__(None, locals())',
+                    r'raise __ScribeReturn__(None)',
                     transformed_code,
                     flags=re.MULTILINE
                 )
 
-                # Wrap in function and exception handler
+                # Wrap in try/except to catch the return exception
                 wrapped_code = f'''
-class __ScribeReturn__(Exception):
-    def __init__(self, value, locals_dict):
-        self.value = value
-        self.locals_dict = locals_dict
-        super().__init__()
-
-def __scribe_execute__():
-{self._indent_code(transformed_code, 4)}
-
 try:
-    __scribe_execute__()
+{self._indent_code(transformed_code, 4)}
     __scribe_return__ = None
-    __scribe_locals__ = {{}}
 except __ScribeReturn__ as __e__:
     __scribe_return__ = __e__.value
-    __scribe_locals__ = __e__.locals_dict
-
-# Merge local variables back into global namespace
-for __k__, __v__ in __scribe_locals__.items():
-    if not __k__.startswith('_'):
-        globals()[__k__] = __v__
 '''
+                # Execute directly in the namespace (no function wrapper)
+                exec(wrapped_code, self.namespace, self.namespace)
             else:
                 # No return statements, execute directly
-                wrapped_code = code
-
-            # Execute the code
-            exec(wrapped_code, self.namespace, self.namespace)
+                exec(code, self.namespace, self.namespace)
 
             # Check if there's a return value
             return_value = self.namespace.get('__scribe_return__')
@@ -244,9 +240,12 @@ for __k__, __v__ in __scribe_locals__.items():
             if key in ('db', 'session', 'request', 'g'):
                 continue
 
-            # Skip modules
-            if hasattr(value, '__module__') and hasattr(value, '__name__'):
-                # This is likely a module
+            # Skip modules, functions, and classes (but NOT instances)
+            if isinstance(value, types.ModuleType):
+                continue
+            if isinstance(value, types.FunctionType):
+                continue
+            if inspect.isclass(value):
                 continue
 
             # Skip private variables
